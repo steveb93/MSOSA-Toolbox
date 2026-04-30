@@ -1,0 +1,11 @@
+docker run \
+--name neo4j-docker \
+-p 7474:7474 -p 7687:7687 \
+-e NEO4J_AUTH=neo4j/!Stormport900" \
+-e NEO4J_PLUGINS='['apoc','bloom','graph-data-science'.'genai']' \
+-e NEO4J_ACCEPT_LICENSE_AGREEMENT=yes \
+-v F:/neo4j-docker/data:/data \
+-v F:/neo4j-docker/logs:/logs \
+-v F:/neo4j-docker/plugins:/plugins \
+-v F:/neo4j-docker/import:/import \
+neo4j:2026.04-enterprise-trixie
