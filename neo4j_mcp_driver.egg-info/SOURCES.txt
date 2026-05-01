@@ -1,9 +1,0 @@
-pyproject.toml
-neo4j_mcp_driver/__init__.py
-neo4j_mcp_driver/server.py
-neo4j_mcp_driver.egg-info/PKG-INFO
-neo4j_mcp_driver.egg-info/SOURCES.txt
-neo4j_mcp_driver.egg-info/dependency_links.txt
-neo4j_mcp_driver.egg-info/requires.txt
-neo4j_mcp_driver.egg-info/top_level.txt
-test/test_neo4j_connection.py
