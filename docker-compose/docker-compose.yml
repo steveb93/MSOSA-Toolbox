@@ -8,7 +8,7 @@ services:
       - "7687:7687" # Bolt protocol
       - "7473:7473" # Bloom HTTP
     environment:
-      - NEO4J_AUTH=neo4j/!Stormport900"
+      - NEO4J_AUTH=neo4j/Password123"
       - NEO4J_PLUGINS=["apoc","apoc-extended", "bloom", "graph-data-science", "genai"]
       - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
     volumes:

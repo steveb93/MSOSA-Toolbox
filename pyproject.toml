@@ -1,0 +1,14 @@
+[project]
+name = "neo4j-mcp-driver"
+version = "0.1.0"
+dependencies = [
+    "mcp",
+    "neo4j"
+]
+
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["neo4j_mcp_driver"]
