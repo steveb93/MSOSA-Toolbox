@@ -2,5 +2,6 @@
 .venv/
 
 neo4j_mcp_driver.egg-info/
+Test/
 
 *.log
