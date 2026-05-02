@@ -4,11 +4,11 @@ services:
     container_name: neo4j-docker
     restart: unless-stopped
     ports:
-      - "7474:7474" # Neo4j HTTP
-      - "7687:7687" # Bolt protocol
-      - "7473:7473" # Bloom HTTP
+      - "7474:7474"
+      - "7687:7687"
+      - "7473:7473"
     environment:
-      - NEO4J_AUTH=neo4j/Password123"
+      - NEO4J_AUTH=neo4j/Password123
       - NEO4J_PLUGINS=["apoc","apoc-extended", "bloom", "graph-data-science", "genai"]
       - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
     volumes:
@@ -16,3 +16,17 @@ services:
       - F:/neo4j-docker/logs:/logs
       - F:/neo4j-docker/import:/import
       - F:/neo4j-docker/plugins:/plugins
+
+  devcontainer:
+    image: mcr.microsoft.com/devcontainers/universal:2
+    container_name: claude-code-docker
+    volumes:
+      - ..:/workspace:cached
+    working_dir: /workspace
+    command: sleep infinity
+    depends_on:
+      - neo4j
+    environment:
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=Password123

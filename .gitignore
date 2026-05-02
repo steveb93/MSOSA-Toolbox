@@ -3,9 +3,10 @@
 
 neo4j_mcp_driver.egg-info/
 Test/
+__pycache__/
 
 
 *.log
 
 *.pyc
-__pycache__/
+
