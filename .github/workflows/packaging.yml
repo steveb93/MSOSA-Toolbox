@@ -16,7 +16,7 @@ jobs:
         distribution: 'temurin'
         cache: maven
     - name: Build Plugin
-      run: mvn -B package --file pom.xml
+      run: mvn clean package
 
     - name: Update depdendency graph
       uses: advanced-security/maven-dependency-submission-action@v4
