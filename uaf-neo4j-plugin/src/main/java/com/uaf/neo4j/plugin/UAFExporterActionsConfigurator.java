@@ -31,6 +31,6 @@ public class UAFExporterActionsConfigurator implements AMConfigurator {
 
     @Override
     public int getPriority() {
-        return AMConfigurator.MEDIUM_PRIORITY;
+        return 1;
     }
 }

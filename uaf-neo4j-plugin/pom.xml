@@ -13,11 +13,11 @@
     <description>MSOSA 2022x Hotfix 2 plugin to export UAF 1.2 elements and relationships to Neo4j</description>
 
     <properties>
-        <java.version>25</java.version>
-        <maven.compiler.source>25</maven.compiler.source>
-        <maven.compiler.target>25</maven.compiler.target>
+        <java.version>11</java.version>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <neo4j.driver.version>5.18.0</neo4j.driver.version>
+        <neo4j.driver.version>4.4.15</neo4j.driver.version>
         <!-- MSOSA API jars checked into repo under uaf-neo4j-plugin/msosa-api/ -->
         <msosa.api.dir>${project.basedir}/msosa-api</msosa.api.dir>
         <msosa.api.version>2022x-hf2</msosa.api.version>
@@ -43,18 +43,7 @@
             MSOSA API jars — PROVIDED (on MSOSA classpath at runtime; not bundled).
             Jars are checked into msosa-api/ in this directory. Install once with:
 
-            mvn install:install-file -Dfile="msosa-api/md.jar" \
-                -DgroupId=com.nomagic.magicdraw -DartifactId=md \
-                -Dversion=2022x-hf2 -Dpackaging=jar
-
-            mvn install:install-file -Dfile="msosa-api/md_api.jar" \
-                -DgroupId=com.nomagic.magicdraw -DartifactId=md-api \
-                -Dversion=2022x-hf2 -Dpackaging=jar
-
-            mvn install:install-file \
-                -Dfile="msosa-api/com.nomagic.magicdraw.uml2-2022.2.0-105-acd52bbc.jar" \
-                -DgroupId=com.nomagic.magicdraw -DartifactId=uml2 \
-                -Dversion=2022x-hf2 -Dpackaging=jar
+            .\install-msosa-jars.ps1
         -->
         <dependency>
             <groupId>com.nomagic.magicdraw</groupId>
@@ -74,11 +63,35 @@
             <version>${msosa.api.version}</version>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>com.nomagic.magicdraw</groupId>
+            <artifactId>magicdraw-foundation</artifactId>
+            <version>${msosa.api.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.nomagic.magicdraw</groupId>
+            <artifactId>magicdraw-core-diagram</artifactId>
+            <version>${msosa.api.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.dassault_systemes</groupId>
+            <artifactId>modeler-foundation</artifactId>
+            <version>${msosa.api.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.nomagic</groupId>
+            <artifactId>cmof</artifactId>
+            <version>1.4</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
     <build>
         <plugins>
-            <!-- Compiler plugin for Java 25 -->
+            <!-- Compiler -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
