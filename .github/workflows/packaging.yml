@@ -5,6 +5,8 @@ on:
     branches: ["main"]
     paths:
       - "uaf-neo4j-plugin/**"
+    tags:
+      - "v*"
 
 permissions:
   contents: write
@@ -39,3 +41,12 @@ jobs:
         uses: advanced-security/maven-dependency-submission-action@v4
         with:
           directory: uaf-neo4j-plugin
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            uaf-neo4j-plugin/target/uaf-neo4j-plugin-*-plugin.zip
+            uaf-neo4j-plugin/target/uaf-neo4j-plugin-*.jar
+          generate_release_notes: true
