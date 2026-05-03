@@ -1,6 +1,6 @@
 # UAF-Repo
 
-![Python](https://img.shields.io/badge/Python-3.12.4-3776AB?logo=python&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.12.4-3776AB?logo=python&logoColor=white) ![Java](https://img.shields.io/badge/java-11-yellowgreen)
 
 ## Overview
 
