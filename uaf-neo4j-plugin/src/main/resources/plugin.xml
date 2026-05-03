@@ -1,13 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-    MagicDraw / MSOSA 2022x plugin descriptor.
-    Deploy the entire uaf-neo4j-plugin/ folder into:
-        <MSOSA_HOME>/plugins/
-    then restart MSOSA.
--->
 <plugin id="com.uaf.neo4j.plugin"
         name="UAF Neo4j Export Plugin"
         version="1.0.0"
+        internalVersion="202200000"
+        ownClassloader="false"
+        class-lookup="GlobalFirst"
         provider-name="UAF Tools"
         class="com.uaf.neo4j.plugin.UAFNeo4jPlugin">
 
