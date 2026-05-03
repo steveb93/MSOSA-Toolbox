@@ -9,7 +9,7 @@ import com.nomagic.magicdraw.actions.MDActionsCategory;
  */
 public class UAFExporterActionsConfigurator implements AMConfigurator {
 
-    private static final String TOOLS_MENU_ID = "TOOLS_MENU";
+    private static final String TOOLS_MENU_ID = "TOOLS";
 
     @Override
     public void configure(ActionsManager manager) {
