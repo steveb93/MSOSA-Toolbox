@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.uaf.neo4j</groupId>
+    <artifactId>uaf-neo4j-plugin</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+    <name>UAF Neo4j Export Plugin</name>
+    <description>MSOSA 2022x plugin to export UAF 1.2 elements and relationships to Neo4j</description>
+
+    <properties>
+        <java.version>11</java.version>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <neo4j.driver.version>5.18.0</neo4j.driver.version>
+        <!-- Set this to your MSOSA 2022x installation root -->
+        <magicdraw.home>C:/Program Files/MagicDraw</magicdraw.home>
+    </properties>
+
+    <dependencies>
+        <!-- Neo4j Java Driver (bundled into fat jar) -->
+        <dependency>
+            <groupId>org.neo4j.driver</groupId>
+            <artifactId>neo4j-java-driver</artifactId>
+            <version>${neo4j.driver.version}</version>
+        </dependency>
+
+        <!-- JUnit 5 -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.10.2</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!--
+            MagicDraw / MSOSA API jars — PROVIDED (already on classpath at runtime).
+            Install them into your local Maven repo first:
+
+            mvn install:install-file -Dfile="${magicdraw.home}/lib/magicdraw.jar" \
+                -DgroupId=com.nomagic.magicdraw -DartifactId=magicdraw-api \
+                -Dversion=2022x -Dpackaging=jar
+
+            mvn install:install-file -Dfile="${magicdraw.home}/lib/md_api.jar" \
+                -DgroupId=com.nomagic.magicdraw -DartifactId=md-api \
+                -Dversion=2022x -Dpackaging=jar
+        -->
+        <dependency>
+            <groupId>com.nomagic.magicdraw</groupId>
+            <artifactId>magicdraw-api</artifactId>
+            <version>2022x</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.nomagic.magicdraw</groupId>
+            <artifactId>md-api</artifactId>
+            <version>2022x</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Surefire 3.x: supports JUnit Platform (JUnit 5) natively -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+            </plugin>
+
+            <!-- Fat jar: bundles Neo4j driver into single deployable jar -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.3</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals><goal>shade</goal></goals>
+                        <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                            <relocations>
+                                <!-- Relocate Neo4j driver to avoid classpath conflicts -->
+                                <relocation>
+                                    <pattern>org.neo4j.driver</pattern>
+                                    <shadedPattern>com.uaf.shaded.neo4j.driver</shadedPattern>
+                                </relocation>
+                            </relocations>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Assembly plugin: produces a deployable zip for MSOSA plugins directory -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.7.1</version>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals><goal>single</goal></goals>
+                        <configuration>
+                            <descriptors>
+                                <descriptor>src/assembly/plugin-zip.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -1,0 +1,24 @@
+<assembly xmlns="http://maven.apache.org/ASSEMBLY/2.1.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/ASSEMBLY/2.1.0
+                              http://maven.apache.org/xsd/assembly-2.1.0.xsd">
+    <id>plugin</id>
+    <formats><format>zip</format></formats>
+    <includeBaseDirectory>true</includeBaseDirectory>
+    <baseDirectory>uaf-neo4j-plugin</baseDirectory>
+
+    <files>
+        <file>
+            <source>${project.build.directory}/${project.artifactId}-${project.version}.jar</source>
+            <outputDirectory>.</outputDirectory>
+        </file>
+        <file>
+            <source>src/main/resources/plugin.xml</source>
+            <outputDirectory>.</outputDirectory>
+        </file>
+        <file>
+            <source>src/main/resources/neo4j-connection.properties</source>
+            <outputDirectory>.</outputDirectory>
+        </file>
+    </files>
+</assembly>
