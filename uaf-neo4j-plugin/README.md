@@ -107,24 +107,15 @@ This creates constraints, full-text indexes, and the pre-existing metamodel node
 
 ## Step 2 — Register MSOSA SDK jars in Maven
 
-The MSOSA SDK jars are checked into `msosa-api/` in this directory. Run the
-following once from the `uaf-neo4j-plugin/` directory to install them into your
-local Maven repository:
+The MSOSA SDK jars are checked into `msosa-api/` in this directory. A script
+is provided to install them into your local Maven repository — run once from
+`uaf-neo4j-plugin/`:
 
 ```powershell
-mvn install:install-file -Dfile="msosa-api/md.jar" `
-    -DgroupId=com.nomagic.magicdraw -DartifactId=md `
-    -Dversion=2022x-hf2 -Dpackaging=jar
-
-mvn install:install-file -Dfile="msosa-api/md_api.jar" `
-    -DgroupId=com.nomagic.magicdraw -DartifactId=md-api `
-    -Dversion=2022x-hf2 -Dpackaging=jar
-
-mvn install:install-file `
-    -Dfile="msosa-api/com.nomagic.magicdraw.uml2-2022.2.0-105-acd52bbc.jar" `
-    -DgroupId=com.nomagic.magicdraw -DartifactId=uml2 `
-    -Dversion=2022x-hf2 -Dpackaging=jar
+.\install-msosa-jars.ps1
 ```
+
+Each install should confirm a path under `C:\Users\<you>\.m2\repository\com\nomagic\magicdraw\...`.
 
 These jars are `provided` scope — they are never bundled into the fat jar.
 
