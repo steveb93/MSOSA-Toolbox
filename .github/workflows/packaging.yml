@@ -28,6 +28,9 @@ jobs:
           cache: maven
           cache-dependency-path: uaf-neo4j-plugin/pom.xml
 
+      - name: Install API jars
+        run: .\install-msosa-jars.ps1
+        
       - name: Build Plugin
         run: mvn clean package
 
