@@ -1,12 +1,12 @@
 # UAF 1.2 → Neo4j Knowledge Graph Exporter
-## Catia Magic MSOSA 2022x Hotfix 2 Plugin
+## Catia Magic MSOSA 2022x Refresh2 Plugin
 
 ---
 
 ## Overview
 
 This plugin exports UAF 1.2 architectural elements and relationships from a
-Catia Magic MSOSA 2022x Hotfix 2 project into a Neo4j graph database running in Docker.
+Catia Magic MSOSA 2022x Refresh2 project into a Neo4j graph database running in Docker.
 
 Exported instance nodes are automatically linked via `:INSTANCE_OF` relationships
 to pre-existing UAF domain meta-model stereotype nodes already in your graph,
@@ -35,7 +35,7 @@ Neo4j (Docker :7687)
 
 | Component | Version |
 |---|---|
-| Catia Magic MSOSA | 2022x Hotfix 2 |
+| Catia Magic MSOSA | 2022x Refresh2 |
 | Java (plugin compile) | JDK 11+ |
 | Neo4j | 4.4.x or 5.x |
 | Docker | 20.10+ |

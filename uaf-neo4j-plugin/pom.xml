@@ -10,7 +10,7 @@
     <version>1.0.0</version>
     <packaging>jar</packaging>
     <name>UAF Neo4j Export Plugin</name>
-    <description>MSOSA 2022x Hotfix 2 plugin to export UAF 1.2 elements and relationships to Neo4j</description>
+    <description>MSOSA 2022x Refresh2 plugin to export UAF 1.2 elements and relationships to Neo4j</description>
 
     <properties>
         <java.version>11</java.version>

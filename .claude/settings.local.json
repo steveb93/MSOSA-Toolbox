@@ -6,7 +6,8 @@
       "Bash(powershell -Command \"Get-ChildItem 'C:\\\\Program Files\\\\Dassault Systemes' -Recurse -Filter 'java.exe' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName\")",
       "PowerShell(cd \"f:\\\\OneDrive\\\\_VSCode\\\\UAF-Repo\\\\uaf-neo4j-plugin\"; $env:JAVA_HOME = \"C:\\\\Program Files\\\\Eclipse Adoptium\\\\jdk-11.0.31.11-hotspot\"; .\\\\install-msosa-jars.ps1 2>&1 | Select-String -Pattern \"nomagic-utils|emf-common|SUCCESS|FAILURE|ERROR\" | Select-Object -Last 20)",
       "PowerShell(cd \"f:\\\\OneDrive\\\\_VSCode\\\\UAF-Repo\\\\uaf-neo4j-plugin\"; $env:JAVA_HOME = \"C:\\\\Program Files\\\\Eclipse Adoptium\\\\jdk-11.0.31.11-hotspot\"; mvn clean package 2>&1 | Select-String -Pattern \"ERROR|WARNING|BUILD|error:|warning:\" | Select-Object -Last 40)",
-      "PowerShell(cd \"f:\\\\OneDrive\\\\_VSCode\\\\UAF-Repo\\\\uaf-neo4j-plugin\"; $env:JAVA_HOME = \"C:\\\\Program Files\\\\Eclipse Adoptium\\\\jdk-11.0.31.11-hotspot\"; mvn clean package 2>&1 | Select-String -Pattern \"ERROR|BUILD|Tests run\" | Select-Object -Last 20)"
+      "PowerShell(cd \"f:\\\\OneDrive\\\\_VSCode\\\\UAF-Repo\\\\uaf-neo4j-plugin\"; $env:JAVA_HOME = \"C:\\\\Program Files\\\\Eclipse Adoptium\\\\jdk-11.0.31.11-hotspot\"; mvn clean package 2>&1 | Select-String -Pattern \"ERROR|BUILD|Tests run\" | Select-Object -Last 20)",
+      "PowerShell(cd \"f:\\\\OneDrive\\\\_VSCode\\\\UAF-Repo\\\\uaf-neo4j-plugin\"; $env:JAVA_HOME = \"C:\\\\Program Files\\\\Eclipse Adoptium\\\\jdk-11.0.31.11-hotspot\"; mvn clean package -q 2>&1 | Select-String \"ERROR|BUILD\" | Select-Object -Last 5)"
     ]
   }
 }

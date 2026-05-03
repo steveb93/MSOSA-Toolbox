@@ -19,5 +19,9 @@
             <source>src/main/resources/neo4j-connection.properties</source>
             <outputDirectory>.</outputDirectory>
         </file>
+        <file>
+            <source>src/main/resources/com.uaf.neo4j.plugin.xml</source>
+            <outputDirectory>.</outputDirectory>
+        </file>
     </files>
 </assembly>
