@@ -1,0 +1,5 @@
+Source,Relationship,Target
+Integrated Supply Chain Planning,enables,Demand Planning
+Demand Planning,uses,Anaplan
+Anaplan,manages,Demand Forecasting
+SAP S4,manages,Material Master
