@@ -1,4 +1,0 @@
--------------------------------------------------------------------------------
-Test set: com.uaf.neo4j.plugin.neo4j.Neo4jCypherBuilderTest
--------------------------------------------------------------------------------
-Tests run: 17, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.010 s -- in com.uaf.neo4j.plugin.neo4j.Neo4jCypherBuilderTest
