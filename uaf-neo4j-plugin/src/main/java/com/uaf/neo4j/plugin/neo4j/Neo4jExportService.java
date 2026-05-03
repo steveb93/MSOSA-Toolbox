@@ -1,0 +1,155 @@
+package com.uaf.neo4j.plugin.neo4j;
+
+import com.uaf.neo4j.plugin.model.UAFElementDTO;
+import com.uaf.neo4j.plugin.model.UAFRelationshipDTO;
+
+import org.neo4j.driver.*;
+
+import java.util.*;
+import java.util.logging.Logger;
+
+/**
+ * Manages the Neo4j Bolt driver lifecycle and performs batched, idempotent
+ * writes of UAF nodes, relationships, and metamodel links.
+ *
+ * Implements AutoCloseable — use in a try-with-resources block.
+ */
+public class Neo4jExportService implements AutoCloseable {
+
+    private static final Logger LOG = Logger.getLogger(Neo4jExportService.class.getName());
+
+    private final String uri;
+    private final String user;
+    private final String password;
+    private final String database;
+    private final int    batchSize;
+
+    private Driver driver;
+    private final ExportResult result = new ExportResult();
+
+    public Neo4jExportService(Properties config) {
+        this.uri      = config.getProperty("neo4j.uri",      "bolt://localhost:7687");
+        this.user     = config.getProperty("neo4j.user",     "neo4j");
+        this.password = config.getProperty("neo4j.password", "Password123");
+        this.database = config.getProperty("neo4j.database", "neo4j");
+        this.batchSize = Integer.parseInt(
+            config.getProperty("neo4j.batch.size", "500"));
+    }
+
+    /** Opens the driver and verifies connectivity. Throws if connection fails. */
+    public void init() {
+        driver = GraphDatabase.driver(uri, AuthTokens.basic(user, password),
+            Config.builder()
+                .withMaxConnectionPoolSize(
+                    Integer.parseInt(System.getProperty("neo4j.max.connections", "10")))
+                .build());
+        driver.verifyConnectivity();
+        LOG.info("Neo4jExportService: connected to " + uri);
+    }
+
+    // -------------------------------------------------------------------------
+
+    public void exportNodes(List<UAFElementDTO> elements) {
+        int total = elements.size();
+        for (int i = 0; i < total; i += batchSize) {
+            List<UAFElementDTO> batch = elements.subList(i, Math.min(i + batchSize, total));
+            try (Session session = session()) {
+                session.writeTransaction(tx -> {
+                    for (UAFElementDTO dto : batch) {
+                        tx.run(Neo4jCypherBuilder.nodeMergeCypher(dto),
+                               Neo4jCypherBuilder.nodeParams(dto));
+                    }
+                    return null;
+                });
+                result.nodesWritten += batch.size();
+            } catch (Exception e) {
+                LOG.warning("Node batch failed at index " + i + ": " + e.getMessage());
+                result.errors.add("Node batch [" + i + "–" + (i + batch.size()) + "]: " + e.getMessage());
+            }
+        }
+    }
+
+    public void exportRelationships(List<UAFRelationshipDTO> rels) {
+        int total = rels.size();
+        for (int i = 0; i < total; i += batchSize) {
+            List<UAFRelationshipDTO> batch = rels.subList(i, Math.min(i + batchSize, total));
+            try (Session session = session()) {
+                session.writeTransaction(tx -> {
+                    for (UAFRelationshipDTO dto : batch) {
+                        tx.run(Neo4jCypherBuilder.relationshipMergeCypher(dto),
+                               Neo4jCypherBuilder.relationshipParams(dto));
+                    }
+                    return null;
+                });
+                result.relationshipsWritten += batch.size();
+            } catch (Exception e) {
+                LOG.warning("Relationship batch failed at index " + i + ": " + e.getMessage());
+                result.errors.add("Rel batch [" + i + "–" + (i + batch.size()) + "]: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Links each UAF element node to the corresponding :Stereotype node that
+     * already exists in the domain metamodel graph.
+     */
+    public void exportInstanceOfLinks(List<UAFElementDTO> elements) {
+        int total = elements.size();
+        for (int i = 0; i < total; i += batchSize) {
+            List<UAFElementDTO> batch = elements.subList(i, Math.min(i + batchSize, total));
+            try (Session session = session()) {
+                session.writeTransaction(tx -> {
+                    for (UAFElementDTO dto : batch) {
+                        tx.run(Neo4jCypherBuilder.INSTANCE_OF_CYPHER,
+                               Neo4jCypherBuilder.instanceOfParams(dto));
+                    }
+                    return null;
+                });
+                result.instanceLinksWritten += batch.size();
+            } catch (Exception e) {
+                LOG.warning("INSTANCE_OF batch failed at index " + i + ": " + e.getMessage());
+                result.errors.add("InstanceOf batch [" + i + "–" + (i + batch.size()) + "]: " + e.getMessage());
+            }
+        }
+    }
+
+    /** Test-only: verifies that the connection is alive without writing. */
+    public boolean testConnection() {
+        try {
+            driver.verifyConnectivity();
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public ExportResult getResult() {
+        return result;
+    }
+
+    @Override
+    public void close() {
+        if (driver != null) {
+            driver.close();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+
+    private Session session() {
+        return driver.session(SessionConfig.forDatabase(database));
+    }
+
+    // -------------------------------------------------------------------------
+
+    public static final class ExportResult {
+        public int nodesWritten        = 0;
+        public int relationshipsWritten = 0;
+        public int instanceLinksWritten = 0;
+        public final List<String> errors = new ArrayList<>();
+
+        public boolean hasErrors() {
+            return !errors.isEmpty();
+        }
+    }
+}

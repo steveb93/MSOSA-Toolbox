@@ -1,11 +1,15 @@
+# Byte-compiled / optimized / DLL files
 .vscode/
+# Virtual environment
 .venv/
 
-neo4j_mcp_driver.egg-info/
-Test/
-
-
+# Logs
 *.log
-
+# Unit test / coverage reports
 *.pyc
+
+neo4j_mcp_driver.egg-info/
 __pycache__/
+CLAUDE.md
+
+
