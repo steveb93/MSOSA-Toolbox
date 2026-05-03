@@ -2,14 +2,23 @@
 .vscode/
 # Virtual environment
 .venv/
+# Claude data
+.claude/
 
 # Logs
 *.log
 # Unit test / coverage reports
 *.pyc
 
+# Test scripts
+Test/
+test/
+# mcp driver
 neo4j_mcp_driver.egg-info/
+# Python cache
 __pycache__/
+
+# Claude notes
 CLAUDE.md
 
 
