@@ -1,59 +1,163 @@
 # UAF 1.2 → Neo4j Knowledge Graph Exporter
-## Catia Magic MSOSA 2022x Hotfix 1 Plugin
+## Catia Magic MSOSA 2022x Hotfix 2 Plugin
 
 ---
 
 ## Overview
 
-Exports UAF 1.2 architectural elements and relationships from a Catia Magic MSOSA 2022x Hotfix 1 project into a Neo4j graph database running in Docker. Exported instance nodes are linked via `:INSTANCE_OF` to pre-existing UAF domain meta-model stereotype nodes already in the graph, creating a queryable knowledge graph spanning both meta-model and instance-level architecture.
+This plugin exports UAF 1.2 architectural elements and relationships from a
+Catia Magic MSOSA 2022x Hotfix 2 project into a Neo4j graph database running in Docker.
+
+Exported instance nodes are automatically linked via `:INSTANCE_OF` relationships
+to pre-existing UAF domain meta-model stereotype nodes already in your graph,
+creating a live, queryable knowledge graph spanning both the meta-model and
+instance-level architecture data.
 
 ```
 MSOSA Project
+    │
     │  [UAFModelTraverser]
     ▼
 UAFElementDTO / UAFRelationshipDTO
+    │
     │  [Neo4jCypherBuilder → parameterised MERGE]
     ▼
 Neo4j (Docker :7687)
-    ├── :UAFElement:Capability      ──[:INSTANCE_OF]──► :Stereotype
-    ├── :UAFElement:OperationalPerformer ...
+    ├── :UAFElement:Capability            ──[:INSTANCE_OF]──► :Stereotype {name:'Capability'}
+    ├── :UAFElement:OperationalPerformer  ──[:INSTANCE_OF]──► :Stereotype {name:'OperationalPerformer'}
+    ├── :UAFElement:SystemFunction        ──[:INSTANCE_OF]──► :Stereotype {name:'SystemFunction'}
     └── [:PERFORMS] [:TRACES_TO] [:SATISFIES] ...
 ```
 
 ---
 
-## Build
+## Requirements
 
-### 1. Install MSOSA SDK jars into local Maven repo
+| Component | Version |
+|---|---|
+| Catia Magic MSOSA | 2022x Hotfix 2 |
+| Java (plugin compile) | JDK 11+ |
+| Neo4j | 4.4.x or 5.x |
+| Docker | 20.10+ |
+| Maven | 3.8+ |
 
-The three MSOSA API jars are not on Maven Central — install from your local MSOSA installation first:
+---
 
-```powershell
-$MD = "C:/Program Files/MagicDraw"
+## Project Structure
 
-mvn install:install-file -Dfile="$MD/lib/magicdraw.jar" `
-    -DgroupId=com.nomagic.magicdraw -DartifactId=magicdraw-api -Dversion=2022x -Dpackaging=jar
-
-mvn install:install-file -Dfile="$MD/lib/md_api.jar" `
-    -DgroupId=com.nomagic.magicdraw -DartifactId=md-api -Dversion=2022x -Dpackaging=jar
-
-mvn install:install-file -Dfile="$MD/lib/uml2.jar" `
-    -DgroupId=com.nomagic.magicdraw -DartifactId=uml2 -Dversion=2022x -Dpackaging=jar
+```
+uaf-neo4j-plugin/
+├── msosa-api/                              ← MSOSA SDK jars (checked in)
+│   ├── md.jar                              ← MagicDraw core API
+│   ├── md_api.jar                          ← MagicDraw public API interfaces
+│   └── com.nomagic.magicdraw.uml2-*.jar   ← UML2 / StereotypesHelper
+├── plugin.xml                              ← MagicDraw plugin descriptor
+├── pom.xml                                 ← Maven build
+├── config/
+│   └── neo4j-connection.properties         ← Connection settings (edit this)
+├── cypher/
+│   ├── init_uaf_graph.cypher               ← DB schema + metamodel initialisation (run once)
+│   └── query-cookbook.cypher               ← Example Cypher queries
+├── docker/
+│   └── docker-compose.yml                  ← Neo4j Docker Compose
+└── src/main/java/com/uaf/neo4j/plugin/
+    ├── UAFNeo4jPlugin.java                 ← Plugin entry point + config lifecycle
+    ├── UAFExporterActionsConfigurator.java ← Injects Tools → UAF Neo4j Export menu
+    ├── ExportAction.java                   ← SwingWorker pipeline driver
+    ├── ConfigureAction.java
+    ├── AboutAction.java
+    ├── model/
+    │   ├── UAFStereotypeRegistry.java      ← Single source of truth: stereotype → domain/layer
+    │   ├── UAFModelTraverser.java          ← Walks MSOSA project, extracts DTOs
+    │   ├── UAFElementDTO.java              ← Immutable node DTO (builder pattern)
+    │   └── UAFRelationshipDTO.java         ← Immutable edge DTO (28 type constants)
+    ├── neo4j/
+    │   ├── Neo4jCypherBuilder.java         ← Parameterised MERGE Cypher (no interpolation)
+    │   └── Neo4jExportService.java         ← Bolt driver lifecycle + batched writes
+    └── ui/
+        ├── ConnectionDialog.java           ← Edit URI / credentials / batch size
+        └── ExportSummaryDialog.java        ← Post-export counts + error list
 ```
 
-### 2. Build
+---
+
+## Step 1 — Start Neo4j in Docker
+
+```powershell
+cd docker
+docker compose up -d
+```
+
+Wait ~30 seconds, then verify:
+- Browser: http://localhost:7474  (login: `neo4j` / `Password123`)
+- Bolt:    `bolt://localhost:7687`
+
+### Initialise the UAF database (run once)
+
+```powershell
+cypher-shell -u neo4j -p Password123 -f cypher/init_uaf_graph.cypher
+```
+
+Or paste the contents of `cypher/init_uaf_graph.cypher` into the Neo4j Browser.
+
+This creates constraints, full-text indexes, and the pre-existing metamodel nodes
+(`:Stereotype`, `:Domain`, `:ArchitectureLayer`) that exported instances link back to.
+
+---
+
+## Step 2 — Register MSOSA SDK jars in Maven
+
+The MSOSA SDK jars are checked into `msosa-api/` in this directory. Run the
+following once from the `uaf-neo4j-plugin/` directory to install them into your
+local Maven repository:
+
+```powershell
+mvn install:install-file -Dfile="msosa-api/md.jar" `
+    -DgroupId=com.nomagic.magicdraw -DartifactId=md `
+    -Dversion=2022x-hf2 -Dpackaging=jar
+
+mvn install:install-file -Dfile="msosa-api/md_api.jar" `
+    -DgroupId=com.nomagic.magicdraw -DartifactId=md-api `
+    -Dversion=2022x-hf2 -Dpackaging=jar
+
+mvn install:install-file `
+    -Dfile="msosa-api/com.nomagic.magicdraw.uml2-2022.2.0-105-acd52bbc.jar" `
+    -DgroupId=com.nomagic.magicdraw -DartifactId=uml2 `
+    -Dversion=2022x-hf2 -Dpackaging=jar
+```
+
+These jars are `provided` scope — they are never bundled into the fat jar.
+
+---
+
+## Step 3 — Build the Plugin
 
 ```powershell
 mvn clean package
 ```
 
-Outputs:
-- `target/uaf-neo4j-plugin-1.0.0.jar` — fat jar (Neo4j driver bundled + relocated)
-- `target/uaf-neo4j-plugin-1.0.0-plugin.zip` — drop into `<MSOSA_HOME>/plugins/`
+Outputs (in `target/`):
 
-### 3. Deploy to MSOSA
+| File | Purpose |
+|---|---|
+| `uaf-neo4j-plugin-1.0.0.jar` | Fat jar — Neo4j driver bundled and relocated |
+| `uaf-neo4j-plugin-1.0.0-plugin.zip` | Drop into `<MSOSA_HOME>/plugins/` |
 
-Either use **Help → Resource/Plugin Manager → Install Plugin from File**, or unzip manually:
+The Neo4j driver is shaded into `com.uaf.shaded.neo4j.driver` to avoid classpath
+collisions with MagicDraw's own bundled libraries.
+
+---
+
+## Step 4 — Install the Plugin in MSOSA
+
+**Option A — Plugin Manager:**
+1. In MSOSA: **Help → Resource/Plugin Manager → Install Plugin from File**
+2. Select `target/uaf-neo4j-plugin-1.0.0-plugin.zip`
+3. Restart MSOSA when prompted
+
+**Option B — Manual:**
+
+Unzip `target/uaf-neo4j-plugin-1.0.0-plugin.zip` into `<MSOSA_HOME>/plugins/`:
 
 ```
 <MSOSA_HOME>/plugins/uaf-neo4j-plugin/
@@ -66,62 +170,46 @@ Restart MSOSA. Plugin appears under **Tools → UAF Neo4j Export**.
 
 ---
 
-## Neo4j Setup (Docker)
+## Step 5 — Configure the Connection
 
-```powershell
-# from repo root
-cd ../docker-compose
-docker compose up -d
+Edit `<MSOSA_HOME>/plugins/uaf-neo4j-plugin/neo4j-connection.properties`:
 
-# initialise UAF metamodel schema (run once)
-cypher-shell -u neo4j -p Password123 -f cypher/init_uaf_graph.cypher
+```properties
+neo4j.uri=bolt://localhost:7687
+neo4j.user=neo4j
+neo4j.password=Password123
+neo4j.database=neo4j
+neo4j.batch.size=500
 ```
 
-`init_uaf_graph.cypher` creates constraints, full-text indexes, and the pre-existing metamodel nodes (`:Stereotype`, `:Domain`, `:ArchitectureLayer`) that exported instances link back to.
+Or configure at runtime: **Tools → UAF Neo4j Export → Configure Connection**
+
+Changes take effect without restarting MSOSA.
 
 ---
 
-## Architecture
+## Step 6 — Export
 
-### Package layout
-
-```
-com.uaf.neo4j.plugin
-    UAFNeo4jPlugin.java               plugin entry point, config lifecycle
-    UAFExporterActionsConfigurator    injects Tools → UAF Neo4j Export menu
-    ExportAction / ConfigureAction / AboutAction
-
-com.uaf.neo4j.plugin.model
-    UAFStereotypeRegistry             single source of truth: stereotype → {label, domain, layer}
-    UAFModelTraverser                 walks MSOSA project tree, extracts DTOs
-    UAFElementDTO                     immutable node DTO (builder pattern)
-    UAFRelationshipDTO                immutable edge DTO (28 type constants)
-
-com.uaf.neo4j.plugin.neo4j
-    Neo4jCypherBuilder                parameterised MERGE Cypher (no string interpolation)
-    Neo4jExportService                Bolt driver lifecycle, batched writes, INSTANCE_OF links
-
-com.uaf.neo4j.plugin.ui
-    ConnectionDialog                  edit URI / credentials / batch size
-    ExportSummaryDialog               post-export counts + error list
-```
-
-`ExportAction` drives the pipeline in a `SwingWorker` — MSOSA stays responsive during export.
-
-### Key design decisions
-
-- **Fat jar with relocation** — Neo4j driver is shaded into `com.uaf.shaded.neo4j.driver` to avoid classpath collisions with MagicDraw's own bundled libraries.
-- **Stereotype registry is the only place to change** when MSOSA renames a UAF stereotype or you add new ones. `UAFModelTraverser` consults it; elements whose stereotypes are not found are skipped silently (logged at WARNING).
-- **Parameterised Cypher only** — `Neo4jCypherBuilder` never interpolates user data. Labels and rel-types (which cannot be parameterised) pass through `sanitiseLabel()` / `sanitiseRelType()` which strip everything except `[a-zA-Z0-9_]`.
-- **MERGE on `id`** — all writes are idempotent. Re-export updates existing nodes but does not delete elements removed from the model.
+1. Open your UAF 1.2 project in MSOSA
+2. **Tools → UAF Neo4j Export → Export Active Project to Neo4j**
+3. Confirm connection settings → click **OK**
+4. Export runs in a background thread — MSOSA stays responsive
+5. An export summary dialog appears on completion showing node/relationship/error counts
 
 ---
 
-## Neo4j Node Model
+## Node Structure in Neo4j
 
-Every exported UAF element gets **dual labels**: `:UAFElement` + its stereotype label (e.g. `:Capability`), so queries can target all UAF elements generically or a specific type efficiently.
+Each exported UAF element gets **dual labels**: `:UAFElement` + its stereotype label
+(e.g. `:Capability`). This lets queries target all exported elements generically or
+a specific type efficiently.
 
-### Core properties
+### Labels
+
+- `UAFElement` — universal label for all exported instances
+- Stereotype label — e.g. `Capability`, `OperationalPerformer`, `HardwareElement`
+
+### Core Properties
 
 | Property | Description |
 |---|---|
@@ -136,66 +224,76 @@ Every exported UAF element gets **dual labels**: `:UAFElement` + its stereotype 
 | `documentation` | Model comments / notes |
 | `modelFile` | Source MSOSA project name |
 
-### Tagged values
+### Tagged Value Properties
 
-All UAF tagged values are flattened as `tv_<tagName>` properties (special characters replaced with `_`), e.g. `tv_nationality`, `tv_capabilityLevel`.
+All UAF tagged values are flattened as `tv_<tagName>` properties (special characters
+replaced with `_`), e.g. `tv_nationality`, `tv_capabilityLevel`.
 
-### Metamodel link
+### Metamodel Link
 
 ```cypher
 (:UAFElement)-[:INSTANCE_OF]->(:Stereotype)-[:BELONGS_TO]->(:Domain)
-                                           -[:IN_LAYER]->(:ArchitectureLayer)
+                                            -[:IN_LAYER]->(:ArchitectureLayer)
 ```
 
 ---
 
-## Neo4j Relationship Model
+## Relationship Structure
 
-Relationships carry: `id`, `uafType` (UML metaclass), `name`, `domain`.
+Relationships carry: `id`, `uafType` (UML metaclass), `name`, `domain`, plus any
+`tv_*` tagged values.
 
-**Supported Neo4j relationship types** (28):
+### Supported Relationship Types (28)
 
-`REALISES` · `TRACES_TO` · `ASSIGNED_TO` · `SATISFIES` · `REFINES` · `INFLUENCES` · `DEPENDS_ON` · `COMPOSED_OF` · `SPECIALISES` · `EXHIBITS` · `CONTRIBUTES_TO` · `EXPOSES` · `PROVIDES` · `PERFORMS` · `CONNECTED_TO` · `FLOWS_TO` · `TRIGGERS` · `PRECEDES` · `ENABLES` · `SUPPORTS` · `IMPLEMENTS` · `ALLOCATED_TO` · `INSTANCE_OF` · `CONTAINED_IN` · `ASSOCIATED_WITH` · `DEPENDENCY` · `GENERALIZATION` · `INFORMATION_FLOW` · `CONTROL_FLOW`
-
----
-
-## Stereotype Names
-
-Names in `UAFStereotypeRegistry` must exactly match what the MSOSA UAF 1.2 profile reports. To verify:
-
-```groovy
-// Run in MSOSA scripting console
-com.nomagic.uml2.ext.jmi.helpers.StereotypesHelper.getAllStereotypes(
-    com.nomagic.magicdraw.core.Application.getInstance().getProject()
-).each { println it.getName() }
-```
+`REALISES` · `TRACES_TO` · `ASSIGNED_TO` · `SATISFIES` · `REFINES` · `INFLUENCES` ·
+`DEPENDS_ON` · `COMPOSED_OF` · `SPECIALISES` · `EXHIBITS` · `CONTRIBUTES_TO` ·
+`EXPOSES` · `PROVIDES` · `PERFORMS` · `CONNECTED_TO` · `FLOWS_TO` · `TRIGGERS` ·
+`PRECEDES` · `ENABLES` · `SUPPORTS` · `IMPLEMENTS` · `ALLOCATED_TO` · `INSTANCE_OF` ·
+`CONTAINED_IN` · `ASSOCIATED_WITH` · `DEPENDENCY` · `GENERALIZATION` ·
+`INFORMATION_FLOW` · `CONTROL_FLOW`
 
 ---
 
-## Connection Configuration
+## Re-export Behaviour (Idempotency)
 
-Editable via **Tools → UAF Neo4j Export → Configure Connection** or directly in:
-`<MSOSA_HOME>/plugins/uaf-neo4j-plugin/neo4j-connection.properties`
+Exports are idempotent — re-running on the same or updated project:
+- **Updates** existing nodes (name, documentation, tagged values, diagrams)
+- **Adds** new elements and relationships
+- **Does not delete** elements removed from the model (run a cleanup Cypher if needed)
 
-```properties
-neo4j.uri=bolt://localhost:7687
-neo4j.user=neo4j
-neo4j.password=Password123
-neo4j.database=neo4j
-neo4j.batch.size=500
+---
+
+## Example Queries
+
+See `cypher/query-cookbook.cypher` for a full set. Quick start:
+
+```cypher
+// All exported elements by stereotype count
+MATCH (n:UAFElement)
+RETURN n.stereotype, count(*) AS total ORDER BY total DESC;
+
+// Performers and their activities
+MATCH (p:OperationalPerformer)-[:PERFORMS]->(a:OperationalActivity)
+RETURN p.name, a.name;
+
+// Cross-domain traceability: Strategic → Physical
+MATCH path = (st:UAFElement {domain:'STRATEGIC'})
+             -[:REALISES|TRACES_TO|ALLOCATED_TO|SATISFIES|IMPLEMENTS*1..6]->
+             (ph:UAFElement {layer:'PHYSICAL'})
+RETURN st.name, ph.name, ph.stereotype, length(path) AS hops
+ORDER BY hops LIMIT 50;
 ```
-
-Changes take effect without restarting MSOSA.
 
 ---
 
 ## Troubleshooting
 
-| Symptom | Cause | Fix |
+| Symptom | Likely cause | Fix |
 |---|---|---|
-| "No UAF elements found" | No UAF stereotypes applied | Confirm UAF 1.2 profile is loaded; elements have stereotypes |
+| "No UAF elements found" | No UAF stereotype applied | Ensure UAF 1.2 profile is loaded; elements have UAF stereotypes |
 | Connection refused | Neo4j container not running | `docker compose up -d`; check port 7687 |
-| INSTANCE_OF links missing | Stereotype nodes absent | Re-run `init_uaf_graph.cypher` |
-| Slow export on large model | Batch size too small | Increase `neo4j.batch.size` to 500–1000 |
-| `ClassNotFoundException` on startup | SDK jars not in local Maven repo | Re-run `mvn install:install-file` for all three MSOSA jars |
-| Stereotype skipped silently | Name mismatch in registry | Verify name via MSOSA scripting console (see above) |
+| Authentication failed | Wrong credentials | Check `neo4j-connection.properties` |
+| INSTANCE_OF links missing | Stereotype nodes not in DB | Run `cypher/init_uaf_graph.cypher` |
+| Slow export | Large model + small batch | Increase `neo4j.batch.size` to 500–1000 |
+| `ClassNotFoundException` on startup | SDK jars not installed in local Maven repo | Re-run the three `mvn install:install-file` commands (jars are in `msosa-api/`) |
+| Stereotype skipped silently | Name mismatch in `UAFStereotypeRegistry` | Verify name via MSOSA scripting console — see CLAUDE.md |
