@@ -55,7 +55,7 @@ public class UAFModelTraverser {
 
     public UAFModelTraverser(Project project) {
         this.project       = project;
-        this.modelFileName = project.getDisplayName();
+        this.modelFileName = project.getName();
     }
 
     public List<UAFElementDTO> getElements() {
@@ -196,11 +196,9 @@ public class UAFModelTraverser {
     private void extractRelationships(Element element, UAFStereotypeRegistry.StereotypeInfo srcInfo) {
         String srcId = safeId(element);
 
-        // Directed relationships where this element is the client/source
+        // Directed relationships where this element is the source (2022x API)
         for (com.nomagic.uml2.ext.magicdraw.classes.mdkernel.DirectedRelationship rel
-                : ModelHelper.elements(element,
-                    com.nomagic.uml2.ext.magicdraw.classes.mdkernel.DirectedRelationship.class,
-                    false)) {
+                : element.get_directedRelationshipOfSource()) {
 
             String metaclass = rel.getClass().getSimpleName();
             String neo4jType = RELATION_TYPE_MAP.getOrDefault(metaclass, UAFRelationshipDTO.REL_DEPENDENCY);
@@ -215,8 +213,7 @@ public class UAFModelTraverser {
                 }
             }
 
-            Collection<? extends Element> targets = ModelHelper.getSupplierElement(rel);
-            for (Element target : targets) {
+            for (Element target : rel.getTarget()) {
                 String targetId = safeId(target);
                 String relName  = rel instanceof NamedElement
                                     ? ((NamedElement) rel).getName() : "";

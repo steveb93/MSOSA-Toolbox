@@ -54,7 +54,7 @@ public class Neo4jExportService implements AutoCloseable {
         for (int i = 0; i < total; i += batchSize) {
             List<UAFElementDTO> batch = elements.subList(i, Math.min(i + batchSize, total));
             try (Session session = session()) {
-                session.executeWrite(tx -> {
+                session.writeTransaction(tx -> {
                     for (UAFElementDTO dto : batch) {
                         tx.run(Neo4jCypherBuilder.nodeMergeCypher(dto),
                                Neo4jCypherBuilder.nodeParams(dto));
@@ -74,7 +74,7 @@ public class Neo4jExportService implements AutoCloseable {
         for (int i = 0; i < total; i += batchSize) {
             List<UAFRelationshipDTO> batch = rels.subList(i, Math.min(i + batchSize, total));
             try (Session session = session()) {
-                session.executeWrite(tx -> {
+                session.writeTransaction(tx -> {
                     for (UAFRelationshipDTO dto : batch) {
                         tx.run(Neo4jCypherBuilder.relationshipMergeCypher(dto),
                                Neo4jCypherBuilder.relationshipParams(dto));
@@ -98,7 +98,7 @@ public class Neo4jExportService implements AutoCloseable {
         for (int i = 0; i < total; i += batchSize) {
             List<UAFElementDTO> batch = elements.subList(i, Math.min(i + batchSize, total));
             try (Session session = session()) {
-                session.executeWrite(tx -> {
+                session.writeTransaction(tx -> {
                     for (UAFElementDTO dto : batch) {
                         tx.run(Neo4jCypherBuilder.INSTANCE_OF_CYPHER,
                                Neo4jCypherBuilder.instanceOfParams(dto));

@@ -13,5 +13,10 @@ mvn install:install-file "-Dfile=$jarsDir\com.nomagic.magicdraw.foundation-2022.
 mvn install:install-file "-Dfile=$jarsDir\com.nomagic.magicdraw.core.diagram-2022.2.0-105-acd52bbc.jar" "-DgroupId=$group" "-DartifactId=magicdraw-core-diagram" "-Dversion=$version" "-Dpackaging=jar" "-DgeneratePom=true"
 mvn install:install-file "-Dfile=$jarsDir\com.dassault_systemes.modeler.foundation-2022.2.0-105-acd52bbc.jar" "-DgroupId=com.dassault_systemes" "-DartifactId=modeler-foundation" "-Dversion=$version" "-Dpackaging=jar" "-DgeneratePom=true"
 mvn install:install-file "-Dfile=$jarsDir\cmof-1.4.jar" "-DgroupId=com.nomagic" "-DartifactId=cmof" "-Dversion=1.4" "-Dpackaging=jar" "-DgeneratePom=true"
+mvn install:install-file "-Dfile=$jarsDir\com.nomagic.magicdraw.modeling-2022.2.0-105-acd52bbc.jar" "-DgroupId=$group" "-DartifactId=magicdraw-modeling" "-Dversion=$version" "-Dpackaging=jar" "-DgeneratePom=true"
+mvn install:install-file "-Dfile=$jarsDir\javax.jmi-1.0.jar" "-DgroupId=javax.jmi" "-DartifactId=jmi" "-Dversion=1.0" "-Dpackaging=jar" "-DgeneratePom=true"
+mvn install:install-file "-Dfile=$jarsDir\org.eclipse.emf.ecore-2.33.0.jar" "-DgroupId=org.eclipse.emf" "-DartifactId=ecore" "-Dversion=2.33.0" "-Dpackaging=jar" "-DgeneratePom=true"
+mvn install:install-file "-Dfile=$jarsDir\com.nomagic.utils-2022.2.0-105-acd52bbc.jar" "-DgroupId=com.nomagic" "-DartifactId=nomagic-utils" "-Dversion=$version" "-Dpackaging=jar" "-DgeneratePom=true"
+mvn install:install-file "-Dfile=$jarsDir\org.eclipse.emf.common-2.28.0.jar" "-DgroupId=org.eclipse.emf" "-DartifactId=emf-common" "-Dversion=2.28.0" "-Dpackaging=jar" "-DgeneratePom=true"
 
 Write-Host "All MSOSA jars installed successfully." -ForegroundColor Green
