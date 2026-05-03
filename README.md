@@ -1,6 +1,6 @@
 # UAF-Repo
 
-![Python](https://img.shields.io/badge/Python-3.12.4-3776AB?logo=python&logoColor=white) ![Java](https://img.shields.io/badge/java-11-yellowgreen)
+[![Build Status](https://github.com/steveb93/UAF-Repo/actions/workflows/packaging.yml/badge.svg)](https://github.com/steveb93/UAF-Repo/actions/workflows/packaging.yml)![Python](https://img.shields.io/badge/Python-3.12.4-3776AB?logo=python&logoColor=white) ![Java](https://img.shields.io/badge/java-11-yellowgreen)
 
 ## Overview
 
