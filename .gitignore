@@ -9,7 +9,6 @@
 *.pyc
 
 neo4j_mcp_driver.egg-info/
-Test/
 __pycache__/
 CLAUDE.md
 
