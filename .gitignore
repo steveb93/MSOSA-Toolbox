@@ -17,6 +17,8 @@ test/
 neo4j_mcp_driver.egg-info/
 # Python cache
 __pycache__/
+# Distribution / packaging
+target/
 
 # Claude notes
 CLAUDE.md
