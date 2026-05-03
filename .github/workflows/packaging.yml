@@ -3,20 +3,35 @@ name: Publish Java Build with Maven
 on:
   push:
     branches: ["main"]
+    paths:
+      - "uaf-neo4j-plugin/**"
+
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Set up JDK 11
-      uses: actions/setup-java@v4
-      with: 
-        java-version: '11'
-        distribution: 'temurin'
-        cache: maven
-    - name: Build Plugin
-      run: mvn clean package
 
-    - name: Update depdendency graph
-      uses: advanced-security/maven-dependency-submission-action@v4
+    defaults:
+      run:
+        working-directory: uaf-neo4j-plugin
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v4
+        with:
+          java-version: "11"
+          distribution: "temurin"
+          cache: maven
+          cache-dependency-path: uaf-neo4j-plugin/pom.xml
+
+      - name: Build Plugin
+        run: mvn clean package
+
+      - name: Update dependency graph
+        uses: advanced-security/maven-dependency-submission-action@v4
+        with:
+          directory: uaf-neo4j-plugin
