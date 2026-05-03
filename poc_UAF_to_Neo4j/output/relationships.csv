@@ -1,5 +1,0 @@
-id,startId,endId,type
-d2e6fc80-1f70-4b17-990d-14bca0ea4d65,node_1,node_2,ENABLES
-cc7441a3-5866-40bb-b281-b0d45cdfb493,node_2,node_3,USES
-fc987a01-f6c1-498a-afa9-e7940b183ac6,node_3,node_5,MANAGES
-46aba3fe-4429-49f2-af61-8eedb4dde1dd,node_4,node_6,MANAGES
