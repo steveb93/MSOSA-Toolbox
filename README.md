@@ -1,6 +1,5 @@
 # MSOSA-Toolbox
 
-[![Build](https://github.com/steveb93/UAF-Repo/actions/workflows/packaging.yml/badge.svg)](https://github.com/steveb93/UAF-Repo/actions/workflows/packaging.yml)
 ![MSOSA](https://img.shields.io/badge/MSOSA-2022x%20HF2-0076A8)
 ![UAF](https://img.shields.io/badge/UAF-1.2-orange)
 ![Java](https://img.shields.io/badge/Java-11-yellowgreen?logo=openjdk&logoColor=white)
