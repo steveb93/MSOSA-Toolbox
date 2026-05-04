@@ -17,7 +17,7 @@ A curated collection of open-source plugins and tooling that extend **MSOSA 2022
 
 | Plugin | Description | Status |
 |--------|-------------|--------|
-| [uaf-neo4j-plugin](uaf-neo4j-plugin/) | Exports UAF 1.2 model elements and relationships to a Neo4j knowledge graph over Bolt | [![Build](https://github.com/steveb93/UAF-Repo/actions/workflows/packaging.yml/badge.svg)](https://github.com/steveb93/UAF-Repo/actions/workflows/packaging.yml) |
+| [uaf-neo4j-plugin](uaf-neo4j-plugin/) | Exports UAF 1.2 model elements and relationships to a Neo4j knowledge graph over Bolt | [![Build](https://github.com/steveb93/UAF-Repo/actions/workflows/uaf-neo4j-plugin-build.yml/badge.svg)](https://github.com/steveb93/UAF-Repo/actions/workflows/packaging.yml) |
 
 > New plugins can be added as subdirectories following the conventions in [Contributing](#contributing).
 
