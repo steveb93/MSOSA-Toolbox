@@ -3,10 +3,11 @@ name: Build uaf-neo4j-plugin with Maven
 on:
   push:
     branches: ["main"]
-    paths:
-      - "uaf-neo4j-plugin/**"
-    tags:
-      - "v*"
+    tags: ["v*"]      #/Example git tag v1.0.0 | git push main v1.0.0
+  pull_request:
+      branches: ["main"]
+      paths:
+        - "uaf-neo4j-plugin/**"
 
 permissions:
   contents: write
@@ -48,5 +49,4 @@ jobs:
         with:
           files: |
             uaf-neo4j-plugin/target/uaf-neo4j-plugin-*-plugin.zip
-            uaf-neo4j-plugin/target/uaf-neo4j-plugin-*.jar
           generate_release_notes: true
