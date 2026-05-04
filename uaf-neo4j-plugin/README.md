@@ -28,7 +28,9 @@ Neo4j (Docker :7687)
     ├── :UAFElement:SystemFunction        ──[:INSTANCE_OF]──► :Stereotype {name:'SystemFunction'}
     └── [:PERFORMS] [:TRACES_TO] [:SATISFIES] ...
 ```
+## Architecture
 
+<img src="https://github.com/steveb93/MSOSA-Toolbox/blob/main/msosa_toolbox_architecture.svg" >
 ---
 
 ## Requirements
