@@ -80,66 +80,10 @@ uaf-neo4j-plugin/
 ```
 
 ---
+## Quick Start
 
-## Step 1 — Start Neo4j in Docker
 
-```powershell
-cd docker
-docker compose up -d
-```
-
-Wait ~30 seconds, then verify:
-- Browser: http://localhost:7474  (login: `neo4j` / `Password123`)
-- Bolt:    `bolt://localhost:7687`
-
-### Initialise the UAF database (run once)
-
-```powershell
-cypher-shell -u neo4j -p Password123 -f cypher/init_uaf_graph.cypher
-```
-
-Or paste the contents of `cypher/init_uaf_graph.cypher` into the Neo4j Browser.
-
-This creates constraints, full-text indexes, and the pre-existing metamodel nodes
-(`:Stereotype`, `:Domain`, `:ArchitectureLayer`) that exported instances link back to.
-
----
-
-## Step 2 — Register MSOSA SDK jars in Maven
-
-The MSOSA SDK jars are checked into `msosa-api/` in this directory. A script
-is provided to install them into your local Maven repository — run once from
-`uaf-neo4j-plugin/`:
-
-```powershell
-.\install-msosa-jars.ps1
-```
-
-Each install should confirm a path under `C:\Users\<you>\.m2\repository\com\nomagic\magicdraw\...`.
-
-These jars are `provided` scope — they are never bundled into the fat jar.
-
----
-
-## Step 3 — Build the Plugin
-
-```powershell
-mvn clean package
-```
-
-Outputs (in `target/`):
-
-| File | Purpose |
-|---|---|
-| `uaf-neo4j-plugin-1.0.0.jar` | Fat jar — Neo4j driver bundled and relocated |
-| `uaf-neo4j-plugin-1.0.0-plugin.zip` | Drop into `<MSOSA_HOME>/plugins/` |
-
-The Neo4j driver is shaded into `com.uaf.shaded.neo4j.driver` to avoid classpath
-collisions with MagicDraw's own bundled libraries.
-
----
-
-## Step 4 — Install the Plugin in MSOSA
+## Step 1 — Install the Plugin in MSOSA
 
 **Option A — Plugin Manager:**
 1. In MSOSA: **Help → Resource/Plugin Manager → Install Plugin from File**
@@ -161,11 +105,11 @@ Restart MSOSA. Plugin appears under **Tools → UAF Neo4j Export**.
 
 ---
 
-## Step 5 — Configure the Connection
+## Step 2 — Configure the Connection
 
 Edit `<MSOSA_HOME>/plugins/uaf-neo4j-plugin/neo4j-connection.properties`:
 
-```properties
+```example properties
 neo4j.uri=bolt://localhost:7687
 neo4j.user=neo4j
 neo4j.password=Password123
@@ -179,7 +123,7 @@ Changes take effect without restarting MSOSA.
 
 ---
 
-## Step 6 — Export
+## Step 3 — Export
 
 1. Open your UAF 1.2 project in MSOSA
 2. **Tools → UAF Neo4j Export → Export Active Project to Neo4j**
