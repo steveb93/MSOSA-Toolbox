@@ -1,4 +1,4 @@
-name: Publish Java Build with Maven
+name: Build uaf-neo4j-plugin with Maven
 
 on:
   push:
