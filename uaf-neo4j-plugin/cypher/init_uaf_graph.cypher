@@ -11,6 +11,9 @@
 CREATE CONSTRAINT uaf_element_id IF NOT EXISTS
   FOR (n:UAFElement) REQUIRE n.id IS UNIQUE;
 
+CREATE CONSTRAINT system_model_id IF NOT EXISTS
+  FOR (m:SystemModel) REQUIRE m.id IS UNIQUE;
+
 CREATE CONSTRAINT stereotype_name IF NOT EXISTS
   FOR (s:Stereotype) REQUIRE s.name IS UNIQUE;
 
@@ -19,6 +22,9 @@ CREATE CONSTRAINT domain_name IF NOT EXISTS
 
 CREATE CONSTRAINT layer_name IF NOT EXISTS
   FOR (l:ArchitectureLayer) REQUIRE l.name IS UNIQUE;
+
+CREATE INDEX system_model_name IF NOT EXISTS
+  FOR (m:SystemModel) ON (m.name);
 
 // --- Full-text search index --------------------------------------------------
 

@@ -89,6 +89,41 @@ public class Neo4jExportService implements AutoCloseable {
         }
     }
 
+    /** MERGEs the :SystemModel node for the project being exported. */
+    public void exportSystemModel(String id, String name) {
+        try (Session session = session()) {
+            session.writeTransaction(tx -> {
+                tx.run(Neo4jCypherBuilder.SYSTEM_MODEL_MERGE_CYPHER,
+                       Neo4jCypherBuilder.systemModelParams(id, name));
+                return null;
+            });
+        } catch (Exception e) {
+            LOG.warning("SystemModel node write failed: " + e.getMessage());
+            result.errors.add("SystemModel: " + e.getMessage());
+        }
+    }
+
+    /** MERGEs :DEFINES relationships from the SystemModel to each exported element. */
+    public void exportDefinesLinks(String systemModelId, List<UAFElementDTO> elements) {
+        int total = elements.size();
+        for (int i = 0; i < total; i += batchSize) {
+            List<UAFElementDTO> batch = elements.subList(i, Math.min(i + batchSize, total));
+            try (Session session = session()) {
+                session.writeTransaction(tx -> {
+                    for (UAFElementDTO dto : batch) {
+                        tx.run(Neo4jCypherBuilder.DEFINES_CYPHER,
+                               Neo4jCypherBuilder.definesParams(systemModelId, dto.id));
+                    }
+                    return null;
+                });
+                result.definesLinksWritten += batch.size();
+            } catch (Exception e) {
+                LOG.warning("DEFINES batch failed at index " + i + ": " + e.getMessage());
+                result.errors.add("Defines batch [" + i + "–" + (i + batch.size()) + "]: " + e.getMessage());
+            }
+        }
+    }
+
     /**
      * Links each UAF element node to the corresponding :Stereotype node that
      * already exists in the domain metamodel graph.
@@ -146,6 +181,7 @@ public class Neo4jExportService implements AutoCloseable {
         public int nodesWritten        = 0;
         public int relationshipsWritten = 0;
         public int instanceLinksWritten = 0;
+        public int definesLinksWritten  = 0;
         public final List<String> errors = new ArrayList<>();
 
         public boolean hasErrors() {

@@ -58,6 +58,9 @@ public class UAFModelTraverser {
         this.modelFileName = project.getName();
     }
 
+    public String getSystemModelId()   { return modelFileName; }
+    public String getSystemModelName() { return modelFileName; }
+
     public List<UAFElementDTO> getElements() {
         ensureTraversed();
         return Collections.unmodifiableList(elements);
@@ -73,7 +76,7 @@ public class UAFModelTraverser {
     private void ensureTraversed() {
         if (!traversed) {
             buildDiagramIndex();
-            traversePackage(project.getModel(), "");
+            traversePackage(project.getPrimaryModel(), "");
             traversed = true;
             LOG.info(String.format("UAFModelTraverser: %d elements, %d relationships",
                 elements.size(), relationships.size()));
@@ -84,8 +87,8 @@ public class UAFModelTraverser {
         for (DiagramPresentationElement diagram : project.getDiagrams()) {
             String dName = diagram.getName();
             String dId   = diagram.getID();
-            for (Element el : diagram.getUsedModelElements(false)) {
-                String elId = el.getLocalID() != null ? el.getLocalID() : el.toString();
+            for (Element el : diagram.getUsedModelElements()) {
+                String elId = el.getID() != null ? el.getID() : el.toString();
                 diagramIndex.computeIfAbsent(elId, k -> new ArrayList<>()).add(dName);
                 diagramIdIndex.putIfAbsent(elId, dId);
             }
@@ -232,7 +235,7 @@ public class UAFModelTraverser {
     // -------------------------------------------------------------------------
 
     private static String safeId(Element e) {
-        String id = e.getLocalID();
+        String id = e.getID();
         return (id != null && !id.isEmpty()) ? id : Integer.toHexString(System.identityHashCode(e));
     }
 
