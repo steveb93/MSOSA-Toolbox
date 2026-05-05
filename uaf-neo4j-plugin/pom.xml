@@ -158,12 +158,25 @@
                                 </filter>
                             </filters>
                             <relocations>
-                                <!-- Relocate Neo4j driver to avoid classpath conflicts -->
+                                <!-- Relocate Neo4j driver and all transitive deps to avoid
+                                     classpath conflicts with MagicDraw's bundled libraries -->
                                 <relocation>
                                     <pattern>org.neo4j.driver</pattern>
                                     <shadedPattern>com.uaf.shaded.neo4j.driver</shadedPattern>
                                 </relocation>
+                                <relocation>
+                                    <pattern>org.reactivestreams</pattern>
+                                    <shadedPattern>com.uaf.shaded.reactivestreams</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>reactor</pattern>
+                                    <shadedPattern>com.uaf.shaded.reactor</shadedPattern>
+                                </relocation>
                             </relocations>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"/>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                            </transformers>
                         </configuration>
                     </execution>
                 </executions>
