@@ -11,7 +11,7 @@ import java.util.Objects;
  */
 public final class UAFElementDTO {
 
-    // Core identity
+    // Core identity — id is the MSOSA element ID (globally unique per model)
     public final String id;
     public final String name;
     public final String qualifiedName;
@@ -20,7 +20,6 @@ public final class UAFElementDTO {
     public final String stereotype;
     public final String neo4jLabel;
     public final String domain;
-    public final String layer;
 
     // Context
     public final String packageName;
@@ -41,7 +40,6 @@ public final class UAFElementDTO {
         this.stereotype    = b.stereotype;
         this.neo4jLabel    = b.neo4jLabel;
         this.domain        = b.domain;
-        this.layer         = b.layer;
         this.packageName   = b.packageName;
         this.diagramId     = b.diagramId;
         this.diagramName   = b.diagramName;
@@ -62,7 +60,6 @@ public final class UAFElementDTO {
         private String qualifiedName = "";
         private String neo4jLabel    = "";
         private String domain        = "UNKNOWN";
-        private String layer         = "ALL";
         private String packageName   = "";
         private String diagramId     = "";
         private String diagramName   = "";
@@ -79,7 +76,6 @@ public final class UAFElementDTO {
         public Builder qualifiedName(String v) { this.qualifiedName = v; return this; }
         public Builder neo4jLabel(String v)    { this.neo4jLabel    = v; return this; }
         public Builder domain(String v)        { this.domain        = v; return this; }
-        public Builder layer(String v)         { this.layer         = v; return this; }
         public Builder packageName(String v)   { this.packageName   = v; return this; }
         public Builder diagramId(String v)     { this.diagramId     = v; return this; }
         public Builder diagramName(String v)   { this.diagramName   = v; return this; }

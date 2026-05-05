@@ -10,12 +10,15 @@ import java.util.Map;
  * Builds parameterised Cypher statements for idempotent MERGE writes.
  *
  * Design decisions:
- * - Each UAF element gets dual labels: UAFElement + its stereotype label,
- *   so queries can hit either the generic (:UAFElement) or specific (:Capability).
+ * - Each UAF element node carries only its stereotype label (e.g. :Capability).
+ *   The MSOSA element ID is the unique merge key — names are not unique across
+ *   the model (operational and physical elements can share names).
  * - All properties are passed as parameters (never string-interpolated) to
  *   prevent Cypher injection.
  * - INSTANCE_OF links point to existing :Stereotype nodes in the UAF
  *   domain metamodel graph (assumed present from init_uaf_graph.cypher).
+ * - Relationship endpoint lookups use id only (no label filter) because the
+ *   source/target label is not available at relationship-write time.
  */
 public class Neo4jCypherBuilder {
 
@@ -32,11 +35,10 @@ public class Neo4jCypherBuilder {
     public static String nodeMergeCypher(UAFElementDTO dto) {
         String label = sanitiseLabel(dto.neo4jLabel);
         return String.format(
-            "MERGE (n:UAFElement:%s {id: $id})\n" +
+            "MERGE (n:%s {id: $id})\n" +
             "SET n += $props\n" +
             "SET n.stereotype = $stereotype\n" +
-            "SET n.domain     = $domain\n" +
-            "SET n.layer      = $layer",
+            "SET n.domain     = $domain",
             label);
     }
 
@@ -61,7 +63,6 @@ public class Neo4jCypherBuilder {
         params.put("props",      props);
         params.put("stereotype", dto.stereotype);
         params.put("domain",     dto.domain);
-        params.put("layer",      dto.layer);
         return params;
     }
 
@@ -75,8 +76,8 @@ public class Neo4jCypherBuilder {
     public static String relationshipMergeCypher(UAFRelationshipDTO dto) {
         String type = sanitiseRelType(dto.neo4jType);
         return String.format(
-            "MATCH (src:UAFElement {id: $srcId})\n" +
-            "MATCH (tgt:UAFElement {id: $tgtId})\n" +
+            "MATCH (src {id: $srcId})\n" +
+            "MATCH (tgt {id: $tgtId})\n" +
             "MERGE (src)-[r:%s {id: $id}]->(tgt)\n" +
             "SET r.uafType = $uafType\n" +
             "SET r.name    = $name\n" +
@@ -109,10 +110,10 @@ public class Neo4jCypherBuilder {
         return p;
     }
 
-    /** MERGEs a :DEFINES relationship from the SystemModel to a UAFElement. */
+    /** MERGEs a :DEFINES relationship from the SystemModel to a UAF element node. */
     public static final String DEFINES_CYPHER =
         "MATCH (m:SystemModel {id: $modelId})\n" +
-        "MATCH (n:UAFElement {id: $elementId})\n" +
+        "MATCH (n {id: $elementId})\n" +
         "MERGE (m)-[:DEFINES]->(n)";
 
     public static Map<String, Object> definesParams(String modelId, String elementId) {
@@ -126,25 +127,24 @@ public class Neo4jCypherBuilder {
     // INSTANCE_OF links to existing metamodel :Stereotype nodes
 
     public static final String INSTANCE_OF_CYPHER =
-        "MATCH (n:UAFElement {id: $elementId})\n" +
+        "MATCH (n {id: $elementId})\n" +
         "MATCH (s:Stereotype {name: $stereotypeName})\n" +
         "MERGE (n)-[:INSTANCE_OF]->(s)";
 
     public static Map<String, Object> instanceOfParams(UAFElementDTO dto) {
         Map<String, Object> p = new HashMap<>();
-        p.put("elementId",     dto.id);
+        p.put("elementId",      dto.id);
         p.put("stereotypeName", dto.stereotype);
         return p;
     }
 
     // -------------------------------------------------------------------------
 
-    private static String sanitiseLabel(String label) {
-        // Only allow alphanumeric + underscore (Neo4j label rules)
+    static String sanitiseLabel(String label) {
         return label.replaceAll("[^a-zA-Z0-9_]", "_");
     }
 
-    private static String sanitiseRelType(String type) {
+    static String sanitiseRelType(String type) {
         return type.replaceAll("[^a-zA-Z0-9_]", "_").toUpperCase();
     }
 }

@@ -151,7 +151,6 @@ public class UAFModelTraverser {
             .qualifiedName(qname)
             .neo4jLabel(info.neo4jLabel)
             .domain(info.domain.name())
-            .layer(info.layer.name())
             .packageName(pkgName)
             .diagramId(diagId)
             .diagramName(diagName)
