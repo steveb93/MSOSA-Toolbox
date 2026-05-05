@@ -51,6 +51,7 @@ public class UAFStereotypeRegistry {
         reg("OperationalProcess",       "OperationalProcess",      Domain.OPERATIONAL);
         reg("OperationalFunction",      "OperationalFunction",     Domain.OPERATIONAL);
         reg("OperationalInteraction",   "OperationalInteraction",  Domain.OPERATIONAL);
+        reg("OperationalInformation",   "OperationalInformation",  Domain.OPERATIONAL);
         reg("NeedLine",                 "NeedLine",                Domain.OPERATIONAL);
         reg("PerformerPort",            "PerformerPort",           Domain.OPERATIONAL);
         reg("OperationalRole",          "OperationalRole",         Domain.OPERATIONAL);
@@ -60,6 +61,7 @@ public class UAFStereotypeRegistry {
         reg("ResourceFunction",         "ResourceFunction",        Domain.RESOURCE);
         reg("ResourceInteraction",      "ResourceInteraction",     Domain.RESOURCE);
         reg("ResourceArtifact",         "ResourceArtifact",        Domain.RESOURCE);
+        reg("ResourceInformation",      "ResourceInformation",     Domain.RESOURCE);
         reg("ResourcePort",             "ResourcePort",            Domain.RESOURCE);
         reg("ResourceConnector",        "ResourceConnector",       Domain.RESOURCE);
         reg("HardwareElement",          "HardwareElement",         Domain.RESOURCE);
