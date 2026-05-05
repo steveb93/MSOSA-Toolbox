@@ -85,9 +85,9 @@ RETURN src.name AS source, type(r) AS rel, tgt.name AS target,
 ORDER BY type(r)
 LIMIT 100;
 
-// Relationship type frequency
+// Relationship type frequency (UAF instance relationships only)
 MATCH ()-[r]->()
-WHERE type(r) <> 'INSTANCE_OF' AND type(r) <> 'BELONGS_TO' AND type(r) <> 'IN_LAYER'
+WHERE type(r) NOT IN ['INSTANCE_OF','BELONGS_TO','IN_LAYER','DEFINES']
 RETURN type(r) AS relType, count(*) AS frequency
 ORDER BY frequency DESC;
 
@@ -149,6 +149,42 @@ MATCH (start:UAFElement {name: 'Air Defence Capability'}),
 MATCH path = (start)-[*1..5]->(end)
 RETURN path
 LIMIT 10;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 11. MULTI-MODEL — SystemModel provenance queries
+// ─────────────────────────────────────────────────────────────────────────────
+
+// List all system models and how many elements each defines
+MATCH (m:SystemModel)-[:DEFINES]->(n:UAFElement)
+RETURN m.name AS model, count(n) AS elements ORDER BY elements DESC;
+
+// All elements defined by a specific model
+MATCH (m:SystemModel {name: 'MyProject'})-[:DEFINES]->(n:UAFElement)
+RETURN n.name, n.stereotype, n.domain, n.layer
+ORDER BY n.domain, n.stereotype;
+
+// Elements shared across two or more models (reused via project usage)
+MATCH (m:SystemModel)-[:DEFINES]->(n:UAFElement)
+WITH n, collect(m.name) AS models, count(m) AS modelCount
+WHERE modelCount > 1
+RETURN n.name, n.stereotype, models, modelCount
+ORDER BY modelCount DESC;
+
+// All elements unique to a single model (not shared)
+MATCH (m:SystemModel)-[:DEFINES]->(n:UAFElement)
+WITH n, collect(m.name) AS models, count(m) AS modelCount
+WHERE modelCount = 1
+RETURN n.name, n.stereotype, models[0] AS ownedBy
+ORDER BY ownedBy, n.stereotype;
+
+// Cross-model traceability: capabilities defined in one model realised by resources in another
+MATCH (m1:SystemModel)-[:DEFINES]->(cap:Capability),
+      (m2:SystemModel)-[:DEFINES]->(res:UAFElement),
+      (cap)-[:REALISES|SATISFIES|ALLOCATED_TO*1..4]->(res)
+WHERE m1.name <> m2.name
+RETURN m1.name AS capModel, cap.name AS capability,
+       m2.name AS resModel, res.name AS resource, res.stereotype
+ORDER BY m1.name, cap.name;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EXTRAS — Useful utility queries

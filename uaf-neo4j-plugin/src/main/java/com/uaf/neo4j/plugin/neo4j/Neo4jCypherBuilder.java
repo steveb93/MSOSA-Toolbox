@@ -96,6 +96,33 @@ public class Neo4jCypherBuilder {
     }
 
     // -------------------------------------------------------------------------
+    // SystemModel node + DEFINES provenance link
+
+    public static final String SYSTEM_MODEL_MERGE_CYPHER =
+        "MERGE (m:SystemModel {id: $id})\n" +
+        "SET m.name = $name";
+
+    public static Map<String, Object> systemModelParams(String id, String name) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("id",   id);
+        p.put("name", name);
+        return p;
+    }
+
+    /** MERGEs a :DEFINES relationship from the SystemModel to a UAFElement. */
+    public static final String DEFINES_CYPHER =
+        "MATCH (m:SystemModel {id: $modelId})\n" +
+        "MATCH (n:UAFElement {id: $elementId})\n" +
+        "MERGE (m)-[:DEFINES]->(n)";
+
+    public static Map<String, Object> definesParams(String modelId, String elementId) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("modelId",   modelId);
+        p.put("elementId", elementId);
+        return p;
+    }
+
+    // -------------------------------------------------------------------------
     // INSTANCE_OF links to existing metamodel :Stereotype nodes
 
     public static final String INSTANCE_OF_CYPHER =

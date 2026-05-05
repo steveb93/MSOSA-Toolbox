@@ -39,6 +39,7 @@ public class ExportAction extends MDAction {
         }
 
         Properties config = UAFNeo4jPlugin.getInstance().getConfig();
+        ExportLog log = new ExportLog(project.getName());
 
         new SwingWorker<ExportResult, String>() {
 
@@ -60,7 +61,17 @@ public class ExportAction extends MDAction {
                     service.exportRelationships(relationships);
                     publish("Linking to UAF metamodel stereotypes...");
                     service.exportInstanceOfLinks(elements);
+                    publish("Writing system model provenance...");
+                    service.exportSystemModel(traverser.getSystemModelId(), traverser.getSystemModelName());
+                    service.exportDefinesLinks(traverser.getSystemModelId(), elements);
                     return service.getResult();
+                }
+            }
+
+            @Override
+            protected void process(List<String> chunks) {
+                for (String msg : chunks) {
+                    log.add(msg);
                 }
             }
 
@@ -68,11 +79,14 @@ public class ExportAction extends MDAction {
             protected void done() {
                 try {
                     ExportResult result = get();
-                    new ExportSummaryDialog(null, result).setVisible(true);
+                    log.finish(result);
+                    new ExportSummaryDialog(null, result, log).setVisible(true);
                 } catch (Exception ex) {
+                    Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                    log.finishWithException(cause.getMessage());
                     JOptionPane.showMessageDialog(
                         null,
-                        "Export failed: " + ex.getCause().getMessage(),
+                        "Export failed: " + cause.getMessage(),
                         "UAF Neo4j Export",
                         JOptionPane.ERROR_MESSAGE);
                 }
