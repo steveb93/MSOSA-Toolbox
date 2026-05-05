@@ -23,9 +23,9 @@ UAFElementDTO / UAFRelationshipDTO
     │  [Neo4jCypherBuilder → parameterised MERGE]
     ▼
 Neo4j (Docker :7687)
-    ├── :UAFElement:Capability            ──[:INSTANCE_OF]──► :Stereotype {name:'Capability'}
-    ├── :UAFElement:OperationalPerformer  ──[:INSTANCE_OF]──► :Stereotype {name:'OperationalPerformer'}
-    ├── :UAFElement:SystemFunction        ──[:INSTANCE_OF]──► :Stereotype {name:'SystemFunction'}
+    ├── :SystemModel {id, name}
+    │       └──[:DEFINES]──► :UAFElement:Capability      ──[:INSTANCE_OF]──► :Stereotype
+    │       └──[:DEFINES]──► :UAFElement:OperationalPerformer ...
     └── [:PERFORMS] [:TRACES_TO] [:SATISFIES] ...
 ```
 ## Architecture
@@ -49,36 +49,47 @@ Neo4j (Docker :7687)
 
 ```
 uaf-neo4j-plugin/
-├── msosa-api/                              ← MSOSA SDK jars (checked in)
+├── msosa-api/                              ← Full MSOSA 2022x SDK jar set (checked in)
 │   ├── md.jar                              ← MagicDraw core API
 │   ├── md_api.jar                          ← MagicDraw public API interfaces
-│   └── com.nomagic.magicdraw.uml2-*.jar   ← UML2 / StereotypesHelper
-├── plugin.xml                              ← MagicDraw plugin descriptor
-├── pom.xml                                 ← Maven build
-├── config/
-│   └── neo4j-connection.properties         ← Connection settings (edit this)
+│   └── com.nomagic.magicdraw.uml2-*.jar   ← UML2 / StereotypesHelper (+ ~100 transitive jars)
 ├── cypher/
 │   ├── init_uaf_graph.cypher               ← DB schema + metamodel initialisation (run once)
 │   └── query-cookbook.cypher               ← Example Cypher queries
-├── docker/
-│   └── docker-compose.yml                  ← Neo4j Docker Compose
-└── src/main/java/com/uaf/neo4j/plugin/
-    ├── UAFNeo4jPlugin.java                 ← Plugin entry point + config lifecycle
-    ├── UAFExporterActionsConfigurator.java ← Injects Tools → UAF Neo4j Export menu
-    ├── ExportAction.java                   ← SwingWorker pipeline driver
-    ├── ConfigureAction.java
-    ├── AboutAction.java
-    ├── model/
-    │   ├── UAFStereotypeRegistry.java      ← Single source of truth: stereotype → domain/layer
-    │   ├── UAFModelTraverser.java          ← Walks MSOSA project, extracts DTOs
-    │   ├── UAFElementDTO.java              ← Immutable node DTO (builder pattern)
-    │   └── UAFRelationshipDTO.java         ← Immutable edge DTO (28 type constants)
-    ├── neo4j/
-    │   ├── Neo4jCypherBuilder.java         ← Parameterised MERGE Cypher (no interpolation)
-    │   └── Neo4jExportService.java         ← Bolt driver lifecycle + batched writes
-    └── ui/
-        ├── ConnectionDialog.java           ← Edit URI / credentials / batch size
-        └── ExportSummaryDialog.java        ← Post-export counts + error list
+├── src/
+│   ├── assembly/
+│   │   └── plugin-zip.xml                  ← Maven Assembly descriptor for deployable zip
+│   ├── main/
+│   │   ├── java/com/uaf/neo4j/plugin/
+│   │   │   ├── UAFNeo4jPlugin.java         ← Plugin entry point + config lifecycle
+│   │   │   ├── UAFExporterActionsConfigurator.java ← Injects Tools → UAF Neo4j Export menu
+│   │   │   ├── ExportAction.java           ← SwingWorker pipeline driver
+│   │   │   ├── ConfigureAction.java
+│   │   │   ├── AboutAction.java
+│   │   │   ├── model/
+│   │   │   │   ├── UAFStereotypeRegistry.java  ← Single source of truth: stereotype → domain/layer
+│   │   │   │   ├── UAFModelTraverser.java      ← Walks MSOSA project, extracts DTOs; exposes SystemModel id/name
+│   │   │   │   ├── UAFElementDTO.java          ← Immutable node DTO (builder pattern)
+│   │   │   │   └── UAFRelationshipDTO.java     ← Immutable edge DTO (28 type constants)
+│   │   │   ├── neo4j/
+│   │   │   │   ├── Neo4jCypherBuilder.java     ← Parameterised MERGE Cypher; SystemModel + DEFINES Cypher
+│   │   │   │   └── Neo4jExportService.java     ← Bolt driver lifecycle; batched writes; SystemModel + DEFINES links
+│   │   │   └── ui/
+│   │   │       ├── ConnectionDialog.java       ← Edit URI / credentials / batch size
+│   │   │       └── ExportSummaryDialog.java    ← Post-export counts + error list
+│   │   └── resources/
+│   │       ├── plugin.xml                  ← MagicDraw plugin descriptor
+│   │       ├── com.uaf.neo4j.plugin.xml    ← Plugin actions configuration
+│   │       └── neo4j-connection.properties ← Default connection settings
+│   └── test/java/com/uaf/neo4j/plugin/
+│       ├── model/
+│       │   ├── UAFElementDTOTest.java
+│       │   ├── UAFRelationshipDTOTest.java
+│       │   └── UAFStereotypeRegistryTest.java
+│       └── neo4j/
+│           └── Neo4jCypherBuilderTest.java
+├── install-msosa-jars.ps1                  ← One-time script to install SDK jars into local Maven repo
+└── pom.xml                                 ← Maven build (fat jar + plugin zip)
 ```
 
 ---
@@ -159,28 +170,49 @@ a specific type efficiently.
 | `packageName` | Package hierarchy |
 | `diagramId` / `diagramName` | Diagrams that include this element |
 | `documentation` | Model comments / notes |
-| `modelFile` | Source MSOSA project name |
+| `modelFile` | Last-exporting project name (convenience only — authoritative provenance is via `[:DEFINES]`) |
 
 ### Tagged Value Properties
 
 All UAF tagged values are flattened as `tv_<tagName>` properties (special characters
 replaced with `_`), e.g. `tv_nationality`, `tv_capabilityLevel`.
 
-### Metamodel Link
+### Metamodel and Provenance Links
 
 ```cypher
+// Each element is owned by the project that exported it
+(:SystemModel {id, name})-[:DEFINES]->(:UAFElement)
+
+// Each element links to the UAF metamodel
 (:UAFElement)-[:INSTANCE_OF]->(:Stereotype)-[:BELONGS_TO]->(:Domain)
                                             -[:IN_LAYER]->(:ArchitectureLayer)
 ```
+
+When two MSOSA projects share elements via project usage (same MagicDraw element IDs),
+those elements merge into a single Neo4j node that accumulates `[:DEFINES]` relationships
+from each project that exported it — so cross-model ownership is always queryable without
+losing provenance.
 
 ---
 
 ## Relationship Structure
 
+### SystemModel Relationships
+
+| Relationship | Source | Target | Description |
+|---|---|---|---|
+| `DEFINES` | `:SystemModel` | `:UAFElement` | Element was traversed during export of this project |
+
+A `(:SystemModel)` node is created (or merged) for each project on export, identified by project name.
+Shared elements (same MagicDraw ID across projects) accumulate multiple `[:DEFINES]` edges — one per
+project that exported them — without duplication of the element node itself.
+
+### UAF Instance Relationships
+
 Relationships carry: `id`, `uafType` (UML metaclass), `name`, `domain`, plus any
 `tv_*` tagged values.
 
-### Supported Relationship Types (28)
+**Supported types (28):**
 
 `REALISES` · `TRACES_TO` · `ASSIGNED_TO` · `SATISFIES` · `REFINES` · `INFLUENCES` ·
 `DEPENDS_ON` · `COMPOSED_OF` · `SPECIALISES` · `EXHIBITS` · `CONTRIBUTES_TO` ·
@@ -188,6 +220,14 @@ Relationships carry: `id`, `uafType` (UML metaclass), `name`, `domain`, plus any
 `PRECEDES` · `ENABLES` · `SUPPORTS` · `IMPLEMENTS` · `ALLOCATED_TO` · `INSTANCE_OF` ·
 `CONTAINED_IN` · `ASSOCIATED_WITH` · `DEPENDENCY` · `GENERALIZATION` ·
 `INFORMATION_FLOW` · `CONTROL_FLOW`
+
+### Metamodel Relationships
+
+| Relationship | Source | Target |
+|---|---|---|
+| `INSTANCE_OF` | `:UAFElement` | `:Stereotype` |
+| `BELONGS_TO` | `:Stereotype` | `:Domain` |
+| `IN_LAYER` | `:Stereotype` | `:ArchitectureLayer` |
 
 ---
 
@@ -197,6 +237,7 @@ Exports are idempotent — re-running on the same or updated project:
 - **Updates** existing nodes (name, documentation, tagged values, diagrams)
 - **Adds** new elements and relationships
 - **Does not delete** elements removed from the model (run a cleanup Cypher if needed)
+- **Accumulates provenance** — `[:DEFINES]` relationships are MERGED, so re-exporting a project never removes another project's claim on a shared element; exporting a second project simply adds its own `[:DEFINES]` edge to any shared nodes
 
 ---
 
@@ -219,6 +260,16 @@ MATCH path = (st:UAFElement {domain:'STRATEGIC'})
              (ph:UAFElement {layer:'PHYSICAL'})
 RETURN st.name, ph.name, ph.stereotype, length(path) AS hops
 ORDER BY hops LIMIT 50;
+
+// All elements owned by a specific system model
+MATCH (m:SystemModel {name: 'MyProject'})-[:DEFINES]->(n:UAFElement)
+RETURN n.name, n.stereotype, n.domain ORDER BY n.domain, n.stereotype;
+
+// Elements shared across two or more models
+MATCH (m:SystemModel)-[:DEFINES]->(n:UAFElement)
+WITH n, collect(m.name) AS models, count(m) AS modelCount
+WHERE modelCount > 1
+RETURN n.name, n.stereotype, models ORDER BY modelCount DESC;
 ```
 
 ---

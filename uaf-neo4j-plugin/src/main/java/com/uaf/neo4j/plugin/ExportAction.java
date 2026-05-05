@@ -60,6 +60,9 @@ public class ExportAction extends MDAction {
                     service.exportRelationships(relationships);
                     publish("Linking to UAF metamodel stereotypes...");
                     service.exportInstanceOfLinks(elements);
+                    publish("Writing system model provenance...");
+                    service.exportSystemModel(traverser.getSystemModelId(), traverser.getSystemModelName());
+                    service.exportDefinesLinks(traverser.getSystemModelId(), elements);
                     return service.getResult();
                 }
             }

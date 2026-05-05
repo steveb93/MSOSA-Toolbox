@@ -22,6 +22,7 @@ public class ExportSummaryDialog extends JDialog {
             {"Nodes written",          String.valueOf(result.nodesWritten)},
             {"Relationships written",  String.valueOf(result.relationshipsWritten)},
             {"INSTANCE_OF links",      String.valueOf(result.instanceLinksWritten)},
+            {"DEFINES links",          String.valueOf(result.definesLinksWritten)},
             {"Errors",                 String.valueOf(result.errors.size())}
         };
         String[] cols = {"Category", "Count"};

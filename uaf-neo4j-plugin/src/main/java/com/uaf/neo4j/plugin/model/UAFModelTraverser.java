@@ -58,6 +58,9 @@ public class UAFModelTraverser {
         this.modelFileName = project.getName();
     }
 
+    public String getSystemModelId()   { return modelFileName; }
+    public String getSystemModelName() { return modelFileName; }
+
     public List<UAFElementDTO> getElements() {
         ensureTraversed();
         return Collections.unmodifiableList(elements);
