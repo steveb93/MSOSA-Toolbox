@@ -39,6 +39,7 @@ public class ExportAction extends MDAction {
         }
 
         Properties config = UAFNeo4jPlugin.getInstance().getConfig();
+        ExportLog log = new ExportLog(project.getName());
 
         new SwingWorker<ExportResult, String>() {
 
@@ -68,14 +69,24 @@ public class ExportAction extends MDAction {
             }
 
             @Override
+            protected void process(List<String> chunks) {
+                for (String msg : chunks) {
+                    log.add(msg);
+                }
+            }
+
+            @Override
             protected void done() {
                 try {
                     ExportResult result = get();
-                    new ExportSummaryDialog(null, result).setVisible(true);
+                    log.finish(result);
+                    new ExportSummaryDialog(null, result, log).setVisible(true);
                 } catch (Exception ex) {
+                    Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                    log.finishWithException(cause.getMessage());
                     JOptionPane.showMessageDialog(
                         null,
-                        "Export failed: " + ex.getCause().getMessage(),
+                        "Export failed: " + cause.getMessage(),
                         "UAF Neo4j Export",
                         JOptionPane.ERROR_MESSAGE);
                 }
