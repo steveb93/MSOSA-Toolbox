@@ -1,0 +1,4 @@
+com\uaf\neo4j\plugin\model\UAFStereotypeRegistryTest.class
+com\uaf\neo4j\plugin\neo4j\Neo4jCypherBuilderTest.class
+com\uaf\neo4j\plugin\model\UAFRelationshipDTOTest.class
+com\uaf\neo4j\plugin\model\UAFElementDTOTest.class

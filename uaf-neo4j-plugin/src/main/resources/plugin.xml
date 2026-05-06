@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin id="com.uaf.neo4j.plugin"
+        name="UAF Neo4j Export Plugin"
+        version="${project.version}"
+        internalVersion="202200000"
+        ownClassloader="false"
+        class-lookup="GlobalFirst"
+        provider-name="UAF Tools"
+        class="com.uaf.neo4j.plugin.UAFNeo4jPlugin">
+
+    <requires>
+        <api version="1.0"/>
+    </requires>
+
+    <runtime>
+        <library name="uaf-neo4j-plugin-${project.version}.jar"/>
+    </runtime>
+</plugin>

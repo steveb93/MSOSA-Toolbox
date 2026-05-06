@@ -1,0 +1,26 @@
+[project]
+name = "neo4j-mcp-driver"
+version = "0.1.0"
+dependencies = [
+    "mcp",
+    "neo4j"
+]
+
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["neo4j_mcp_driver"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-cov"]
+
+[tool.pytest.ini_options]
+testpaths = ["Test"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "neo4j: marks tests that require a live Neo4j instance (deselect with -m 'not neo4j')",
+]
