@@ -152,6 +152,38 @@ public class Neo4jExportService implements AutoCloseable {
         }
     }
 
+    /**
+     * Fetches a summary of every :UAFElement node from Neo4j for the Graph Inspector.
+     * Returns core properties only (no tv_* tagged values) for performance.
+     */
+    public List<Map<String, Object>> fetchAllUAFElements() {
+        List<Map<String, Object>> out = new ArrayList<>();
+        try (Session session = session()) {
+            session.readTransaction(tx -> {
+                org.neo4j.driver.Result res = tx.run(
+                    "MATCH (n:UAFElement) " +
+                    "RETURN n.id AS id, n.name AS name, n.stereotype AS stereotype, " +
+                    "n.domain AS domain, n.packageName AS packageName, " +
+                    "n.qualifiedName AS qualifiedName, n.documentation AS documentation " +
+                    "ORDER BY n.domain, n.name LIMIT 10000"
+                );
+                while (res.hasNext()) {
+                    org.neo4j.driver.Record rec = res.next();
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    for (String key : rec.keys()) {
+                        org.neo4j.driver.Value v = rec.get(key);
+                        row.put(key, v.isNull() ? "" : v.asString());
+                    }
+                    out.add(row);
+                }
+                return null;
+            });
+        } catch (Exception e) {
+            LOG.warning("fetchAllUAFElements failed: " + e.getMessage());
+        }
+        return out;
+    }
+
     /** Test-only: verifies that the connection is alive without writing. */
     public boolean testConnection() {
         try {

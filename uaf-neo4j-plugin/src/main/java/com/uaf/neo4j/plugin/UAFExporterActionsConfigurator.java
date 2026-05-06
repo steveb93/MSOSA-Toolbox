@@ -23,7 +23,7 @@ public class UAFExporterActionsConfigurator implements AMConfigurator {
         uafMenu.setNested(true);
 
         uafMenu.addAction(new ExportAction());
-        uafMenu.addAction(new ConfigureAction());
+        uafMenu.addAction(new GraphInspectorAction());
         uafMenu.addAction(new AboutAction());
 
         tools.addAction(uafMenu);

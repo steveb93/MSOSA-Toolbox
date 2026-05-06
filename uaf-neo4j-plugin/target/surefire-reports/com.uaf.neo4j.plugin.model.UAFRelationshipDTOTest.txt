@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.uaf.neo4j.plugin.model.UAFRelationshipDTOTest
 -------------------------------------------------------------------------------
-Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.008 s -- in com.uaf.neo4j.plugin.model.UAFRelationshipDTOTest
+Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.009 s -- in com.uaf.neo4j.plugin.model.UAFRelationshipDTOTest
