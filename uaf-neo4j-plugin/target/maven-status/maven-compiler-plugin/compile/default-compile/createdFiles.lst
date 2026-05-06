@@ -19,5 +19,4 @@ com\uaf\neo4j\plugin\model\UAFRelationshipDTO.class
 com\uaf\neo4j\plugin\model\UAFElementDTO.class
 com\uaf\neo4j\plugin\ConfigureAction.class
 com\uaf\neo4j\plugin\model\UAFStereotypeRegistry$StereotypeInfo.class
-com\uaf\neo4j\plugin\model\UAFStereotypeRegistry$Layer.class
 com\uaf\neo4j\plugin\neo4j\Neo4jCypherBuilder.class

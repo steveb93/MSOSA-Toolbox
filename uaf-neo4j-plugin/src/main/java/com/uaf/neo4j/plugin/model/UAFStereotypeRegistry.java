@@ -64,11 +64,16 @@ public class UAFStereotypeRegistry {
         reg("ResourceInformation",      "ResourceInformation",     Domain.RESOURCE);
         reg("ResourcePort",             "ResourcePort",            Domain.RESOURCE);
         reg("ResourceConnector",        "ResourceConnector",       Domain.RESOURCE);
+        reg("ResourceArchitecture",     "ResourceArchitecture",    Domain.RESOURCE);
+        reg("ResourceSystem",           "ResourceSystem",          Domain.RESOURCE);
         reg("HardwareElement",          "HardwareElement",         Domain.RESOURCE);
         reg("SoftwareElement",          "SoftwareElement",         Domain.RESOURCE);
+        reg("Software",                 "Software",                Domain.RESOURCE);
         reg("NaturalResource",          "NaturalResource",         Domain.RESOURCE);
         reg("SystemBlock",              "SystemBlock",             Domain.RESOURCE);
+        reg("System",                   "System",                  Domain.RESOURCE);
         reg("ActualSystem",             "ActualSystem",            Domain.RESOURCE);
+        reg("Technology",               "Technology",              Domain.RESOURCE);
         reg("LogicalArchitecture",      "LogicalArchitecture",     Domain.RESOURCE);
         reg("PhysicalArchitecture",     "PhysicalArchitecture",    Domain.RESOURCE);
 
@@ -80,6 +85,8 @@ public class UAFStereotypeRegistry {
         reg("ServicePoint",             "ServicePoint",            Domain.SERVICE);
         reg("ServiceConnector",         "ServiceConnector",        Domain.SERVICE);
         reg("ServiceExchange",          "ServiceExchange",         Domain.SERVICE);
+        reg("Service",                  "Service",                 Domain.SERVICE);
+        reg("ServiceArchitecture",      "ServiceArchitecture",     Domain.SERVICE);
 
         // --- Personnel View (PrV) ---
         reg("Organization",             "Organization",            Domain.PERSONNEL);
