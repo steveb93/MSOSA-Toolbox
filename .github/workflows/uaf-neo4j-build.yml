@@ -1,4 +1,4 @@
-name: Build uaf-neo4j-plugin
+name: Build
 on:
   push:
     branches: ["main", "preview"]
