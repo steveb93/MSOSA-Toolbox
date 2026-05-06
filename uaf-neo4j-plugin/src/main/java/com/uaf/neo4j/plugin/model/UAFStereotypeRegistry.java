@@ -116,6 +116,15 @@ public class UAFStereotypeRegistry {
         reg("ImplementationConstraint", "ImplementationConstraint",Domain.SHARED);
         reg("Location",                 "Location",                Domain.SHARED);
         reg("ActualLocation",           "ActualLocation",          Domain.SHARED);
+
+        // --- Relationship stereotypes (used to map UAF-stereotyped UML relationships) ---
+        // These entries drive the rel-type override in UAFModelTraverser.extractRelationships().
+        // The neo4jLabel uppercased becomes the Neo4j relationship type.
+        reg("Exhibits",                 "Exhibits",                Domain.SHARED);
+        reg("Refines",                  "Refines",                 Domain.SHARED);
+        reg("Satisfies",                "Satisfies",               Domain.SHARED);
+        reg("Exposes",                  "Exposes",                 Domain.SHARED);
+        reg("Provides",                 "Provides",                Domain.SHARED);
     }
 
     private static void reg(String stereotype, String label, Domain domain) {
