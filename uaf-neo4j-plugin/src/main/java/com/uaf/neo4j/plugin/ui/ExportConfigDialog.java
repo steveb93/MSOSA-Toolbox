@@ -6,17 +6,17 @@ import com.uaf.neo4j.plugin.model.UAFElementDTO;
 import com.uaf.neo4j.plugin.model.UAFModelTraverser;
 import com.uaf.neo4j.plugin.model.UAFRelationshipDTO;
 import com.uaf.neo4j.plugin.model.UAFStereotypeRegistry;
-import com.uaf.neo4j.plugin.model.UAFStereotypeRegistry.Domain;
 import com.uaf.neo4j.plugin.model.UAFStereotypeRegistry.StereotypeInfo;
 import com.uaf.neo4j.plugin.neo4j.Neo4jExportService;
 import com.uaf.neo4j.plugin.neo4j.Neo4jExportService.ExportResult;
 import com.nomagic.magicdraw.core.Project;
+import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Element;
+import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.NamedElement;
+import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Package;
 
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.TitledBorder;
+import javax.swing.border.*;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.util.*;
 import java.util.List;
@@ -24,57 +24,93 @@ import java.util.stream.Collectors;
 
 public class ExportConfigDialog extends JDialog {
 
+    // ── Palette ───────────────────────────────────────────────────────────────
+    private static final Color HDR_BG         = new Color( 43,  43,  43);
+    private static final Color HDR_TITLE       = Color.WHITE;
+    private static final Color HDR_SUBTITLE    = new Color(160, 160, 160);
+    private static final Color STATUS_IDLE     = new Color(140, 140, 140);
+    private static final Color STATUS_OK       = new Color( 72, 199, 116);
+    private static final Color STATUS_FAIL     = new Color(230,  80,  80);
+    private static final Color LEFT_BG         = new Color(248, 249, 251);
+    private static final Color BORDER_SUBTLE   = new Color(218, 219, 224);
+
+    // ── Header ────────────────────────────────────────────────────────────────
+    private final JLabel globalStatusLabel = new JLabel("● Not connected");
+
+    // ── Connection ────────────────────────────────────────────────────────────
     private final JTextField     uriField;
     private final JTextField     userField;
     private final JPasswordField passwordField;
     private final JTextField     databaseField;
     private final JTextField     batchSizeField;
-    private final JLabel         connectionStatusLabel;
+    private final JLabel         connTabStatusLabel;
 
+    // ── Options ───────────────────────────────────────────────────────────────
     private final JCheckBox exportTaggedValuesBox;
     private final JCheckBox exportRelationshipsBox;
     private final JCheckBox exportInstanceLinksBox;
 
-    private final EnumMap<Domain, JCheckBox> domainBoxes = new EnumMap<>(Domain.class);
-    private final JLabel domainCountLabel = new JLabel();
+    // ── Package selection ─────────────────────────────────────────────────────
+    private final LinkedHashMap<String, JCheckBox> packageBoxes   = new LinkedHashMap<>();
+    private final Map<String, Integer>             elementsPerPkg  = new LinkedHashMap<>();
+    private final JLabel selectionCountLabel = new JLabel("Counting elements…");
 
+    // ── Log / progress ────────────────────────────────────────────────────────
     private final JTextArea    logArea     = new JTextArea(7, 60);
     private final JProgressBar progressBar = new JProgressBar();
 
+    // ── Buttons ───────────────────────────────────────────────────────────────
     private final JButton saveConfigBtn = new JButton("Save Config");
-    private final JButton exportBtn     = new JButton("Export to Neo4j...");
+    private final JButton exportBtn     = new JButton("Export to Neo4j…");
     private final JButton cancelBtn     = new JButton("Cancel");
-
-    private TableRowSorter<DefaultTableModel> previewSorter;
 
     private final Project project;
 
     public ExportConfigDialog(Frame parent, Project project) {
-        super(parent, "UAF Neo4j — Export", true);
+        super(parent, "UAF Neo4j Export", true);
         this.project = project;
 
         Properties cfg = UAFNeo4jPlugin.getInstance().getConfig();
 
-        uriField          = new JTextField(cfg.getProperty("neo4j.uri",      "bolt://localhost:7687"), 32);
-        userField         = new JTextField(cfg.getProperty("neo4j.user",     "neo4j"), 20);
-        passwordField     = new JPasswordField(cfg.getProperty("neo4j.password", ""), 20);
-        databaseField     = new JTextField(cfg.getProperty("neo4j.database", "neo4j"), 15);
+        uriField          = new JTextField(cfg.getProperty("neo4j.uri",      "bolt://localhost:7687"), 36);
+        userField         = new JTextField(cfg.getProperty("neo4j.user",     "neo4j"), 24);
+        passwordField     = new JPasswordField(cfg.getProperty("neo4j.password", ""), 24);
+        databaseField     = new JTextField(cfg.getProperty("neo4j.database", "neo4j"), 18);
         batchSizeField    = new JTextField(cfg.getProperty("neo4j.batch.size", "500"), 8);
-        connectionStatusLabel = new JLabel(" ");
+        connTabStatusLabel = new JLabel(" ");
 
-        exportTaggedValuesBox  = new JCheckBox("Export tagged values",
+        exportTaggedValuesBox = new JCheckBox("Export tagged values",
             Boolean.parseBoolean(cfg.getProperty("export.tagged.values", "true")));
+        exportTaggedValuesBox.setToolTipText(
+            "<html>Include all UAF tagged values as node properties in Neo4j.<br>" +
+            "Properties are written with a <code>tv_</code> prefix (e.g. <code>tv_nationality</code>).<br>" +
+            "Uncheck to keep the graph lean when tagged values are not needed.</html>");
+
         exportRelationshipsBox = new JCheckBox("Export relationships",
             Boolean.parseBoolean(cfg.getProperty("export.relationships", "true")));
+        exportRelationshipsBox.setToolTipText(
+            "<html>Export directed UAF relationships as Neo4j edges.<br>" +
+            "Only relationships whose <i>source</i> element is in a selected<br>" +
+            "package are included; cross-package targets are preserved.</html>");
+
         exportInstanceLinksBox = new JCheckBox("Export INSTANCE_OF metamodel links",
             Boolean.parseBoolean(cfg.getProperty("export.instance.links", "true")));
+        exportInstanceLinksBox.setToolTipText(
+            "<html>Create <code>:INSTANCE_OF</code> edges from each exported element<br>" +
+            "to its <code>:Stereotype</code> node in the pre-existing UAF metamodel graph.<br>" +
+            "Requires the metamodel to have been initialised with<br>" +
+            "<code>init_uaf_graph.cypher</code> before first export.</html>");
 
-        for (Domain d : Domain.values()) {
-            JCheckBox cb = new JCheckBox(domainLabel(d), true);
-            cb.addActionListener(e -> { updateDomainCount(); refreshPreviewFilter(); });
-            domainBoxes.put(d, cb);
+        globalStatusLabel.setForeground(STATUS_IDLE);
+        globalStatusLabel.setFont(globalStatusLabel.getFont().deriveFont(Font.PLAIN, 11f));
+        globalStatusLabel.setOpaque(false);
+
+        for (String pkg : topLevelPackageNames()) {
+            JCheckBox cb = new JCheckBox(pkg, true);
+            cb.setOpaque(false);
+            cb.addActionListener(e -> updateSelectionCount());
+            packageBoxes.put(pkg, cb);
         }
-        updateDomainCount();
 
         logArea.setEditable(false);
         logArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 11));
@@ -84,67 +120,173 @@ public class ExportConfigDialog extends JDialog {
         cancelBtn.addActionListener(e -> dispose());
         exportBtn.addActionListener(e -> runExport());
 
-        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
-            buildDomainsPanel(), buildRightPanel());
-        split.setDividerLocation(195);
-        split.setBorder(new EmptyBorder(8, 8, 0, 8));
-
-        JPanel south = new JPanel(new BorderLayout(0, 4));
-        south.setBorder(new EmptyBorder(4, 8, 8, 8));
-        south.add(buildLogPanel(),   BorderLayout.CENTER);
-        south.add(buildButtonBar(),  BorderLayout.SOUTH);
-
-        setLayout(new BorderLayout(0, 0));
-        add(split, BorderLayout.CENTER);
-        add(south, BorderLayout.SOUTH);
+        setLayout(new BorderLayout());
+        add(buildHeader(),      BorderLayout.NORTH);
+        add(buildMain(),        BorderLayout.CENTER);
+        add(buildSouthPanel(),  BorderLayout.SOUTH);
 
         pack();
-        setMinimumSize(new Dimension(760, 560));
+        setMinimumSize(new Dimension(960, 620));
+        setPreferredSize(new Dimension(1040, 700));
         setResizable(true);
         setLocationRelativeTo(parent);
+
+        loadElementCounts();
+    }
+
+    // ── Model scanning ────────────────────────────────────────────────────────
+
+    private List<String> topLevelPackageNames() {
+        List<String> names = new ArrayList<>();
+        for (Element el : project.getPrimaryModel().getOwnedElement()) {
+            if (el instanceof Package && el instanceof NamedElement) {
+                String n = ((NamedElement) el).getName();
+                if (n != null && !n.isEmpty()) names.add(n);
+            }
+        }
+        return names;
+    }
+
+    private void loadElementCounts() {
+        new SwingWorker<Map<String, Integer>, Void>() {
+            @Override
+            protected Map<String, Integer> doInBackground() {
+                Map<String, Integer> counts = new LinkedHashMap<>();
+                for (UAFElementDTO el : new UAFModelTraverser(project).getElements()) {
+                    counts.merge(topPackageOf(el.packageName), 1, Integer::sum);
+                }
+                return counts;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    Map<String, Integer> counts = get();
+                    elementsPerPkg.putAll(counts);
+                    for (Map.Entry<String, JCheckBox> e : packageBoxes.entrySet()) {
+                        int c = counts.getOrDefault(e.getKey(), 0);
+                        e.getValue().setText(e.getKey() + "  (" + c + ")");
+                        if (c == 0) e.getValue().setForeground(new Color(160, 160, 160));
+                    }
+                    updateSelectionCount();
+                } catch (Exception ex) {
+                    selectionCountLabel.setText("Could not count elements");
+                }
+            }
+        }.execute();
+    }
+
+    private static String topPackageOf(String pkgName) {
+        int sep = pkgName.indexOf("::");
+        return sep < 0 ? pkgName : pkgName.substring(0, sep);
     }
 
     // ── Panel builders ────────────────────────────────────────────────────────
 
-    private JPanel buildDomainsPanel() {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(new TitledBorder("UAF Domains"));
+    private JPanel buildHeader() {
+        JPanel header = new JPanel(new BorderLayout(20, 0));
+        header.setBackground(HDR_BG);
+        header.setOpaque(true);
+        header.setBorder(BorderFactory.createCompoundBorder(
+            new MatteBorder(0, 0, 1, 0, new Color(65, 65, 65)),
+            new EmptyBorder(16, 20, 15, 20)));
 
-        JButton selAll   = new JButton("All");
-        JButton deselAll = new JButton("None");
+        JLabel title = new JLabel("UAF Neo4j Export");
+        title.setForeground(HDR_TITLE);
+        title.setFont(title.getFont().deriveFont(Font.BOLD, 15f));
+        title.setOpaque(false);
+
+        JLabel subtitle = new JLabel(
+            "Select model packages, configure the Neo4j connection, and choose export options.");
+        subtitle.setForeground(HDR_SUBTITLE);
+        subtitle.setFont(subtitle.getFont().deriveFont(Font.PLAIN, 11f));
+        subtitle.setOpaque(false);
+
+        JPanel textBlock = new JPanel(new GridLayout(2, 1, 0, 4));
+        textBlock.setOpaque(false);
+        textBlock.add(title);
+        textBlock.add(subtitle);
+
+        header.add(textBlock,         BorderLayout.CENTER);
+        header.add(globalStatusLabel, BorderLayout.EAST);
+        return header;
+    }
+
+    private JPanel buildMain() {
+        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
+            buildPackagesPanel(), buildRightPanel());
+        split.setDividerLocation(235);
+        split.setBorder(null);
+
+        JPanel main = new JPanel(new BorderLayout());
+        main.add(split, BorderLayout.CENTER);
+        return main;
+    }
+
+    private JPanel buildPackagesPanel() {
+        JPanel panel = new JPanel(new BorderLayout(0, 8));
+        panel.setBackground(LEFT_BG);
+        panel.setOpaque(true);
+        panel.setBorder(BorderFactory.createCompoundBorder(
+            new MatteBorder(0, 0, 0, 1, BORDER_SUBTLE),
+            new EmptyBorder(14, 12, 10, 10)));
+
+        // Heading + All/None
+        JLabel heading = new JLabel("Model Packages");
+        heading.setFont(heading.getFont().deriveFont(Font.BOLD, 12f));
+
+        JButton selAll   = smallButton("All");
+        JButton deselAll = smallButton("None");
         selAll.addActionListener(e -> {
-            domainBoxes.values().forEach(cb -> cb.setSelected(true));
-            updateDomainCount();
-            refreshPreviewFilter();
+            packageBoxes.values().forEach(cb -> cb.setSelected(true));
+            updateSelectionCount();
         });
         deselAll.addActionListener(e -> {
-            domainBoxes.values().forEach(cb -> cb.setSelected(false));
-            updateDomainCount();
-            refreshPreviewFilter();
+            packageBoxes.values().forEach(cb -> cb.setSelected(false));
+            updateSelectionCount();
         });
 
-        JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 0));
-        btnRow.add(selAll);
-        btnRow.add(deselAll);
-        btnRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, btnRow.getPreferredSize().height));
-        panel.add(btnRow);
-        panel.add(Box.createVerticalStrut(4));
+        JPanel btnPair = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 0));
+        btnPair.setOpaque(false);
+        btnPair.add(selAll);
+        btnPair.add(deselAll);
 
-        for (JCheckBox cb : domainBoxes.values()) {
+        JPanel headRow = new JPanel(new BorderLayout(6, 0));
+        headRow.setOpaque(false);
+        headRow.add(heading, BorderLayout.CENTER);
+        headRow.add(btnPair, BorderLayout.EAST);
+
+        // Checkbox list
+        JPanel cbPanel = new JPanel();
+        cbPanel.setLayout(new BoxLayout(cbPanel, BoxLayout.Y_AXIS));
+        cbPanel.setBackground(LEFT_BG);
+        cbPanel.setOpaque(true);
+        for (JCheckBox cb : packageBoxes.values()) {
             cb.setAlignmentX(Component.LEFT_ALIGNMENT);
-            panel.add(cb);
+            cb.setBackground(LEFT_BG);
+            cbPanel.add(cb);
+            cbPanel.add(Box.createVerticalStrut(1));
         }
-        panel.add(Box.createVerticalGlue());
 
-        domainCountLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        domainCountLabel.setFont(domainCountLabel.getFont().deriveFont(Font.ITALIC, 11f));
-        panel.add(domainCountLabel);
+        JScrollPane scroll = new JScrollPane(cbPanel,
+            ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+            ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scroll.setBorder(new MatteBorder(1, 1, 1, 1, BORDER_SUBTLE));
+        scroll.getViewport().setBackground(LEFT_BG);
+
+        // Count label
+        selectionCountLabel.setFont(selectionCountLabel.getFont().deriveFont(Font.ITALIC, 11f));
+        selectionCountLabel.setForeground(new Color(100, 100, 110));
+
+        panel.add(headRow,             BorderLayout.NORTH);
+        panel.add(scroll,              BorderLayout.CENTER);
+        panel.add(selectionCountLabel, BorderLayout.SOUTH);
         return panel;
     }
 
     private JTabbedPane buildRightPanel() {
         JTabbedPane tabs = new JTabbedPane();
+        tabs.setBorder(null);
         tabs.addTab("Connection", buildConnectionTab());
         tabs.addTab("Options",    buildOptionsTab());
         tabs.addTab("Preview",    buildPreviewTab());
@@ -153,7 +295,7 @@ public class ExportConfigDialog extends JDialog {
 
     private JPanel buildConnectionTab() {
         JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBorder(new EmptyBorder(12, 12, 4, 12));
+        panel.setBorder(new EmptyBorder(18, 18, 8, 18));
         GridBagConstraints lc = labelGbc();
         GridBagConstraints fc = fieldGbc();
 
@@ -170,30 +312,40 @@ public class ExportConfigDialog extends JDialog {
         GridBagConstraints bc = new GridBagConstraints();
         bc.gridx = 0; bc.gridy = row++; bc.gridwidth = 2;
         bc.anchor = GridBagConstraints.WEST;
-        bc.insets = new Insets(10, 0, 2, 0);
+        bc.insets = new Insets(14, 0, 2, 0);
         panel.add(testBtn, bc);
 
         bc = (GridBagConstraints) bc.clone();
         bc.gridy = row++;
         bc.insets = new Insets(0, 0, 0, 0);
-        panel.add(connectionStatusLabel, bc);
+        panel.add(connTabStatusLabel, bc);
 
         GridBagConstraints filler = new GridBagConstraints();
         filler.gridx = 0; filler.gridy = row; filler.weighty = 1.0;
         panel.add(new JPanel(), filler);
-
         return panel;
     }
 
     private JPanel buildOptionsTab() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(new EmptyBorder(12, 12, 12, 12));
+        panel.setBorder(new EmptyBorder(16, 18, 16, 18));
+
+        JLabel heading = sectionLabel("Export Options");
+        heading.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(heading);
+        panel.add(Box.createVerticalStrut(8));
+
+        JSeparator sep = new JSeparator();
+        sep.setAlignmentX(Component.LEFT_ALIGNMENT);
+        sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+        panel.add(sep);
+        panel.add(Box.createVerticalStrut(14));
 
         for (JCheckBox cb : new JCheckBox[]{exportTaggedValuesBox, exportRelationshipsBox, exportInstanceLinksBox}) {
             cb.setAlignmentX(Component.LEFT_ALIGNMENT);
             panel.add(cb);
-            panel.add(Box.createVerticalStrut(8));
+            panel.add(Box.createVerticalStrut(10));
         }
         panel.add(Box.createVerticalGlue());
         return panel;
@@ -204,22 +356,18 @@ public class ExportConfigDialog extends JDialog {
         DefaultTableModel model = new DefaultTableModel(cols, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
-        for (Map.Entry<String, StereotypeInfo> entry : UAFStereotypeRegistry.getAll().entrySet()) {
-            model.addRow(new Object[]{
-                entry.getKey(),
-                entry.getValue().neo4jLabel,
-                entry.getValue().domain.name()
-            });
+        for (Map.Entry<String, StereotypeInfo> e : UAFStereotypeRegistry.getAll().entrySet()) {
+            model.addRow(new Object[]{e.getKey(), e.getValue().neo4jLabel, e.getValue().domain.name()});
         }
-
         JTable table = new JTable(model);
-        previewSorter = new TableRowSorter<>(model);
-        table.setRowSorter(previewSorter);
-        refreshPreviewFilter();
+        table.setAutoCreateRowSorter(true);
+        table.setRowHeight(22);
+        table.setShowGrid(false);
+        table.setIntercellSpacing(new Dimension(0, 0));
 
-        JPanel panel = new JPanel(new BorderLayout(0, 4));
-        panel.setBorder(new EmptyBorder(8, 8, 8, 8));
-        JLabel hint = new JLabel("Stereotypes for selected domains:");
+        JPanel panel = new JPanel(new BorderLayout(0, 8));
+        panel.setBorder(new EmptyBorder(14, 14, 14, 14));
+        JLabel hint = new JLabel("UAF stereotype → Neo4j label reference  (click column headers to sort):");
         hint.setFont(hint.getFont().deriveFont(Font.ITALIC, 11f));
         panel.add(hint, BorderLayout.NORTH);
         panel.add(new JScrollPane(table), BorderLayout.CENTER);
@@ -227,52 +375,78 @@ public class ExportConfigDialog extends JDialog {
     }
 
     private JPanel buildLogPanel() {
-        JPanel panel = new JPanel(new BorderLayout(0, 2));
-        JLabel label = new JLabel("Export Log:");
-        label.setFont(label.getFont().deriveFont(Font.BOLD));
+        JPanel panel = new JPanel(new BorderLayout(0, 4));
+
+        JLabel label = sectionLabel("Export Log:");
+        label.setAlignmentX(Component.LEFT_ALIGNMENT);
+
         JScrollPane scroll = new JScrollPane(logArea);
+        scroll.setBorder(new MatteBorder(1, 1, 1, 1, BORDER_SUBTLE));
         scroll.setPreferredSize(new Dimension(0, 110));
+
         panel.add(label,       BorderLayout.NORTH);
         panel.add(scroll,      BorderLayout.CENTER);
         panel.add(progressBar, BorderLayout.SOUTH);
         return panel;
     }
 
+    private JPanel buildSouthPanel() {
+        JPanel south = new JPanel(new BorderLayout(0, 8));
+        south.setBorder(BorderFactory.createCompoundBorder(
+            new MatteBorder(1, 0, 0, 0, BORDER_SUBTLE),
+            new EmptyBorder(8, 14, 12, 14)));
+        south.add(buildLogPanel(),  BorderLayout.CENTER);
+        south.add(buildButtonBar(), BorderLayout.SOUTH);
+        return south;
+    }
+
     private JPanel buildButtonBar() {
-        JPanel bar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 2));
+        JPanel bar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 2));
         bar.add(saveConfigBtn);
         bar.add(cancelBtn);
         bar.add(exportBtn);
         return bar;
     }
 
-    // ── Domain helpers ─────────────────────────────────────────────────────────
+    // ── Helpers ────────────────────────────────────────────────────────────────
 
-    private void updateDomainCount() {
-        long n = domainBoxes.values().stream().filter(JCheckBox::isSelected).count();
-        domainCountLabel.setText(n + "/" + domainBoxes.size() + " selected");
+    private void updateSelectionCount() {
+        long pkgCount = packageBoxes.values().stream().filter(JCheckBox::isSelected).count();
+        if (elementsPerPkg.isEmpty()) {
+            selectionCountLabel.setText(pkgCount + "/" + packageBoxes.size() + " packages selected");
+        } else {
+            int elems = elementsPerPkg.entrySet().stream()
+                .filter(e -> { JCheckBox cb = packageBoxes.get(e.getKey()); return cb != null && cb.isSelected(); })
+                .mapToInt(Map.Entry::getValue).sum();
+            selectionCountLabel.setText(
+                pkgCount + "/" + packageBoxes.size() + " packages  ·  ~" + elems + " elements");
+        }
     }
 
-    private void refreshPreviewFilter() {
-        if (previewSorter == null) return;
-        final Set<String> active = domainBoxes.entrySet().stream()
-            .filter(e -> e.getValue().isSelected())
-            .map(e -> e.getKey().name())
-            .collect(Collectors.toSet());
-        previewSorter.setRowFilter(new RowFilter<DefaultTableModel, Integer>() {
-            @Override
-            public boolean include(Entry<? extends DefaultTableModel, ? extends Integer> entry) {
-                return active.contains(entry.getStringValue(2));
-            }
-        });
+    private static JLabel sectionLabel(String text) {
+        JLabel l = new JLabel(text);
+        l.setFont(l.getFont().deriveFont(Font.BOLD, 12f));
+        return l;
+    }
+
+    private static JButton smallButton(String text) {
+        JButton b = new JButton(text);
+        b.setMargin(new Insets(1, 6, 1, 6));
+        b.setFont(b.getFont().deriveFont(Font.PLAIN, 11f));
+        return b;
     }
 
     // ── Connection test ────────────────────────────────────────────────────────
 
     private void testConnection() {
-        connectionStatusLabel.setForeground(Color.DARK_GRAY);
-        connectionStatusLabel.setText("Testing...");
+        connTabStatusLabel.setForeground(Color.DARK_GRAY);
+        connTabStatusLabel.setText("Testing…");
+        globalStatusLabel.setForeground(STATUS_IDLE);
+        globalStatusLabel.setText("● Connecting…");
+
         final Properties connProps = connectionProps();
+        final String uriText = uriField.getText().trim();
+
         new SwingWorker<Boolean, Void>() {
             @Override protected Boolean doInBackground() {
                 try (Neo4jExportService svc = new Neo4jExportService(connProps)) {
@@ -283,13 +457,22 @@ public class ExportConfigDialog extends JDialog {
             @Override protected void done() {
                 try {
                     boolean ok = get();
-                    connectionStatusLabel.setForeground(ok ? new Color(0, 120, 0) : Color.RED);
-                    connectionStatusLabel.setText(ok
-                        ? "Connection successful."
-                        : "Connection failed — check URI and credentials.");
+                    if (ok) {
+                        connTabStatusLabel.setForeground(new Color(0, 120, 0));
+                        connTabStatusLabel.setText("Connection successful.");
+                        globalStatusLabel.setForeground(STATUS_OK);
+                        globalStatusLabel.setText("● Connected  ·  Neo4j  ·  " + uriText);
+                    } else {
+                        connTabStatusLabel.setForeground(STATUS_FAIL);
+                        connTabStatusLabel.setText("Connection failed — check URI and credentials.");
+                        globalStatusLabel.setForeground(STATUS_FAIL);
+                        globalStatusLabel.setText("● Not connected");
+                    }
                 } catch (Exception ex) {
-                    connectionStatusLabel.setForeground(Color.RED);
-                    connectionStatusLabel.setText("Error: " + ex.getMessage());
+                    connTabStatusLabel.setForeground(STATUS_FAIL);
+                    connTabStatusLabel.setText("Error: " + ex.getMessage());
+                    globalStatusLabel.setForeground(STATUS_FAIL);
+                    globalStatusLabel.setText("● Not connected");
                 }
             }
         }.execute();
@@ -322,14 +505,14 @@ public class ExportConfigDialog extends JDialog {
     // ── Export ─────────────────────────────────────────────────────────────────
 
     private void runExport() {
-        final Set<String> selectedDomains = domainBoxes.entrySet().stream()
+        final Set<String> selectedPackages = packageBoxes.entrySet().stream()
             .filter(e -> e.getValue().isSelected())
-            .map(e -> e.getKey().name())
+            .map(Map.Entry::getKey)
             .collect(Collectors.toSet());
 
-        if (selectedDomains.isEmpty()) {
+        if (selectedPackages.isEmpty()) {
             JOptionPane.showMessageDialog(this,
-                "Please select at least one UAF domain to export.",
+                "Please select at least one model package to export.",
                 "UAF Neo4j Export", JOptionPane.WARNING_MESSAGE);
             return;
         }
@@ -337,8 +520,8 @@ public class ExportConfigDialog extends JDialog {
         final boolean inclTaggedValues  = exportTaggedValuesBox.isSelected();
         final boolean inclRelationships = exportRelationshipsBox.isSelected();
         final boolean inclInstanceLinks = exportInstanceLinksBox.isSelected();
-        final Properties connProps = connectionProps();
-        final ExportLog log = new ExportLog(project.getName());
+        final Properties connProps      = connectionProps();
+        final ExportLog  log            = new ExportLog(project.getName());
 
         setButtonsEnabled(false);
         logArea.setText("");
@@ -348,52 +531,49 @@ public class ExportConfigDialog extends JDialog {
         new SwingWorker<ExportResult, String>() {
             @Override
             protected ExportResult doInBackground() throws Exception {
-                publish("Traversing UAF model...");
+                publish("Traversing UAF model…");
                 UAFModelTraverser traverser = new UAFModelTraverser(project);
 
                 List<UAFElementDTO> elements = traverser.getElements().stream()
-                    .filter(el -> selectedDomains.contains(el.domain))
+                    .filter(el -> selectedPackages.stream().anyMatch(pkg ->
+                        el.packageName.equals(pkg) || el.packageName.startsWith(pkg + "::")))
                     .collect(Collectors.toList());
+
+                Set<String> selectedIds = elements.stream()
+                    .map(el -> el.id).collect(Collectors.toSet());
 
                 List<UAFRelationshipDTO> relationships = inclRelationships
                     ? traverser.getRelationships().stream()
-                        .filter(r -> selectedDomains.contains(r.domain))
+                        .filter(r -> selectedIds.contains(r.sourceId))
                         .collect(Collectors.toList())
                     : Collections.emptyList();
 
-                publish(String.format("Found %d elements, %d relationships. Connecting to Neo4j...",
+                publish(String.format("Found %d elements, %d relationships. Connecting to Neo4j…",
                     elements.size(), relationships.size()));
 
                 try (Neo4jExportService svc = new Neo4jExportService(connProps)) {
                     svc.init();
-
-                    publish("Writing nodes...");
+                    publish("Writing nodes…");
                     svc.exportNodes(elements, inclTaggedValues);
 
                     if (!relationships.isEmpty()) {
-                        publish("Writing relationships...");
+                        publish("Writing relationships…");
                         svc.exportRelationships(relationships);
                     }
-
                     if (inclInstanceLinks) {
-                        publish("Linking to UAF metamodel stereotypes...");
+                        publish("Linking to UAF metamodel stereotypes…");
                         svc.exportInstanceOfLinks(elements);
                     }
-
-                    publish("Writing system model provenance...");
+                    publish("Writing system model provenance…");
                     svc.exportSystemModel(traverser.getSystemModelId(), traverser.getSystemModelName());
                     svc.exportDefinesLinks(traverser.getSystemModelId(), elements);
-
                     return svc.getResult();
                 }
             }
 
             @Override
             protected void process(List<String> chunks) {
-                for (String msg : chunks) {
-                    log.add(msg);
-                    appendLog(msg);
-                }
+                for (String msg : chunks) { log.add(msg); appendLog(msg); }
             }
 
             @Override
@@ -430,20 +610,6 @@ public class ExportConfigDialog extends JDialog {
 
     // ── Form helpers ──────────────────────────────────────────────────────────
 
-    private static String domainLabel(Domain d) {
-        switch (d) {
-            case STRATEGIC:   return "Strategic (StV)";
-            case OPERATIONAL: return "Operational (OV)";
-            case RESOURCE:    return "Resource (RsV)";
-            case SERVICE:     return "Service (SvcV)";
-            case PERSONNEL:   return "Personnel (PrV)";
-            case ACQUISITION: return "Acquisition (AcV)";
-            case SECURITY:    return "Security (SrV)";
-            case SHARED:      return "Shared";
-            default:          return d.name();
-        }
-    }
-
     private static void addFormRow(JPanel panel, String label, JComponent field,
                                    GridBagConstraints lc, GridBagConstraints fc, int row) {
         lc.gridy = row;
@@ -456,7 +622,7 @@ public class ExportConfigDialog extends JDialog {
         GridBagConstraints c = new GridBagConstraints();
         c.gridx = 0;
         c.anchor = GridBagConstraints.EAST;
-        c.insets = new Insets(4, 0, 4, 8);
+        c.insets = new Insets(5, 0, 5, 10);
         return c;
     }
 
@@ -466,7 +632,7 @@ public class ExportConfigDialog extends JDialog {
         c.anchor = GridBagConstraints.WEST;
         c.fill = GridBagConstraints.HORIZONTAL;
         c.weightx = 1.0;
-        c.insets = new Insets(4, 0, 4, 0);
+        c.insets = new Insets(5, 0, 5, 0);
         return c;
     }
 }
