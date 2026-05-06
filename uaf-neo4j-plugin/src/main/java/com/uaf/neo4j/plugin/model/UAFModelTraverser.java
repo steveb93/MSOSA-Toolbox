@@ -20,8 +20,14 @@ public class UAFModelTraverser {
 
     private static final Logger LOG = Logger.getLogger(UAFModelTraverser.class.getName());
 
-    // Relationship metaclass names → Neo4j relationship type
+    // UML metaclass name → Neo4j relationship type (base mapping before stereotype override)
     private static final Map<String, String> RELATION_TYPE_MAP = new LinkedHashMap<>();
+
+    // UAF relationship stereotype name → Neo4j relationship type.
+    // Kept separate from UAFStereotypeRegistry so that relationship stereotypes
+    // (which are applied to UML relationship elements, not to blocks/classes)
+    // are never mistaken for element stereotypes and never create nodes.
+    private static final Map<String, String> RELATIONSHIP_STEREOTYPE_MAP = new LinkedHashMap<>();
 
     static {
         RELATION_TYPE_MAP.put("Realization",          UAFRelationshipDTO.REL_REALISES);
@@ -40,6 +46,12 @@ public class UAFModelTraverser {
         RELATION_TYPE_MAP.put("Satisfy",              UAFRelationshipDTO.REL_SATISFIES);
         RELATION_TYPE_MAP.put("Derive",               UAFRelationshipDTO.REL_INFLUENCES);
         RELATION_TYPE_MAP.put("ComponentRealization", UAFRelationshipDTO.REL_REALISES);
+
+        RELATIONSHIP_STEREOTYPE_MAP.put("Exhibits",  UAFRelationshipDTO.REL_EXHIBITS);
+        RELATIONSHIP_STEREOTYPE_MAP.put("Refines",   UAFRelationshipDTO.REL_REFINES);
+        RELATIONSHIP_STEREOTYPE_MAP.put("Satisfies", UAFRelationshipDTO.REL_SATISFIES);
+        RELATIONSHIP_STEREOTYPE_MAP.put("Exposes",   UAFRelationshipDTO.REL_EXPOSES);
+        RELATIONSHIP_STEREOTYPE_MAP.put("Provides",  UAFRelationshipDTO.REL_PROVIDES);
     }
 
     private final Project project;
@@ -58,6 +70,9 @@ public class UAFModelTraverser {
         this.modelFileName = project.getName();
     }
 
+    public String getSystemModelId()   { return modelFileName; }
+    public String getSystemModelName() { return modelFileName; }
+
     public List<UAFElementDTO> getElements() {
         ensureTraversed();
         return Collections.unmodifiableList(elements);
@@ -73,7 +88,7 @@ public class UAFModelTraverser {
     private void ensureTraversed() {
         if (!traversed) {
             buildDiagramIndex();
-            traversePackage(project.getModel(), "");
+            traversePackage(project.getPrimaryModel(), "");
             traversed = true;
             LOG.info(String.format("UAFModelTraverser: %d elements, %d relationships",
                 elements.size(), relationships.size()));
@@ -84,8 +99,8 @@ public class UAFModelTraverser {
         for (DiagramPresentationElement diagram : project.getDiagrams()) {
             String dName = diagram.getName();
             String dId   = diagram.getID();
-            for (Element el : diagram.getUsedModelElements(false)) {
-                String elId = el.getLocalID() != null ? el.getLocalID() : el.toString();
+            for (Element el : diagram.getUsedModelElements()) {
+                String elId = el.getID() != null ? el.getID() : el.toString();
                 diagramIndex.computeIfAbsent(elId, k -> new ArrayList<>()).add(dName);
                 diagramIdIndex.putIfAbsent(elId, dId);
             }
@@ -148,7 +163,6 @@ public class UAFModelTraverser {
             .qualifiedName(qname)
             .neo4jLabel(info.neo4jLabel)
             .domain(info.domain.name())
-            .layer(info.layer.name())
             .packageName(pkgName)
             .diagramId(diagId)
             .diagramName(diagName)
@@ -157,6 +171,10 @@ public class UAFModelTraverser {
 
         // Extract all tagged values for this stereotype
         extractTaggedValues(element, uafStereo, eb);
+
+        // Extract owned UML class attributes (covers ResourceInformation / OperationalInformation
+        // data properties and attributes inherited via ERD entity mappings)
+        extractOwnedAttributes(element, eb);
 
         elements.add(eb.build());
 
@@ -193,6 +211,32 @@ public class UAFModelTraverser {
         }
     }
 
+    private void extractOwnedAttributes(Element element, UAFElementDTO.Builder builder) {
+        if (!(element instanceof com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Classifier)) return;
+        try {
+            com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Classifier cls =
+                (com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Classifier) element;
+            for (com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Property attr : cls.getAttribute()) {
+                String attrName = attr.getName();
+                if (attrName == null || attrName.isEmpty()) continue;
+                com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Type attrType = attr.getType();
+                String typeName = (attrType != null && attrType.getName() != null)
+                                  ? attrType.getName() : "";
+                builder.taggedValue("attr_" + attrName, typeName);
+                int lower = attr.getLower();
+                int upper = attr.getUpper();
+                String mult = (upper == -1)
+                    ? lower + "..*"
+                    : (lower == upper ? String.valueOf(lower) : lower + ".." + upper);
+                if (!"1".equals(mult)) {
+                    builder.taggedValue("attr_" + attrName + "_mult", mult);
+                }
+            }
+        } catch (Exception e) {
+            LOG.warning("Failed to extract owned attributes for " + safeId(element) + ": " + e.getMessage());
+        }
+    }
+
     private void extractRelationships(Element element, UAFStereotypeRegistry.StereotypeInfo srcInfo) {
         String srcId = safeId(element);
 
@@ -203,9 +247,16 @@ public class UAFModelTraverser {
             String metaclass = rel.getClass().getSimpleName();
             String neo4jType = RELATION_TYPE_MAP.getOrDefault(metaclass, UAFRelationshipDTO.REL_DEPENDENCY);
 
-            // Determine UAF stereotype applied to relationship, if any
+            // Override rel type with UAF relationship stereotype if present.
+            // RELATIONSHIP_STEREOTYPE_MAP is checked first — these are stereotypes applied
+            // to UML relationship elements (not blocks/classes) and must never create nodes.
             List<Stereotype> relStereos = StereotypesHelper.getStereotypes(rel);
             for (Stereotype rs : relStereos) {
+                String fromRelMap = RELATIONSHIP_STEREOTYPE_MAP.get(rs.getName());
+                if (fromRelMap != null) {
+                    neo4jType = fromRelMap;
+                    break;
+                }
                 Optional<UAFStereotypeRegistry.StereotypeInfo> ri = UAFStereotypeRegistry.get(rs.getName());
                 if (ri.isPresent()) {
                     neo4jType = ri.get().neo4jLabel.toUpperCase().replace(" ", "_");
@@ -232,7 +283,7 @@ public class UAFModelTraverser {
     // -------------------------------------------------------------------------
 
     private static String safeId(Element e) {
-        String id = e.getLocalID();
+        String id = e.getID();
         return (id != null && !id.isEmpty()) ? id : Integer.toHexString(System.identityHashCode(e));
     }
 

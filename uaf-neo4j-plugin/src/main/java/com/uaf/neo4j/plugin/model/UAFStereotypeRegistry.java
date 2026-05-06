@@ -4,7 +4,7 @@ import java.util.*;
 
 /**
  * Maps every UAF 1.2 stereotype name (as it appears in the MSOSA profile) to
- * a Neo4j node label, UAF domain, and architecture layer.
+ * a Neo4j node label and UAF domain.
  *
  * Stereotype names are case-sensitive and must match the MSOSA UAF profile
  * exactly. Verify against your installation via:
@@ -16,19 +16,13 @@ public class UAFStereotypeRegistry {
         STRATEGIC, OPERATIONAL, RESOURCE, SERVICE, PERSONNEL, ACQUISITION, SECURITY, SHARED
     }
 
-    public enum Layer {
-        CONCEPTUAL, LOGICAL, PHYSICAL, ALL
-    }
-
     public static final class StereotypeInfo {
         public final String neo4jLabel;
         public final Domain domain;
-        public final Layer layer;
 
-        StereotypeInfo(String neo4jLabel, Domain domain, Layer layer) {
+        StereotypeInfo(String neo4jLabel, Domain domain) {
             this.neo4jLabel = neo4jLabel;
             this.domain = domain;
-            this.layer = layer;
         }
     }
 
@@ -36,87 +30,104 @@ public class UAFStereotypeRegistry {
 
     static {
         // --- Strategic View (StV) ---
-        reg("Capability",               "Capability",              Domain.STRATEGIC,    Layer.CONCEPTUAL);
-        reg("CapabilityConfiguration",  "CapabilityConfiguration", Domain.STRATEGIC,    Layer.CONCEPTUAL);
-        reg("CapabilityComposition",    "CapabilityComposition",   Domain.STRATEGIC,    Layer.CONCEPTUAL);
-        reg("CapabilityDependency",     "CapabilityDependency",    Domain.STRATEGIC,    Layer.CONCEPTUAL);
-        reg("CapabilitySpecialization", "CapabilitySpecialization",Domain.STRATEGIC,    Layer.CONCEPTUAL);
-        reg("Vision",                   "Vision",                  Domain.STRATEGIC,    Layer.CONCEPTUAL);
-        reg("EndState",                 "EndState",                Domain.STRATEGIC,    Layer.CONCEPTUAL);
-        reg("DesiredEffect",            "DesiredEffect",           Domain.STRATEGIC,    Layer.CONCEPTUAL);
-        reg("EnterprisePhase",          "EnterprisePhase",         Domain.STRATEGIC,    Layer.CONCEPTUAL);
-        reg("CapabilityIncrement",      "CapabilityIncrement",     Domain.STRATEGIC,    Layer.CONCEPTUAL);
+        reg("Capability",               "Capability",              Domain.STRATEGIC);
+        reg("CapabilityConfiguration",  "CapabilityConfiguration", Domain.STRATEGIC);
+        reg("CapabilityComposition",    "CapabilityComposition",   Domain.STRATEGIC);
+        reg("CapabilityDependency",     "CapabilityDependency",    Domain.STRATEGIC);
+        reg("CapabilitySpecialization", "CapabilitySpecialization",Domain.STRATEGIC);
+        reg("Vision",                   "Vision",                  Domain.STRATEGIC);
+        reg("EndState",                 "EndState",                Domain.STRATEGIC);
+        reg("DesiredEffect",            "DesiredEffect",           Domain.STRATEGIC);
+        reg("EnterprisePhase",          "EnterprisePhase",         Domain.STRATEGIC);
+        reg("CapabilityIncrement",      "CapabilityIncrement",     Domain.STRATEGIC);
 
         // --- Operational View (OV) ---
-        reg("OperationalPerformer",     "OperationalPerformer",    Domain.OPERATIONAL,  Layer.CONCEPTUAL);
-        reg("OperationalActivity",      "OperationalActivity",     Domain.OPERATIONAL,  Layer.CONCEPTUAL);
-        reg("OperationalExchange",      "OperationalExchange",     Domain.OPERATIONAL,  Layer.CONCEPTUAL);
-        reg("OperationalCapability",    "OperationalCapability",   Domain.OPERATIONAL,  Layer.CONCEPTUAL);
-        reg("OperationalConnector",     "OperationalConnector",    Domain.OPERATIONAL,  Layer.CONCEPTUAL);
-        reg("OperationalDomain",        "OperationalDomain",       Domain.OPERATIONAL,  Layer.CONCEPTUAL);
-        reg("OperationalProcess",       "OperationalProcess",      Domain.OPERATIONAL,  Layer.CONCEPTUAL);
-        reg("OperationalFunction",      "OperationalFunction",     Domain.OPERATIONAL,  Layer.CONCEPTUAL);
-        reg("OperationalInteraction",   "OperationalInteraction",  Domain.OPERATIONAL,  Layer.CONCEPTUAL);
-        reg("NeedLine",                 "NeedLine",                Domain.OPERATIONAL,  Layer.CONCEPTUAL);
-        reg("PerformerPort",            "PerformerPort",           Domain.OPERATIONAL,  Layer.CONCEPTUAL);
-        reg("OperationalRole",          "OperationalRole",         Domain.OPERATIONAL,  Layer.CONCEPTUAL);
+        reg("OperationalPerformer",     "OperationalPerformer",    Domain.OPERATIONAL);
+        reg("OperationalActivity",      "OperationalActivity",     Domain.OPERATIONAL);
+        reg("OperationalExchange",      "OperationalExchange",     Domain.OPERATIONAL);
+        reg("OperationalCapability",    "OperationalCapability",   Domain.OPERATIONAL);
+        reg("OperationalConnector",     "OperationalConnector",    Domain.OPERATIONAL);
+        reg("OperationalDomain",        "OperationalDomain",       Domain.OPERATIONAL);
+        reg("OperationalProcess",       "OperationalProcess",      Domain.OPERATIONAL);
+        reg("OperationalFunction",      "OperationalFunction",     Domain.OPERATIONAL);
+        reg("OperationalInteraction",   "OperationalInteraction",  Domain.OPERATIONAL);
+        reg("OperationalInformation",   "OperationalInformation",  Domain.OPERATIONAL);
+        reg("NeedLine",                 "NeedLine",                Domain.OPERATIONAL);
+        reg("PerformerPort",            "PerformerPort",           Domain.OPERATIONAL);
+        reg("OperationalRole",          "OperationalRole",         Domain.OPERATIONAL);
 
-        // --- Resource View (RsV) --- (Systems in older UAF versions)
-        reg("ResourcePerformer",        "ResourcePerformer",       Domain.RESOURCE,     Layer.LOGICAL);
-        reg("ResourceFunction",         "ResourceFunction",        Domain.RESOURCE,     Layer.LOGICAL);
-        reg("ResourceInteraction",      "ResourceInteraction",     Domain.RESOURCE,     Layer.LOGICAL);
-        reg("ResourceArtifact",         "ResourceArtifact",        Domain.RESOURCE,     Layer.LOGICAL);
-        reg("ResourcePort",             "ResourcePort",            Domain.RESOURCE,     Layer.LOGICAL);
-        reg("ResourceConnector",        "ResourceConnector",       Domain.RESOURCE,     Layer.LOGICAL);
-        reg("HardwareElement",          "HardwareElement",         Domain.RESOURCE,     Layer.PHYSICAL);
-        reg("SoftwareElement",          "SoftwareElement",         Domain.RESOURCE,     Layer.PHYSICAL);
-        reg("NaturalResource",          "NaturalResource",         Domain.RESOURCE,     Layer.PHYSICAL);
-        reg("SystemBlock",              "SystemBlock",             Domain.RESOURCE,     Layer.LOGICAL);
-        reg("ActualSystem",             "ActualSystem",            Domain.RESOURCE,     Layer.PHYSICAL);
-        reg("LogicalArchitecture",      "LogicalArchitecture",     Domain.RESOURCE,     Layer.LOGICAL);
-        reg("PhysicalArchitecture",     "PhysicalArchitecture",    Domain.RESOURCE,     Layer.PHYSICAL);
+        // --- BPMN data elements (operational information artifacts in process diagrams) ---
+        // Verify exact names via MSOSA scripting console if any are skipped on export.
+        reg("DataObject",               "DataObject",              Domain.OPERATIONAL);
+        reg("DataInput",                "DataInput",               Domain.OPERATIONAL);
+        reg("DataOutput",               "DataOutput",              Domain.OPERATIONAL);
+        reg("DataStore",                "DataStore",               Domain.OPERATIONAL);
+
+        // --- Resource View (RsV) ---
+        reg("ResourcePerformer",        "ResourcePerformer",       Domain.RESOURCE);
+        reg("ResourceFunction",         "ResourceFunction",        Domain.RESOURCE);
+        reg("ResourceInteraction",      "ResourceInteraction",     Domain.RESOURCE);
+        reg("ResourceArtifact",         "ResourceArtifact",        Domain.RESOURCE);
+        reg("ResourceInformation",      "ResourceInformation",     Domain.RESOURCE);
+        reg("ResourcePort",             "ResourcePort",            Domain.RESOURCE);
+        reg("ResourceConnector",        "ResourceConnector",       Domain.RESOURCE);
+        reg("ResourceArchitecture",     "ResourceArchitecture",    Domain.RESOURCE);
+        reg("ResourceSystem",           "ResourceSystem",          Domain.RESOURCE);
+        reg("HardwareElement",          "HardwareElement",         Domain.RESOURCE);
+        reg("SoftwareElement",          "SoftwareElement",         Domain.RESOURCE);
+        reg("Software",                 "Software",                Domain.RESOURCE);
+        reg("NaturalResource",          "NaturalResource",         Domain.RESOURCE);
+        reg("SystemBlock",              "SystemBlock",             Domain.RESOURCE);
+        reg("System",                   "System",                  Domain.RESOURCE);
+        reg("ActualSystem",             "ActualSystem",            Domain.RESOURCE);
+        reg("Technology",               "Technology",              Domain.RESOURCE);
+        reg("LogicalArchitecture",      "LogicalArchitecture",     Domain.RESOURCE);
+        reg("PhysicalArchitecture",     "PhysicalArchitecture",    Domain.RESOURCE);
 
         // --- Service View (SvcV) ---
-        reg("ServicePerformer",         "ServicePerformer",        Domain.SERVICE,      Layer.LOGICAL);
-        reg("ServiceFunction",          "ServiceFunction",         Domain.SERVICE,      Layer.LOGICAL);
-        reg("ServiceSpecification",     "ServiceSpecification",    Domain.SERVICE,      Layer.LOGICAL);
-        reg("ServiceInterface",         "ServiceInterface",        Domain.SERVICE,      Layer.LOGICAL);
-        reg("ServicePoint",             "ServicePoint",            Domain.SERVICE,      Layer.LOGICAL);
-        reg("ServiceConnector",         "ServiceConnector",        Domain.SERVICE,      Layer.LOGICAL);
-        reg("ServiceExchange",          "ServiceExchange",         Domain.SERVICE,      Layer.LOGICAL);
+        reg("ServicePerformer",         "ServicePerformer",        Domain.SERVICE);
+        reg("ServiceFunction",          "ServiceFunction",         Domain.SERVICE);
+        reg("ServiceSpecification",     "ServiceSpecification",    Domain.SERVICE);
+        reg("ServiceInterface",         "ServiceInterface",        Domain.SERVICE);
+        reg("ServicePoint",             "ServicePoint",            Domain.SERVICE);
+        reg("ServiceConnector",         "ServiceConnector",        Domain.SERVICE);
+        reg("ServiceExchange",          "ServiceExchange",         Domain.SERVICE);
+        reg("Service",                  "Service",                 Domain.SERVICE);
+        reg("ServiceArchitecture",      "ServiceArchitecture",     Domain.SERVICE);
 
         // --- Personnel View (PrV) ---
-        reg("Organization",             "Organization",            Domain.PERSONNEL,    Layer.CONCEPTUAL);
-        reg("OrganizationalResource",   "OrganizationalResource",  Domain.PERSONNEL,    Layer.LOGICAL);
-        reg("Post",                     "Post",                    Domain.PERSONNEL,    Layer.LOGICAL);
-        reg("PersonnelActivity",        "PersonnelActivity",       Domain.PERSONNEL,    Layer.CONCEPTUAL);
-        reg("ActualOrganization",       "ActualOrganization",      Domain.PERSONNEL,    Layer.PHYSICAL);
-        reg("OrganizationalCapability", "OrganizationalCapability",Domain.PERSONNEL,    Layer.CONCEPTUAL);
+        reg("Organization",             "Organization",            Domain.PERSONNEL);
+        reg("OrganizationalResource",   "OrganizationalResource",  Domain.PERSONNEL);
+        reg("Post",                     "Post",                    Domain.PERSONNEL);
+        reg("PersonnelActivity",        "PersonnelActivity",       Domain.PERSONNEL);
+        reg("ActualOrganization",       "ActualOrganization",      Domain.PERSONNEL);
+        reg("OrganizationalCapability", "OrganizationalCapability",Domain.PERSONNEL);
 
         // --- Acquisition View (AcV) ---
-        reg("Project",                  "Project",                 Domain.ACQUISITION,  Layer.ALL);
-        reg("Milestone",                "Milestone",               Domain.ACQUISITION,  Layer.ALL);
-        reg("ProjectMilestone",         "ProjectMilestone",        Domain.ACQUISITION,  Layer.ALL);
-        reg("ProjectBoundary",          "ProjectBoundary",         Domain.ACQUISITION,  Layer.ALL);
-        reg("FundingRequest",           "FundingRequest",          Domain.ACQUISITION,  Layer.ALL);
+        reg("Project",                  "Project",                 Domain.ACQUISITION);
+        reg("Milestone",                "Milestone",               Domain.ACQUISITION);
+        reg("ProjectMilestone",         "ProjectMilestone",        Domain.ACQUISITION);
+        reg("ProjectBoundary",          "ProjectBoundary",         Domain.ACQUISITION);
+        reg("FundingRequest",           "FundingRequest",          Domain.ACQUISITION);
 
         // --- Security View (SrV) ---
-        reg("SecurityDomain",           "SecurityDomain",          Domain.SECURITY,     Layer.ALL);
-        reg("SecurityAsset",            "SecurityAsset",           Domain.SECURITY,     Layer.ALL);
-        reg("SecurityPolicy",           "SecurityPolicy",          Domain.SECURITY,     Layer.ALL);
+        reg("SecurityDomain",           "SecurityDomain",          Domain.SECURITY);
+        reg("SecurityAsset",            "SecurityAsset",           Domain.SECURITY);
+        reg("SecurityPolicy",           "SecurityPolicy",          Domain.SECURITY);
 
         // --- Shared / Cross-cutting ---
-        reg("Measurement",              "Measurement",             Domain.SHARED,       Layer.ALL);
-        reg("Standard",                 "Standard",                Domain.SHARED,       Layer.ALL);
-        reg("Condition",                "Condition",               Domain.SHARED,       Layer.ALL);
-        reg("ConfigurationItem",        "ConfigurationItem",       Domain.SHARED,       Layer.ALL);
-        reg("ImplementationConstraint", "ImplementationConstraint",Domain.SHARED,       Layer.ALL);
-        reg("Location",                 "Location",                Domain.SHARED,       Layer.ALL);
-        reg("ActualLocation",           "ActualLocation",          Domain.SHARED,       Layer.PHYSICAL);
+        reg("Measurement",              "Measurement",             Domain.SHARED);
+        reg("Standard",                 "Standard",                Domain.SHARED);
+        reg("Condition",                "Condition",               Domain.SHARED);
+        reg("ConfigurationItem",        "ConfigurationItem",       Domain.SHARED);
+        reg("ImplementationConstraint", "ImplementationConstraint",Domain.SHARED);
+        reg("Location",                 "Location",                Domain.SHARED);
+        reg("ActualLocation",           "ActualLocation",          Domain.SHARED);
+
     }
 
-    private static void reg(String stereotype, String label, Domain domain, Layer layer) {
-        REGISTRY.put(stereotype, new StereotypeInfo(label, domain, layer));
+    private static void reg(String stereotype, String label, Domain domain) {
+        REGISTRY.put(stereotype, new StereotypeInfo(label, domain));
     }
 
     public static Optional<StereotypeInfo> get(String stereotypeName) {

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <plugin id="com.uaf.neo4j.plugin"
         name="UAF Neo4j Export Plugin"
-        version="1.0.0"
+        version="${project.version}"
         internalVersion="202200000"
         ownClassloader="false"
         class-lookup="GlobalFirst"
@@ -13,6 +13,6 @@
     </requires>
 
     <runtime>
-        <library name="uaf-neo4j-plugin-1.0.0.jar"/>
+        <library name="uaf-neo4j-plugin-${project.version}.jar"/>
     </runtime>
 </plugin>
