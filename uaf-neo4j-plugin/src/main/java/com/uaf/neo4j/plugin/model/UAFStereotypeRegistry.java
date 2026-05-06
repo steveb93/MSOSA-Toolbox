@@ -141,4 +141,8 @@ public class UAFStereotypeRegistry {
     public static Set<String> allStereotypeNames() {
         return Collections.unmodifiableSet(REGISTRY.keySet());
     }
+
+    public static Map<String, StereotypeInfo> getAll() {
+        return Collections.unmodifiableMap(REGISTRY);
+    }
 }

@@ -50,6 +50,10 @@ public class Neo4jExportService implements AutoCloseable {
     // -------------------------------------------------------------------------
 
     public void exportNodes(List<UAFElementDTO> elements) {
+        exportNodes(elements, true);
+    }
+
+    public void exportNodes(List<UAFElementDTO> elements, boolean includeTaggedValues) {
         int total = elements.size();
         for (int i = 0; i < total; i += batchSize) {
             List<UAFElementDTO> batch = elements.subList(i, Math.min(i + batchSize, total));
@@ -57,7 +61,7 @@ public class Neo4jExportService implements AutoCloseable {
                 session.writeTransaction(tx -> {
                     for (UAFElementDTO dto : batch) {
                         tx.run(Neo4jCypherBuilder.nodeMergeCypher(dto),
-                               Neo4jCypherBuilder.nodeParams(dto));
+                               Neo4jCypherBuilder.nodeParams(dto, includeTaggedValues));
                     }
                     return null;
                 });

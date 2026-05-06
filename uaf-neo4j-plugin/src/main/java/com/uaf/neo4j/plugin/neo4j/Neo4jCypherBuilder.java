@@ -43,6 +43,10 @@ public class Neo4jCypherBuilder {
     }
 
     public static Map<String, Object> nodeParams(UAFElementDTO dto) {
+        return nodeParams(dto, true);
+    }
+
+    public static Map<String, Object> nodeParams(UAFElementDTO dto, boolean includeTaggedValues) {
         Map<String, Object> props = new HashMap<>();
         props.put("name",          dto.name);
         props.put("qualifiedName", dto.qualifiedName);
@@ -52,10 +56,11 @@ public class Neo4jCypherBuilder {
         props.put("documentation", dto.documentation);
         props.put("modelFile",     dto.modelFileName);
 
-        // Flatten tagged values into top-level properties (prefixed tv_)
-        for (Map.Entry<String, Object> tv : dto.taggedValues.entrySet()) {
-            String key = "tv_" + tv.getKey().replaceAll("[^a-zA-Z0-9_]", "_");
-            props.put(key, tv.getValue());
+        if (includeTaggedValues) {
+            for (Map.Entry<String, Object> tv : dto.taggedValues.entrySet()) {
+                String key = "tv_" + tv.getKey().replaceAll("[^a-zA-Z0-9_]", "_");
+                props.put(key, tv.getValue());
+            }
         }
 
         Map<String, Object> params = new HashMap<>();

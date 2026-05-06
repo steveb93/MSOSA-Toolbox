@@ -55,6 +55,9 @@ public class UAFNeo4jPlugin extends Plugin {
         config.setProperty("neo4j.database", "neo4j");
         config.setProperty("neo4j.batch.size", "500");
         config.setProperty("neo4j.max.connections", "10");
+        config.setProperty("export.tagged.values",  "true");
+        config.setProperty("export.relationships",  "true");
+        config.setProperty("export.instance.links", "true");
 
         File configFile = getConfigFile();
         if (configFile.exists()) {
