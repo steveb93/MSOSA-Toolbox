@@ -14,19 +14,21 @@ import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.util.*;
 import java.util.List;
+import java.util.Properties;
 
 /**
- * Screen 2 — Graph Inspector (Phase 2a).
+ * Screen 2 — Graph Inspector (Phase 2a + 2b).
  *
  * Non-modal dialog that queries :UAFElement nodes from Neo4j and presents them
- * in a searchable/filterable table.  Selecting a row shows core properties in
- * the right-hand inspector panel and enables "Locate in MSOSA Model", which
- * navigates the MSOSA containment browser to the corresponding element using
- * the MagicDraw element ID stored as the node's {id} property.
+ * in a searchable/filterable table. The right panel has two tabs:
+ *   Properties — core node properties + Locate in MSOSA button
+ *   Graph       — JGraphX 1-hop neighbourhood rendered on selection
+ *
+ * Clicking a node in the Graph tab syncs the table row selection (bidirectional).
  */
 public class GraphInspectorDialog extends JDialog {
 
-    // ── Palette (shared with ExportConfigDialog) ──────────────────────────────
+    // ── Palette ───────────────────────────────────────────────────────────────
     private static final Color HDR_BG        = new Color( 43,  43,  43);
     private static final Color HDR_TITLE     = Color.WHITE;
     private static final Color HDR_SUBTITLE  = new Color(160, 160, 160);
@@ -34,37 +36,39 @@ public class GraphInspectorDialog extends JDialog {
     private static final Color BORDER_SUBTLE = new Color(218, 219, 224);
 
     // ── State ─────────────────────────────────────────────────────────────────
-    private final Properties               connectionConfig;
-    private final Project                  project;           // may be null
-    private final List<String>             nodeIds  = new ArrayList<>();
+    private final Properties                connectionConfig;
+    private final Project                   project;
+    private final List<String>              nodeIds  = new ArrayList<>();
     private final List<Map<String, Object>> nodeData = new ArrayList<>();
+    private volatile String                 pendingNeighbourhoodId;
 
     // ── Main node table ───────────────────────────────────────────────────────
-    private final DefaultTableModel                tableModel;
-    private final JTable                           mainTable;
+    private final DefaultTableModel                 tableModel;
+    private final JTable                            mainTable;
     private final TableRowSorter<DefaultTableModel> sorter;
 
     // ── Search / filter ───────────────────────────────────────────────────────
     private final JTextField        searchField = new JTextField(22);
     private final JComboBox<String> domainBox;
 
-    // ── Inspector panel ───────────────────────────────────────────────────────
+    // ── Right panel ───────────────────────────────────────────────────────────
+    private JTabbedPane             rightTabs;
     private final DefaultTableModel propsModel;
     private final JTable            propsTable;
-    private final JButton           locateBtn = new JButton("Locate in MSOSA Model");
+    private final JButton           locateBtn  = new JButton("Locate in MSOSA Model");
+    private final GraphPanel        graphPanel  = new GraphPanel();
 
     // ── Cypher / status ───────────────────────────────────────────────────────
     private final JTextField   cypherField = new JTextField();
     private final JLabel       statusLabel = new JLabel("Connecting to Neo4j…");
     private final JProgressBar loadingBar  = new JProgressBar();
 
-    // Properties shown in inspector (ordered)
     private static final List<String> PROP_ORDER = Arrays.asList(
         "id", "name", "qualifiedName", "stereotype", "domain", "packageName", "documentation"
     );
 
     public GraphInspectorDialog(Frame parent, Properties connectionConfig, Project project) {
-        super(parent, "UAF Neo4j — Graph Inspector", false); // non-modal
+        super(parent, "UAF Neo4j — Graph Inspector", false);
         this.connectionConfig = connectionConfig;
         this.project          = project;
 
@@ -126,9 +130,22 @@ public class GraphInspectorDialog extends JDialog {
         cypherField.setEditable(false);
         cypherField.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 11));
 
-        // Loading bar — shown only while fetching
+        // Loading bar — shown only while fetching all nodes
         loadingBar.setIndeterminate(true);
         loadingBar.setVisible(false);
+
+        // Graph tab — clicking a node syncs table selection and switches to Properties
+        graphPanel.setOnNodeClick(clickedId -> {
+            int modelIdx = nodeIds.indexOf(clickedId);
+            if (modelIdx >= 0) {
+                int viewIdx = mainTable.convertRowIndexToView(modelIdx);
+                if (viewIdx >= 0) {
+                    mainTable.setRowSelectionInterval(viewIdx, viewIdx);
+                    mainTable.scrollRectToVisible(mainTable.getCellRect(viewIdx, 0, true));
+                    if (rightTabs != null) rightTabs.setSelectedIndex(0);
+                }
+            }
+        });
 
         setLayout(new BorderLayout());
         add(buildHeader(), BorderLayout.NORTH);
@@ -136,8 +153,8 @@ public class GraphInspectorDialog extends JDialog {
         add(buildSouth(),  BorderLayout.SOUTH);
 
         pack();
-        setMinimumSize(new Dimension(960, 600));
-        setPreferredSize(new Dimension(1060, 700));
+        setMinimumSize(new Dimension(1060, 620));
+        setPreferredSize(new Dimension(1200, 740));
         setResizable(true);
         setLocationRelativeTo(parent);
 
@@ -160,8 +177,8 @@ public class GraphInspectorDialog extends JDialog {
         title.setOpaque(false);
 
         JLabel subtitle = new JLabel(
-            "Browse exported UAF elements from Neo4j. " +
-            "Select a node to inspect its properties and locate it in the MSOSA model.");
+            "Browse UAF elements from Neo4j. Select a node to inspect its properties " +
+            "and explore its neighbourhood graph.");
         subtitle.setForeground(HDR_SUBTITLE);
         subtitle.setFont(subtitle.getFont().deriveFont(Font.PLAIN, 11f));
         subtitle.setOpaque(false);
@@ -177,9 +194,13 @@ public class GraphInspectorDialog extends JDialog {
     // ── Main split ────────────────────────────────────────────────────────────
 
     private JSplitPane buildMain() {
+        rightTabs = new JTabbedPane();
+        rightTabs.addTab("Properties", buildInspectorPanel());
+        rightTabs.addTab("Graph",      graphPanel);
+
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
-            buildNodesPanel(), buildInspectorPanel());
-        split.setDividerLocation(620);
+            buildNodesPanel(), rightTabs);
+        split.setDividerLocation(600);
         split.setBorder(null);
         return split;
     }
@@ -190,10 +211,9 @@ public class GraphInspectorDialog extends JDialog {
             new MatteBorder(0, 0, 0, 1, BORDER_SUBTLE),
             new EmptyBorder(10, 12, 10, 8)));
 
-        // Search bar
-        JLabel searchLbl  = new JLabel("Search:");
-        JLabel domainLbl  = new JLabel("  Domain:");
-        JPanel searchRow  = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        JLabel searchLbl = new JLabel("Search:");
+        JLabel domainLbl = new JLabel("  Domain:");
+        JPanel searchRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         searchRow.setOpaque(false);
         searchRow.add(searchLbl);
         searchRow.add(searchField);
@@ -214,7 +234,6 @@ public class GraphInspectorDialog extends JDialog {
         panel.setOpaque(true);
         panel.setBorder(new EmptyBorder(10, 10, 10, 12));
 
-        // Section heading
         JLabel heading = new JLabel("Node Properties");
         heading.setFont(heading.getFont().deriveFont(Font.BOLD, 12f));
 
@@ -227,12 +246,10 @@ public class GraphInspectorDialog extends JDialog {
         sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
         headBlock.add(sep);
 
-        // Properties table
         JScrollPane propsScroll = new JScrollPane(propsTable);
         propsScroll.setBorder(new MatteBorder(1, 1, 1, 1, BORDER_SUBTLE));
         propsScroll.getViewport().setBackground(LEFT_BG);
 
-        // Locate button
         JPanel southPanel = new JPanel(new BorderLayout(0, 4));
         southPanel.setOpaque(false);
         southPanel.add(locateBtn, BorderLayout.CENTER);
@@ -251,7 +268,6 @@ public class GraphInspectorDialog extends JDialog {
             new MatteBorder(1, 0, 0, 0, BORDER_SUBTLE),
             new EmptyBorder(6, 12, 10, 12)));
 
-        // Cypher row
         JLabel cypherLbl = new JLabel("Cypher:");
         cypherLbl.setFont(cypherLbl.getFont().deriveFont(Font.BOLD, 11f));
         JPanel cypherRow = new JPanel(new BorderLayout(6, 0));
@@ -259,7 +275,6 @@ public class GraphInspectorDialog extends JDialog {
         cypherRow.add(cypherLbl,   BorderLayout.WEST);
         cypherRow.add(cypherField, BorderLayout.CENTER);
 
-        // Status + buttons row
         JButton refreshBtn = new JButton("Refresh");
         refreshBtn.addActionListener(e -> refreshData());
         JButton closeBtn = new JButton("Close");
@@ -291,20 +306,19 @@ public class GraphInspectorDialog extends JDialog {
         propsModel.setRowCount(0);
         cypherField.setText("");
         locateBtn.setEnabled(false);
+        graphPanel.clear();
         statusLabel.setText("Connecting to Neo4j…");
         loadingBar.setIndeterminate(true);
         loadingBar.setVisible(true);
 
-        final Properties cfg = connectionConfig;
         new SwingWorker<List<Map<String, Object>>, Void>() {
             @Override
             protected List<Map<String, Object>> doInBackground() throws Exception {
-                try (Neo4jExportService svc = new Neo4jExportService(cfg)) {
+                try (Neo4jExportService svc = new Neo4jExportService(connectionConfig)) {
                     svc.init();
                     return svc.fetchAllUAFElements();
                 }
             }
-
             @Override
             protected void done() {
                 loadingBar.setIndeterminate(false);
@@ -338,24 +352,17 @@ public class GraphInspectorDialog extends JDialog {
         String domain = (String) domainBox.getSelectedItem();
 
         List<RowFilter<DefaultTableModel, Integer>> filters = new ArrayList<>();
-
         if (!text.isEmpty()) {
-            try {
-                // Search across Name (0), Stereotype (1), Package (3)
-                filters.add(RowFilter.regexFilter("(?i)" + text, 0, 1, 3));
-            } catch (Exception ignored) { /* invalid regex — skip */ }
+            try { filters.add(RowFilter.regexFilter("(?i)" + text, 0, 1, 3)); }
+            catch (Exception ignored) {}
         }
         if (!"All Domains".equals(domain)) {
             filters.add(RowFilter.regexFilter("^" + domain + "$", 2));
         }
 
-        if (filters.isEmpty()) {
-            sorter.setRowFilter(null);
-        } else if (filters.size() == 1) {
-            sorter.setRowFilter(filters.get(0));
-        } else {
-            sorter.setRowFilter(RowFilter.andFilter(filters));
-        }
+        if (filters.isEmpty())        sorter.setRowFilter(null);
+        else if (filters.size() == 1) sorter.setRowFilter(filters.get(0));
+        else                          sorter.setRowFilter(RowFilter.andFilter(filters));
 
         int visible = mainTable.getRowCount();
         int total   = tableModel.getRowCount();
@@ -372,16 +379,17 @@ public class GraphInspectorDialog extends JDialog {
             propsModel.setRowCount(0);
             cypherField.setText("");
             locateBtn.setEnabled(false);
+            graphPanel.clear();
             return;
         }
         int modelRow = mainTable.convertRowIndexToModel(viewRow);
-        String nodeId        = nodeIds.get(modelRow);
-        Map<String, Object>  data = nodeData.get(modelRow);
+        String nodeId       = nodeIds.get(modelRow);
+        Map<String, Object> data = nodeData.get(modelRow);
 
-        cypherField.setText("MATCH (n:UAFElement {id: '" + nodeId + "'}) RETURN n");
+        cypherField.setText(
+            "MATCH (n:UAFElement {id: '" + nodeId + "'})-[r]-(m:UAFElement) RETURN n,r,m");
         locateBtn.setEnabled(project != null);
 
-        // Populate inspector from cached summary data (no extra Neo4j round-trip)
         propsModel.setRowCount(0);
         for (String key : PROP_ORDER) {
             Object val = data.get(key);
@@ -389,6 +397,32 @@ public class GraphInspectorDialog extends JDialog {
                 propsModel.addRow(new Object[]{key, val});
             }
         }
+
+        loadNeighbourhood(nodeId);
+    }
+
+    // ── Neighbourhood graph ───────────────────────────────────────────────────
+
+    private void loadNeighbourhood(String nodeId) {
+        pendingNeighbourhoodId = nodeId;
+        graphPanel.clear();
+        new SwingWorker<Neo4jExportService.NeighbourhoodResult, Void>() {
+            @Override
+            protected Neo4jExportService.NeighbourhoodResult doInBackground() throws Exception {
+                try (Neo4jExportService svc = new Neo4jExportService(connectionConfig)) {
+                    svc.init();
+                    return svc.fetchNeighbourhood(nodeId);
+                }
+            }
+            @Override
+            protected void done() {
+                if (!nodeId.equals(pendingNeighbourhoodId)) return; // stale — user moved on
+                try {
+                    Neo4jExportService.NeighbourhoodResult result = get();
+                    graphPanel.showNeighbourhood(result.nodes, result.relationships, nodeId);
+                } catch (Exception ignored) {}
+            }
+        }.execute();
     }
 
     // ── Locate in MSOSA ───────────────────────────────────────────────────────
@@ -402,8 +436,7 @@ public class GraphInspectorDialog extends JDialog {
         try {
             Element el = (Element) project.getElementByID(nodeId);
             if (el != null) {
-                Application.getInstance().getMainFrame().getBrowser()
-                    .getContainmentTree().openNode(el);
+                openInContainmentBrowser(el);
             } else {
                 JOptionPane.showMessageDialog(this,
                     "<html>Element not found in the current project.<br>" +
@@ -415,5 +448,29 @@ public class GraphInspectorDialog extends JDialog {
                 "Could not navigate to element: " + ex.getMessage(),
                 "Locate in MSOSA Model", JOptionPane.WARNING_MESSAGE);
         }
+    }
+
+    /**
+     * Navigates the MSOSA containment browser to the given element.
+     *
+     * Uses reflection for the MainFrame → Browser → ContainmentTree chain to avoid
+     * compile-time dependencies on the full JIDE docking library hierarchy
+     * (MainFrame extends DefaultDockableBarDockableHolder → DockableHolder etc.).
+     * All JIDE jars are present at runtime inside MSOSA; only the MagicDraw API
+     * jars we ship as provided dependencies are visible at compile time.
+     */
+    private static void openInContainmentBrowser(Element el) throws Exception {
+        Object app       = Application.getInstance();
+        Object mainFrame = app.getClass().getMethod("getMainFrame").invoke(app);
+        Object browser   = mainFrame.getClass().getMethod("getBrowser").invoke(mainFrame);
+        Object tree      = browser.getClass().getMethod("getContainmentTree").invoke(browser);
+        // openNode(BaseElement) — pick the single-arg overload
+        for (java.lang.reflect.Method m : tree.getClass().getMethods()) {
+            if ("openNode".equals(m.getName()) && m.getParameterCount() == 1) {
+                m.invoke(tree, el);
+                return;
+            }
+        }
+        throw new NoSuchMethodException("openNode(BaseElement) not found on " + tree.getClass());
     }
 }

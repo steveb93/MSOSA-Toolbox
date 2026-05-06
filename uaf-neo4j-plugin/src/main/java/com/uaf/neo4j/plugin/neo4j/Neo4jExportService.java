@@ -184,6 +184,56 @@ public class Neo4jExportService implements AutoCloseable {
         return out;
     }
 
+    /**
+     * Fetches the 1-hop neighbourhood of a single :UAFElement node.
+     * Returns up to 50 neighbour nodes and up to 200 relationships for the Graph tab.
+     */
+    public NeighbourhoodResult fetchNeighbourhood(String nodeId) {
+        List<Map<String, Object>> nodes = new ArrayList<>();
+        List<Map<String, Object>> rels  = new ArrayList<>();
+        try (Session session = session()) {
+            session.readTransaction(tx -> {
+                // Centre node + up to 50 direct UAFElement neighbours
+                org.neo4j.driver.Result nodeRes = tx.run(
+                    "MATCH (centre:UAFElement {id: $id}) " +
+                    "OPTIONAL MATCH (centre)-[]-(nb:UAFElement) " +
+                    "WITH centre, collect(DISTINCT nb)[0..49] AS neighbours " +
+                    "WITH [centre] + [x IN neighbours WHERE x IS NOT NULL] AS all " +
+                    "UNWIND all AS n " +
+                    "RETURN n.id AS id, n.name AS name, n.stereotype AS stereotype, n.domain AS domain",
+                    java.util.Collections.singletonMap("id", nodeId));
+                while (nodeRes.hasNext()) {
+                    org.neo4j.driver.Record rec = nodeRes.next();
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    for (String key : rec.keys()) {
+                        org.neo4j.driver.Value v = rec.get(key);
+                        row.put(key, v.isNull() ? "" : v.asString());
+                    }
+                    nodes.add(row);
+                }
+                // All relationships touching the centre within the UAF subgraph
+                org.neo4j.driver.Result relRes = tx.run(
+                    "MATCH (centre:UAFElement {id: $id})-[r]-(nb:UAFElement) " +
+                    "RETURN startNode(r).id AS fromId, endNode(r).id AS toId, type(r) AS relType " +
+                    "LIMIT 200",
+                    java.util.Collections.singletonMap("id", nodeId));
+                while (relRes.hasNext()) {
+                    org.neo4j.driver.Record rec = relRes.next();
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    for (String key : rec.keys()) {
+                        org.neo4j.driver.Value v = rec.get(key);
+                        row.put(key, v.isNull() ? "" : v.asString());
+                    }
+                    rels.add(row);
+                }
+                return null;
+            });
+        } catch (Exception e) {
+            LOG.warning("fetchNeighbourhood failed for " + nodeId + ": " + e.getMessage());
+        }
+        return new NeighbourhoodResult(nodes, rels);
+    }
+
     /** Test-only: verifies that the connection is alive without writing. */
     public boolean testConnection() {
         try {
@@ -212,6 +262,17 @@ public class Neo4jExportService implements AutoCloseable {
     }
 
     // -------------------------------------------------------------------------
+
+    public static final class NeighbourhoodResult {
+        public final List<Map<String, Object>> nodes;
+        public final List<Map<String, Object>> relationships;
+
+        public NeighbourhoodResult(List<Map<String, Object>> nodes,
+                                   List<Map<String, Object>> relationships) {
+            this.nodes         = nodes;
+            this.relationships = relationships;
+        }
+    }
 
     public static final class ExportResult {
         public int nodesWritten        = 0;

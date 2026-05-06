@@ -4,6 +4,7 @@ F:\OneDrive\_VSCode\MSOSA-Toolbox\uaf-neo4j-plugin\src\main\java\com\uaf\neo4j\p
 F:\OneDrive\_VSCode\MSOSA-Toolbox\uaf-neo4j-plugin\src\main\java\com\uaf\neo4j\plugin\GraphInspectorAction.java
 F:\OneDrive\_VSCode\MSOSA-Toolbox\uaf-neo4j-plugin\src\main\java\com\uaf\neo4j\plugin\ui\ExportSummaryDialog.java
 F:\OneDrive\_VSCode\MSOSA-Toolbox\uaf-neo4j-plugin\src\main\java\com\uaf\neo4j\plugin\UAFNeo4jPlugin.java
+F:\OneDrive\_VSCode\MSOSA-Toolbox\uaf-neo4j-plugin\src\main\java\com\uaf\neo4j\plugin\ui\GraphPanel.java
 F:\OneDrive\_VSCode\MSOSA-Toolbox\uaf-neo4j-plugin\src\main\java\com\uaf\neo4j\plugin\AboutAction.java
 F:\OneDrive\_VSCode\MSOSA-Toolbox\uaf-neo4j-plugin\src\main\java\com\uaf\neo4j\plugin\ExportAction.java
 F:\OneDrive\_VSCode\MSOSA-Toolbox\uaf-neo4j-plugin\src\main\java\com\uaf\neo4j\plugin\model\UAFRelationshipDTO.java

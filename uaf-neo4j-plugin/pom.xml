@@ -13,7 +13,7 @@
     <description>MSOSA 2022x Refresh2 plugin to export UAF 1.2 elements and relationships to Neo4j</description>
 
     <properties>
-        <revision>0.2.0</revision>
+        <revision>0.4.0</revision>
         <java.version>11</java.version>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
@@ -38,6 +38,13 @@
             <artifactId>junit-jupiter</artifactId>
             <version>5.10.2</version>
             <scope>test</scope>
+        </dependency>
+
+        <!-- JGraphX — graph visualisation (bundled + shaded) -->
+        <dependency>
+            <groupId>com.github.vlsi.mxgraph</groupId>
+            <artifactId>jgraphx</artifactId>
+            <version>4.2.2</version>
         </dependency>
 
         <!--
@@ -169,6 +176,11 @@
                                 <relocation>
                                     <pattern>org.neo4j.driver</pattern>
                                     <shadedPattern>com.uaf.shaded.neo4j.driver</shadedPattern>
+                                </relocation>
+                                <!-- Relocate JGraphX to avoid any classpath conflicts -->
+                                <relocation>
+                                    <pattern>com.mxgraph</pattern>
+                                    <shadedPattern>com.uaf.shaded.mxgraph</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>org.reactivestreams</pattern>
