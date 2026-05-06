@@ -20,8 +20,14 @@ public class UAFModelTraverser {
 
     private static final Logger LOG = Logger.getLogger(UAFModelTraverser.class.getName());
 
-    // Relationship metaclass names → Neo4j relationship type
+    // UML metaclass name → Neo4j relationship type (base mapping before stereotype override)
     private static final Map<String, String> RELATION_TYPE_MAP = new LinkedHashMap<>();
+
+    // UAF relationship stereotype name → Neo4j relationship type.
+    // Kept separate from UAFStereotypeRegistry so that relationship stereotypes
+    // (which are applied to UML relationship elements, not to blocks/classes)
+    // are never mistaken for element stereotypes and never create nodes.
+    private static final Map<String, String> RELATIONSHIP_STEREOTYPE_MAP = new LinkedHashMap<>();
 
     static {
         RELATION_TYPE_MAP.put("Realization",          UAFRelationshipDTO.REL_REALISES);
@@ -40,6 +46,12 @@ public class UAFModelTraverser {
         RELATION_TYPE_MAP.put("Satisfy",              UAFRelationshipDTO.REL_SATISFIES);
         RELATION_TYPE_MAP.put("Derive",               UAFRelationshipDTO.REL_INFLUENCES);
         RELATION_TYPE_MAP.put("ComponentRealization", UAFRelationshipDTO.REL_REALISES);
+
+        RELATIONSHIP_STEREOTYPE_MAP.put("Exhibits",  UAFRelationshipDTO.REL_EXHIBITS);
+        RELATIONSHIP_STEREOTYPE_MAP.put("Refines",   UAFRelationshipDTO.REL_REFINES);
+        RELATIONSHIP_STEREOTYPE_MAP.put("Satisfies", UAFRelationshipDTO.REL_SATISFIES);
+        RELATIONSHIP_STEREOTYPE_MAP.put("Exposes",   UAFRelationshipDTO.REL_EXPOSES);
+        RELATIONSHIP_STEREOTYPE_MAP.put("Provides",  UAFRelationshipDTO.REL_PROVIDES);
     }
 
     private final Project project;
@@ -235,9 +247,16 @@ public class UAFModelTraverser {
             String metaclass = rel.getClass().getSimpleName();
             String neo4jType = RELATION_TYPE_MAP.getOrDefault(metaclass, UAFRelationshipDTO.REL_DEPENDENCY);
 
-            // Determine UAF stereotype applied to relationship, if any
+            // Override rel type with UAF relationship stereotype if present.
+            // RELATIONSHIP_STEREOTYPE_MAP is checked first — these are stereotypes applied
+            // to UML relationship elements (not blocks/classes) and must never create nodes.
             List<Stereotype> relStereos = StereotypesHelper.getStereotypes(rel);
             for (Stereotype rs : relStereos) {
+                String fromRelMap = RELATIONSHIP_STEREOTYPE_MAP.get(rs.getName());
+                if (fromRelMap != null) {
+                    neo4jType = fromRelMap;
+                    break;
+                }
                 Optional<UAFStereotypeRegistry.StereotypeInfo> ri = UAFStereotypeRegistry.get(rs.getName());
                 if (ri.isPresent()) {
                     neo4jType = ri.get().neo4jLabel.toUpperCase().replace(" ", "_");
