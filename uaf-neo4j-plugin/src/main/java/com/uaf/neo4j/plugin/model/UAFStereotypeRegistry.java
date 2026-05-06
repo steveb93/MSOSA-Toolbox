@@ -56,6 +56,13 @@ public class UAFStereotypeRegistry {
         reg("PerformerPort",            "PerformerPort",           Domain.OPERATIONAL);
         reg("OperationalRole",          "OperationalRole",         Domain.OPERATIONAL);
 
+        // --- BPMN data elements (operational information artifacts in process diagrams) ---
+        // Verify exact names via MSOSA scripting console if any are skipped on export.
+        reg("DataObject",               "DataObject",              Domain.OPERATIONAL);
+        reg("DataInput",                "DataInput",               Domain.OPERATIONAL);
+        reg("DataOutput",               "DataOutput",              Domain.OPERATIONAL);
+        reg("DataStore",                "DataStore",               Domain.OPERATIONAL);
+
         // --- Resource View (RsV) ---
         reg("ResourcePerformer",        "ResourcePerformer",       Domain.RESOURCE);
         reg("ResourceFunction",         "ResourceFunction",        Domain.RESOURCE);
