@@ -75,6 +75,12 @@ MERGE (:Stereotype {name: 'NeedLine',                 domain: 'OPERATIONAL'});
 MERGE (:Stereotype {name: 'PerformerPort',            domain: 'OPERATIONAL'});
 MERGE (:Stereotype {name: 'OperationalRole',          domain: 'OPERATIONAL'});
 
+// BPMN data elements (operational information artifacts used in process diagrams)
+MERGE (:Stereotype {name: 'DataObject',               domain: 'OPERATIONAL'});
+MERGE (:Stereotype {name: 'DataInput',                domain: 'OPERATIONAL'});
+MERGE (:Stereotype {name: 'DataOutput',               domain: 'OPERATIONAL'});
+MERGE (:Stereotype {name: 'DataStore',                domain: 'OPERATIONAL'});
+
 // Resource
 MERGE (:Stereotype {name: 'ResourcePerformer',        domain: 'RESOURCE'});
 MERGE (:Stereotype {name: 'ResourceFunction',         domain: 'RESOURCE'});
