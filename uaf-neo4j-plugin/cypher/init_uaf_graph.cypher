@@ -83,11 +83,16 @@ MERGE (:Stereotype {name: 'ResourceArtifact',         domain: 'RESOURCE'});
 MERGE (:Stereotype {name: 'ResourceInformation',      domain: 'RESOURCE'});
 MERGE (:Stereotype {name: 'ResourcePort',             domain: 'RESOURCE'});
 MERGE (:Stereotype {name: 'ResourceConnector',        domain: 'RESOURCE'});
+MERGE (:Stereotype {name: 'ResourceArchitecture',     domain: 'RESOURCE'});
+MERGE (:Stereotype {name: 'ResourceSystem',           domain: 'RESOURCE'});
 MERGE (:Stereotype {name: 'HardwareElement',          domain: 'RESOURCE'});
 MERGE (:Stereotype {name: 'SoftwareElement',          domain: 'RESOURCE'});
+MERGE (:Stereotype {name: 'Software',                 domain: 'RESOURCE'});
 MERGE (:Stereotype {name: 'NaturalResource',          domain: 'RESOURCE'});
 MERGE (:Stereotype {name: 'SystemBlock',              domain: 'RESOURCE'});
+MERGE (:Stereotype {name: 'System',                   domain: 'RESOURCE'});
 MERGE (:Stereotype {name: 'ActualSystem',             domain: 'RESOURCE'});
+MERGE (:Stereotype {name: 'Technology',               domain: 'RESOURCE'});
 MERGE (:Stereotype {name: 'LogicalArchitecture',      domain: 'RESOURCE'});
 MERGE (:Stereotype {name: 'PhysicalArchitecture',     domain: 'RESOURCE'});
 
@@ -99,6 +104,8 @@ MERGE (:Stereotype {name: 'ServiceInterface',         domain: 'SERVICE'});
 MERGE (:Stereotype {name: 'ServicePoint',             domain: 'SERVICE'});
 MERGE (:Stereotype {name: 'ServiceConnector',         domain: 'SERVICE'});
 MERGE (:Stereotype {name: 'ServiceExchange',          domain: 'SERVICE'});
+MERGE (:Stereotype {name: 'Service',                  domain: 'SERVICE'});
+MERGE (:Stereotype {name: 'ServiceArchitecture',      domain: 'SERVICE'});
 
 // Personnel
 MERGE (:Stereotype {name: 'Organization',             domain: 'PERSONNEL'});
