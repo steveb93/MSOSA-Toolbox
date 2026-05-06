@@ -160,6 +160,10 @@ public class UAFModelTraverser {
         // Extract all tagged values for this stereotype
         extractTaggedValues(element, uafStereo, eb);
 
+        // Extract owned UML class attributes (covers ResourceInformation / OperationalInformation
+        // data properties and attributes inherited via ERD entity mappings)
+        extractOwnedAttributes(element, eb);
+
         elements.add(eb.build());
 
         // Process relationships owned by this element
@@ -192,6 +196,32 @@ public class UAFModelTraverser {
             }
         } catch (Exception e) {
             LOG.warning("Failed to extract tagged values for " + safeId(element) + ": " + e.getMessage());
+        }
+    }
+
+    private void extractOwnedAttributes(Element element, UAFElementDTO.Builder builder) {
+        if (!(element instanceof com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Classifier)) return;
+        try {
+            com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Classifier cls =
+                (com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Classifier) element;
+            for (com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Property attr : cls.getAttribute()) {
+                String attrName = attr.getName();
+                if (attrName == null || attrName.isEmpty()) continue;
+                com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Type attrType = attr.getType();
+                String typeName = (attrType != null && attrType.getName() != null)
+                                  ? attrType.getName() : "";
+                builder.taggedValue("attr_" + attrName, typeName);
+                int lower = attr.getLower();
+                int upper = attr.getUpper();
+                String mult = (upper == -1)
+                    ? lower + "..*"
+                    : (lower == upper ? String.valueOf(lower) : lower + ".." + upper);
+                if (!"1".equals(mult)) {
+                    builder.taggedValue("attr_" + attrName + "_mult", mult);
+                }
+            }
+        } catch (Exception e) {
+            LOG.warning("Failed to extract owned attributes for " + safeId(element) + ": " + e.getMessage());
         }
     }
 
