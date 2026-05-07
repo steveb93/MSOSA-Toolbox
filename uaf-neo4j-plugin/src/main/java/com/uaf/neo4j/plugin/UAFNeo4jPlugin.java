@@ -2,8 +2,11 @@ package com.uaf.neo4j.plugin;
 
 import com.nomagic.magicdraw.actions.ActionsConfiguratorsManager;
 import com.nomagic.magicdraw.core.Application;
+import com.nomagic.magicdraw.core.Project;
 import com.nomagic.magicdraw.plugins.Plugin;
+import com.uaf.neo4j.plugin.ui.GraphInspectorDialog;
 
+import javax.swing.SwingUtilities;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -20,6 +23,7 @@ public class UAFNeo4jPlugin extends Plugin {
     private static UAFNeo4jPlugin instance;
 
     private Properties config;
+    private GraphInspectorDialog graphInspectorDialog;
 
     public static UAFNeo4jPlugin getInstance() {
         return instance;
@@ -82,6 +86,22 @@ public class UAFNeo4jPlugin extends Plugin {
 
     public Properties getConfig() {
         return config;
+    }
+
+    /**
+     * Shows the Graph Inspector, reusing an existing instance if it is still open.
+     * Must be called on the EDT.
+     */
+    public void showGraphInspector() {
+        SwingUtilities.invokeLater(() -> {
+            if (graphInspectorDialog == null || !graphInspectorDialog.isDisplayable()) {
+                Project project = Application.getInstance().getProject();
+                graphInspectorDialog = new GraphInspectorDialog(null, config, project);
+            }
+            graphInspectorDialog.setVisible(true);
+            graphInspectorDialog.toFront();
+            graphInspectorDialog.requestFocus();
+        });
     }
 
     private File getConfigFile() {

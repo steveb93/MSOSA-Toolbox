@@ -178,8 +178,6 @@ public class Neo4jExportService implements AutoCloseable {
                 }
                 return null;
             });
-        } catch (Exception e) {
-            LOG.warning("fetchAllUAFElements failed: " + e.getMessage());
         }
         return out;
     }
