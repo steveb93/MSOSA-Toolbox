@@ -5,7 +5,7 @@ import com.nomagic.actions.ActionsManager;
 import com.nomagic.magicdraw.actions.MDActionsCategory;
 
 /**
- * Injects the "UAF Neo4j Export" sub-menu into the MSOSA Tools menu.
+ * Injects the "UAF 1.2 → Neo4j Graph Exporter" sub-menu into the MSOSA Tools menu.
  */
 public class UAFExporterActionsConfigurator implements AMConfigurator {
 
@@ -19,7 +19,7 @@ public class UAFExporterActionsConfigurator implements AMConfigurator {
         }
 
         MDActionsCategory uafMenu = new MDActionsCategory(
-            "UAF_NEO4J_MENU", "UAF Neo4j Export");
+            "UAF_NEO4J_MENU", "UAF 1.2 → Neo4j Graph Exporter");
         uafMenu.setNested(true);
 
         uafMenu.addAction(new ExportAction());

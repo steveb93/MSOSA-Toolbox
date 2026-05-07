@@ -156,6 +156,7 @@ public class GraphInspectorDialog extends JDialog {
         setMinimumSize(new Dimension(1060, 620));
         setPreferredSize(new Dimension(1200, 740));
         setResizable(true);
+        setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         setLocationRelativeTo(parent);
 
         refreshData();
