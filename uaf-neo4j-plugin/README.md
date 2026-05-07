@@ -24,8 +24,8 @@ UAFElementDTO / UAFRelationshipDTO
     ▼
 Neo4j (Docker :7687)
     ├── :SystemModel {id, name}
-    │       └──[:DEFINES]──► :UAFElement:Capability      ──[:INSTANCE_OF]──► :Stereotype
-    │       └──[:DEFINES]──► :UAFElement:OperationalPerformer ...
+    │       └──[:DEFINES]──► :Capability      ──[:INSTANCE_OF]──► :Stereotype
+    │       └──[:DEFINES]──► :OperationalPerformer ...
     └── [:PERFORMS] [:TRACES_TO] [:SATISFIES] ...
 ```
 
@@ -192,14 +192,13 @@ Changes are saved immediately and take effect without restarting MSOSA.
 
 ## Node Structure in Neo4j
 
-Each exported UAF element gets **dual labels**: `:UAFElement` + its stereotype label
-(e.g. `:Capability`). This lets queries target all exported elements generically or
-a specific type efficiently.
+Each exported UAF element carries **only its stereotype label** (e.g. `:Capability`,
+`:OperationalPerformer`). There is no generic `:UAFElement` label. To match all exported
+elements regardless of stereotype, filter on the `stereotype` property:
 
-### Labels
-
-- `UAFElement` — universal label for all exported instances
-- Stereotype label — e.g. `Capability`, `OperationalPerformer`, `HardwareElement`
+```cypher
+MATCH (n) WHERE n.stereotype IS NOT NULL ...
+```
 
 ### Core Properties
 
@@ -208,28 +207,71 @@ a specific type efficiently.
 | `id` | MagicDraw element ID — stable MERGE key |
 | `name` | Element name from model |
 | `qualifiedName` | Fully qualified model path |
-| `stereotype` | Applied UAF stereotype name |
+| `stereotype` | Applied UAF stereotype name (e.g. `"Capability"`) |
 | `domain` | UAF domain (`STRATEGIC` / `OPERATIONAL` / `RESOURCE` / `SERVICE` / `PERSONNEL` / `ACQUISITION` / `SECURITY`) |
-| `layer` | Architecture layer (`CONCEPTUAL` / `LOGICAL` / `PHYSICAL`) |
 | `packageName` | Package hierarchy |
 | `diagramId` / `diagramName` | Diagrams that include this element |
 | `documentation` | Model comments / notes |
 | `modelFile` | Last-exporting project name (convenience — authoritative provenance is via `[:DEFINES]`) |
 
-### Tagged Value Properties
+### Tagged Value Properties (`tv_*`)
 
-All UAF tagged values are flattened as `tv_<tagName>` properties (special characters
-replaced with `_`), e.g. `tv_nationality`, `tv_capabilityLevel`.
+UAF stereotypes can define extra attributes on a model element beyond the standard UML
+properties — these are called **tagged values**. Examples: `capabilityLevel` on a
+`Capability`, `nationality` on an `Organization`, `dataType` on a `ResourceInformation`.
+
+During export, every tagged value found on a model element is written to Neo4j as a
+node property with a `tv_` prefix:
+
+| Tagged value in MSOSA | Property in Neo4j |
+|---|---|
+| `capabilityLevel = 3` | `tv_capabilityLevel = 3` |
+| `nationality = "UK"` | `tv_nationality = "UK"` |
+| `data-type = "String"` | `tv_data_type = "String"` |
+
+**Why the `tv_` prefix?**
+
+- Prevents collisions with core properties — a tagged value named `name` or `domain`
+  cannot overwrite the element's built-in properties.
+- Groups all tagged values under one predictable namespace, so they can be retrieved
+  or filtered as a set without knowing the individual attribute names in advance.
+
+Special characters in the original tag name (hyphens, dots, spaces) are replaced with
+`_` during export.
+
+**Querying tagged values:**
+
+```cypher
+// Find all Capabilities with a specific level
+MATCH (n:Capability) WHERE n.tv_capabilityLevel >= 3
+RETURN n.name, n.tv_capabilityLevel ORDER BY n.tv_capabilityLevel;
+
+// List all tagged value attributes on a ResourceInformation element
+MATCH (ri:ResourceInformation {name: 'MyDataItem'})
+RETURN [k IN keys(ri) WHERE k STARTS WITH 'tv_' | {attr: k, value: ri[k]}] AS dataModel;
+
+// Find elements that have a specific tagged value key (any value)
+MATCH (n) WHERE n.tv_nationality IS NOT NULL
+RETURN n.name, n.stereotype, n.tv_nationality ORDER BY n.tv_nationality;
+```
+
+Tagged values on **relationships** are also exported with the same `tv_` prefix and can
+be queried the same way:
+
+```cypher
+MATCH (src)-[r:PERFORMS]->(act:OperationalActivity)
+WHERE r.tv_frequency IS NOT NULL
+RETURN src.name, act.name, r.tv_frequency;
+```
 
 ### Metamodel and Provenance Links
 
 ```cypher
 // Each element is owned by the project that exported it
-(:SystemModel {id, name})-[:DEFINES]->(:UAFElement)
+(:SystemModel {id, name})-[:DEFINES]->(:Capability)
 
 // Each element links to the UAF metamodel
-(:UAFElement)-[:INSTANCE_OF]->(:Stereotype)-[:BELONGS_TO]->(:Domain)
-                                            -[:IN_LAYER]->(:ArchitectureLayer)
+(:Capability)-[:INSTANCE_OF]->(:Stereotype)-[:BELONGS_TO]->(:Domain)
 ```
 
 When two MSOSA projects share elements via project usage (same MagicDraw element IDs),
@@ -245,7 +287,7 @@ losing provenance.
 
 | Relationship | Source | Target | Description |
 |---|---|---|---|
-| `DEFINES` | `:SystemModel` | `:UAFElement` | Element was traversed during export of this project |
+| `DEFINES` | `:SystemModel` | stereotype node (e.g. `:Capability`) | Element was traversed during export of this project |
 
 ### UAF Instance Relationships
 
@@ -264,9 +306,8 @@ Relationships carry: `id`, `uafType` (UML metaclass), `name`, `domain`, plus any
 
 | Relationship | Source | Target |
 |---|---|---|
-| `INSTANCE_OF` | `:UAFElement` | `:Stereotype` |
+| `INSTANCE_OF` | stereotype node (e.g. `:Capability`) | `:Stereotype` |
 | `BELONGS_TO` | `:Stereotype` | `:Domain` |
-| `IN_LAYER` | `:Stereotype` | `:ArchitectureLayer` |
 
 ---
 
@@ -286,32 +327,36 @@ See `cypher/query-cookbook.cypher` for a full set. Quick start:
 
 ```cypher
 // All exported elements by stereotype count
-MATCH (n:UAFElement)
+MATCH (n) WHERE n.stereotype IS NOT NULL
 RETURN n.stereotype, count(*) AS total ORDER BY total DESC;
 
 // Performers and their activities
 MATCH (p:OperationalPerformer)-[:PERFORMS]->(a:OperationalActivity)
 RETURN p.name, a.name;
 
-// Cross-domain traceability: Strategic → Physical
-MATCH path = (st:UAFElement {domain:'STRATEGIC'})
+// Cross-domain traceability: Strategic → Resource
+MATCH path = (st {domain: 'STRATEGIC'})
              -[:REALISES|TRACES_TO|ALLOCATED_TO|SATISFIES|IMPLEMENTS*1..6]->
-             (ph:UAFElement {layer:'PHYSICAL'})
-RETURN st.name, ph.name, ph.stereotype, length(path) AS hops
+             (rs {domain: 'RESOURCE'})
+WHERE st.stereotype IS NOT NULL AND rs.stereotype IS NOT NULL
+RETURN st.name, rs.name, rs.stereotype, length(path) AS hops
 ORDER BY hops LIMIT 50;
 
 // All elements owned by a specific system model
-MATCH (m:SystemModel {name: 'MyProject'})-[:DEFINES]->(n:UAFElement)
+MATCH (m:SystemModel {name: 'MyProject'})-[:DEFINES]->(n)
+WHERE n.stereotype IS NOT NULL
 RETURN n.name, n.stereotype, n.domain ORDER BY n.domain, n.stereotype;
 
 // Elements shared across two or more models
-MATCH (m:SystemModel)-[:DEFINES]->(n:UAFElement)
+MATCH (m:SystemModel)-[:DEFINES]->(n)
+WHERE n.stereotype IS NOT NULL
 WITH n, collect(m.name) AS models, count(m) AS modelCount
 WHERE modelCount > 1
 RETURN n.name, n.stereotype, models ORDER BY modelCount DESC;
 
 // 1-hop neighbourhood of a named element (mirrors the Graph Inspector view)
-MATCH (n:UAFElement {name: 'MyCapability'})-[r]-(m:UAFElement)
+MATCH (n:Capability {name: 'MyCapability'})-[r]-(m)
+WHERE m.stereotype IS NOT NULL
 RETURN n, r, m;
 ```
 
@@ -328,4 +373,5 @@ RETURN n, r, m;
 | Slow export | Large model + small batch | Increase `neo4j.batch.size` to 500–1000 on the Connection tab |
 | `ClassNotFoundException` on startup | SDK jars not in local Maven repo | Re-run `.\install-msosa-jars.ps1` from `uaf-neo4j-plugin/` |
 | Stereotype skipped silently | Name mismatch in `UAFStereotypeRegistry` | Verify name via MSOSA scripting console — see CLAUDE.md |
-| Graph tab shows placeholder after selection | Node has no UAFElement relationships in Neo4j | Export relationships (Options tab) or check that init Cypher was run |
+| Graph tab shows placeholder after selection | Node has no UAF relationships in Neo4j | Export relationships (Options tab) or check that init Cypher was run |
+| Graph Inspector shows 0 nodes | Plugin JAR not rebuilt after a code change, or database empty | Run `MATCH (n) WHERE n.stereotype IS NOT NULL RETURN count(n)` in Neo4j Browser; if > 0, redeploy the plugin JAR |

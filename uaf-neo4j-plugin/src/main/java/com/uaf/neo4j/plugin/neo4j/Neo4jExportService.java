@@ -161,7 +161,7 @@ public class Neo4jExportService implements AutoCloseable {
         try (Session session = session()) {
             session.readTransaction(tx -> {
                 org.neo4j.driver.Result res = tx.run(
-                    "MATCH (n:UAFElement) " +
+                    "MATCH (n) WHERE n.stereotype IS NOT NULL " +
                     "RETURN n.id AS id, n.name AS name, n.stereotype AS stereotype, " +
                     "n.domain AS domain, n.packageName AS packageName, " +
                     "n.qualifiedName AS qualifiedName, n.documentation AS documentation " +
@@ -191,10 +191,10 @@ public class Neo4jExportService implements AutoCloseable {
         List<Map<String, Object>> rels  = new ArrayList<>();
         try (Session session = session()) {
             session.readTransaction(tx -> {
-                // Centre node + up to 50 direct UAFElement neighbours
+                // Centre node + up to 50 direct UAF element neighbours
                 org.neo4j.driver.Result nodeRes = tx.run(
-                    "MATCH (centre:UAFElement {id: $id}) " +
-                    "OPTIONAL MATCH (centre)-[]-(nb:UAFElement) " +
+                    "MATCH (centre {id: $id}) WHERE centre.stereotype IS NOT NULL " +
+                    "OPTIONAL MATCH (centre)-[]-(nb) WHERE nb.stereotype IS NOT NULL " +
                     "WITH centre, collect(DISTINCT nb)[0..49] AS neighbours " +
                     "WITH [centre] + [x IN neighbours WHERE x IS NOT NULL] AS all " +
                     "UNWIND all AS n " +
@@ -211,7 +211,8 @@ public class Neo4jExportService implements AutoCloseable {
                 }
                 // All relationships touching the centre within the UAF subgraph
                 org.neo4j.driver.Result relRes = tx.run(
-                    "MATCH (centre:UAFElement {id: $id})-[r]-(nb:UAFElement) " +
+                    "MATCH (centre {id: $id})-[r]-(nb) " +
+                    "WHERE centre.stereotype IS NOT NULL AND nb.stereotype IS NOT NULL " +
                     "RETURN startNode(r).id AS fromId, endNode(r).id AS toId, type(r) AS relType " +
                     "LIMIT 200",
                     java.util.Collections.singletonMap("id", nodeId));
