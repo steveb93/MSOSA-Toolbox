@@ -120,17 +120,17 @@ public class GraphPanel extends JPanel {
 
                 graph.insertEdge(parent, null, type, src, tgt,
                     "rounded=1;edgeStyle=orthogonalEdgeStyle;" +
-                    "fontSize=9;fontColor=#666666;strokeColor=#BBBBBB;exitX=1;exitY=0.5;" +
-                    "entryX=0;entryY=0.5;");
+                    "fontSize=9;fontColor=#666666;strokeColor=#BBBBBB;exitX=0.5;exitY=1;" +
+                    "entryX=0.5;entryY=0;");
             }
         } finally {
             graph.getModel().endUpdate();
         }
 
-        // Left-to-right hierarchical layout
-        mxHierarchicalLayout layout = new mxHierarchicalLayout(graph, SwingConstants.WEST);
+        // Top-to-bottom hierarchical layout
+        mxHierarchicalLayout layout = new mxHierarchicalLayout(graph, SwingConstants.NORTH);
         layout.setInterRankCellSpacing(55);
-        layout.setIntraCellSpacing(35);
+        layout.setIntraCellSpacing(45);
         layout.execute(parent);
 
         graphComp = new mxGraphComponent(graph);

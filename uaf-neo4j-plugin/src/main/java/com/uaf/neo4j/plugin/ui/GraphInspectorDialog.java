@@ -388,7 +388,7 @@ public class GraphInspectorDialog extends JDialog {
         Map<String, Object> data = nodeData.get(modelRow);
 
         cypherField.setText(
-            "MATCH (n:UAFElement {id: '" + nodeId + "'})-[r]-(m:UAFElement) RETURN n,r,m");
+            "MATCH (n {id: '" + nodeId + "'})-[r]-(m) WHERE n.stereotype IS NOT NULL AND m.stereotype IS NOT NULL RETURN n,r,m");
         locateBtn.setEnabled(project != null);
 
         propsModel.setRowCount(0);
