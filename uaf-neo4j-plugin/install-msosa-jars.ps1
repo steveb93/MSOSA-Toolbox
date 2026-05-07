@@ -18,5 +18,7 @@ mvn install:install-file "-Dfile=$jarsDir\javax.jmi-1.0.jar" "-DgroupId=javax.jm
 mvn install:install-file "-Dfile=$jarsDir\org.eclipse.emf.ecore-2.33.0.jar" "-DgroupId=org.eclipse.emf" "-DartifactId=ecore" "-Dversion=2.33.0" "-Dpackaging=jar" "-DgeneratePom=true"
 mvn install:install-file "-Dfile=$jarsDir\com.nomagic.utils-2022.2.0-105-acd52bbc.jar" "-DgroupId=com.nomagic" "-DartifactId=nomagic-utils" "-Dversion=$version" "-Dpackaging=jar" "-DgeneratePom=true"
 mvn install:install-file "-Dfile=$jarsDir\org.eclipse.emf.common-2.28.0.jar" "-DgroupId=org.eclipse.emf" "-DartifactId=emf-common" "-Dversion=2.28.0" "-Dpackaging=jar" "-DgeneratePom=true"
+mvn install:install-file "-Dfile=$jarsDir\common-2022.2.0-105-acd52bbc.jar" "-DgroupId=$group" "-DartifactId=magicdraw-common" "-Dversion=$version" "-Dpackaging=jar" "-DgeneratePom=true"
+mvn install:install-file "-Dfile=$jarsDir\jide-action-3.7.13.jar" "-DgroupId=com.jidesoft" "-DartifactId=jide-action" "-Dversion=3.7.13" "-Dpackaging=jar" "-DgeneratePom=true"
 
 Write-Host "All MSOSA jars installed successfully." -ForegroundColor Green

@@ -5,6 +5,9 @@
 //
 // Model conventions:
 //   - Each element node carries only its stereotype label (e.g. :Capability).
+//     There is no generic :UAFElement label — use WHERE n.stereotype IS NOT NULL
+//     as the universal filter when you need all exported elements without
+//     specifying a particular stereotype label.
 //   - Every element has an 'id' property holding the MSOSA element ID
 //     (globally unique — use this, not name, to identify elements).
 //   - Names are NOT unique across the graph; elements in different domains
@@ -373,6 +376,21 @@ RETURN n.domain AS domain, n.stereotype AS stereotype,
        count(s) AS withInstanceOf,
        count(n) - count(s) AS missingInstanceOf
 ORDER BY missingInstanceOf DESC;
+
+// Graph Inspector shows 0 nodes? Run these in order to isolate the cause:
+
+// Step 1 — confirm exported elements exist in the database
+MATCH (n) WHERE n.stereotype IS NOT NULL RETURN count(n) AS exportedElements;
+
+// Step 2 — check the stereotype property is actually set (should match Step 1 count)
+MATCH (n) WHERE n.stereotype IS NOT NULL AND n.id IS NOT NULL
+RETURN count(n) AS elementsWithBothProps;
+
+// Step 3 — sample the properties on a known label to spot missing fields
+MATCH (n:Capability) RETURN keys(n) LIMIT 1;
+
+// Step 4 — full node inventory (all label types and counts)
+MATCH (n) RETURN labels(n)[0] AS primaryLabel, count(n) AS count ORDER BY count DESC;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EXTRAS — Utility queries
