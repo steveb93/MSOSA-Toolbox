@@ -67,6 +67,73 @@ MSOSA-Toolbox/
 - **Cypher** must use parameterised queries only — no string interpolation into Cypher statements.
 - Label and relationship-type identifiers must be sanitised to `[a-zA-Z0-9_]` before use.
 
+### Releasing a new version
+
+The CI pipeline handles building and publishing. Contributors own the version number and the git tag — CI does the rest.
+
+#### Step 1 — Bump the version
+
+Use the Maven Versions Plugin to update the `revision` property in `pom.xml`:
+
+```powershell
+cd uaf-neo4j-plugin
+mvn versions:set-property -Dproperty=revision -DnewVersion=0.4.1
+```
+
+Commit and push to `main`:
+
+```powershell
+git add uaf-neo4j-plugin/pom.xml
+git commit -m "chore: bump version to 0.4.1"
+git push origin main
+```
+
+CI will automatically update any hardcoded version strings in the docs to match.
+
+#### Step 2 — Tag the release
+
+Tags drive the release pipeline. The tag name **must** match the `revision` in `pom.xml` (with a `v` prefix).
+
+```powershell
+# Full release from main
+git tag v0.4.1
+git push origin v0.4.1
+
+# Preview release from preview branch
+git tag v0.4.1-Preview
+git push origin v0.4.1-Preview
+```
+
+Pushing the tag triggers:
+
+1. Build and test
+2. Branch verification (release tags must come from `main`; `-Preview` tags from `preview`)
+3. Version string sync committed back to the base branch
+4. A **draft** GitHub Release created with the plugin zip attached and auto-generated release notes
+
+#### Step 3 — Publish the draft release
+
+Open the draft at **GitHub → Releases**, review the notes, then click **Publish release**.
+
+> The release type (major / minor / patch) is auto-detected from the version number:
+> `v1.0.0` → major, `v0.5.0` → minor, `v0.4.1` → patch.
+
+---
+
+#### Alternative: trigger via workflow_dispatch
+
+Use this when you need to create a release without pushing a tag manually (e.g. from a CI environment or to control the draft flag explicitly).
+
+Go to **Actions → Build & Release → Run workflow** and fill in:
+
+| Input | Example | Notes |
+|---|---|---|
+| `version` | `v0.4.1` | Must match `revision` in `pom.xml` exactly |
+| `release_type` | `minor` | Informational — appears in the release title |
+| `draft` | `true` | Uncheck to publish immediately |
+
+The workflow verifies the version matches `pom.xml` before building and will fail fast if they differ.
+
 ---
 
 ## Licence

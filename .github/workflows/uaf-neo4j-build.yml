@@ -1,24 +1,74 @@
-name: Build
+name: Build & Release
+
 on:
   push:
     branches: ["main", "preview"]
-    tags: ["v*"]      #/Example: v1.0.0 from main, v0.2.0-Preview from preview
+    tags: ["v*"]
   pull_request:
     branches: ["main", "preview"]
     paths:
       - "uaf-neo4j-plugin/**"
+  schedule:
+    - cron: "0 2 * * *"   # Nightly at 02:00 UTC
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release tag (e.g. v0.4.1) — must match the revision property in pom.xml"
+        required: true
+        type: string
+      release_type:
+        description: "Release type (informational — used in release title)"
+        required: true
+        default: minor
+        type: choice
+        options: [major, minor, patch]
+      draft:
+        description: "Publish as draft release"
+        required: false
+        default: true
+        type: boolean
+
 permissions:
   contents: write
+
 jobs:
+  # ── Nightly change guard ──────────────────────────────────────────────────
+  # Skipped for all non-schedule events; the build job checks its result.
+  check-changes:
+    name: Detect nightly changes
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    outputs:
+      has_changes: ${{ steps.detect.outputs.has_changes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: detect
+        run: |
+          SINCE=$(date -u -d '24 hours ago' '+%Y-%m-%dT%H:%M:%SZ')
+          COUNT=$(git log --oneline --after="$SINCE" -- uaf-neo4j-plugin/ | wc -l)
+          echo "has_changes=$([ "$COUNT" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+  # ── Main build ────────────────────────────────────────────────────────────
   build:
+    name: Build Plugin
+    needs: [check-changes]
+    if: |
+      always() &&
+      needs.check-changes.result != 'failure' &&
+      (needs.check-changes.result == 'skipped' ||
+       needs.check-changes.outputs.has_changes == 'true')
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: uaf-neo4j-plugin
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # needed so `git branch --contains` can see remote branches
+          fetch-depth: 0
       - name: Set up JDK 11
         uses: actions/setup-java@v4
         with:
@@ -29,18 +79,101 @@ jobs:
       - name: Install API jars
         shell: pwsh
         run: ./install-msosa-jars.ps1
-
       - name: Build Plugin
         run: mvn clean package
+      - name: Get version from pom.xml
+        id: get-version
+        run: |
+          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Verify dispatch version matches pom.xml
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          POM=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          BARE="${INPUT_VERSION#v}"
+          if [ "$POM" != "$BARE" ]; then
+            echo "::error::Input version '${BARE}' does not match pom.xml '${POM}'. Update the revision property first."
+            exit 1
+          fi
       - name: Update dependency graph
         uses: advanced-security/maven-dependency-submission-action@v4
         with:
           directory: uaf-neo4j-plugin
+      - name: Upload plugin artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-zip
+          path: uaf-neo4j-plugin/target/uaf-neo4j-plugin-*-plugin.zip
+          retention-days: 7
 
-      - name: Verify tag is on the correct branch
-        if: startsWith(github.ref, 'refs/tags/v')
+  # ── Version reference sync ────────────────────────────────────────────────
+  # Rewrites hardcoded version strings in *.md to match the published tag.
+  # On publish (tag push or dispatch) the tag name is the canonical version.
+  # On plain branch pushes it falls back to the pom.xml version.
+  # Skipped when the bot itself pushed (prevents infinite loop).
+  sync-version-refs:
+    name: Sync version references in docs
+    needs: [build, verify-tag-branch]
+    if: |
+      always() &&
+      needs.build.result == 'success' &&
+      (needs.verify-tag-branch.result == 'success' || needs.verify-tag-branch.result == 'skipped') &&
+      (
+        (github.event_name == 'push' && github.actor != 'github-actions[bot]' &&
+         (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/preview')) ||
+        startsWith(github.ref, 'refs/tags/v') ||
+        github.event_name == 'workflow_dispatch'
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve version and target branch
+        id: resolve
         shell: bash
-        working-directory: ${{ github.workspace }}
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            V="${{ inputs.version }}"; VERSION="${V#v}"
+            BRANCH="${GITHUB_REF_NAME}"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            BRANCH="$([[ "${GITHUB_REF_NAME}" == *-Preview ]] && echo preview || echo main)"
+          else
+            VERSION="${{ needs.build.outputs.version }}"
+            BRANCH="${GITHUB_REF_NAME}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "branch=$BRANCH"   >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.resolve.outputs.branch }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Replace version strings in markdown
+        run: |
+          VERSION="${{ steps.resolve.outputs.version }}"
+          find . -name "*.md" -not -path "./.git/*" -exec sed -i \
+            -E "s|uaf-neo4j-plugin-[0-9]+\.[0-9]+\.[0-9]+|uaf-neo4j-plugin-${VERSION}|g" {} +
+      - name: Commit if anything changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git diff --quiet && exit 0
+          git add -A
+          git commit -m "chore: sync version references to ${{ steps.resolve.outputs.version }} [skip ci]"
+          git push
+
+  # ── Tag branch guard ──────────────────────────────────────────────────────
+  verify-tag-branch:
+    name: Verify tag is on correct branch
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check branch
+        shell: bash
         run: |
           if [[ "${GITHUB_REF_NAME}" == *-Preview ]]; then
             EXPECTED="origin/preview"
@@ -50,15 +183,60 @@ jobs:
           if git branch -r --contains "${GITHUB_SHA}" | grep -qE "^[[:space:]]*${EXPECTED}[[:space:]]*$"; then
             echo "Tag ${GITHUB_REF_NAME} verified on ${EXPECTED}"
           else
-            echo "::error::Tag ${GITHUB_REF_NAME} is not on ${EXPECTED}. Preview tags must come from 'preview', release tags from 'main'."
+            echo "::error::Tag ${GITHUB_REF_NAME} must originate from ${EXPECTED}. Preview tags from 'preview', release tags from 'main'."
             exit 1
           fi
 
-      - name: Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
+  # ── Release ───────────────────────────────────────────────────────────────
+  # Runs on: pushed tag (always draft) or workflow_dispatch (draft = input).
+  # Major vs minor distinction is captured in the release_type input label.
+  release:
+    name: Publish Release
+    needs: [build, verify-tag-branch]
+    if: |
+      always() &&
+      needs.build.result == 'success' &&
+      (needs.verify-tag-branch.result == 'success' ||
+       needs.verify-tag-branch.result == 'skipped') &&
+      (startsWith(github.ref, 'refs/tags/v') ||
+       github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download plugin artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: plugin-zip
+          path: dist
+      - name: Resolve release parameters
+        id: params
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TAG="${{ inputs.version }}"
+            TYPE="${{ inputs.release_type }}"
+            IS_DRAFT="${{ inputs.draft }}"
+            IS_PRERELEASE="false"
+          else
+            TAG="${GITHUB_REF_NAME}"
+            IS_DRAFT="true"
+            IS_PRERELEASE="${{ contains(github.ref, '-Preview') }}"
+            BARE="${GITHUB_REF_NAME#v}"
+            MINOR=$(echo "$BARE" | cut -d. -f2)
+            PATCH=$(echo "$BARE" | cut -d. -f3 | sed 's/-.*//')
+            if   [ "$MINOR" -eq 0 ] && [ "$PATCH" -eq 0 ]; then TYPE="major"
+            elif [ "$PATCH" -eq 0 ];                        then TYPE="minor"
+            else                                                 TYPE="patch"
+            fi
+          fi
+          echo "tag=$TAG"                     >> "$GITHUB_OUTPUT"
+          echo "name=${TAG} (${TYPE})"        >> "$GITHUB_OUTPUT"
+          echo "is_draft=$IS_DRAFT"           >> "$GITHUB_OUTPUT"
+          echo "is_prerelease=$IS_PRERELEASE" >> "$GITHUB_OUTPUT"
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            uaf-neo4j-plugin/target/uaf-neo4j-plugin-*-plugin.zip
+          tag_name: ${{ steps.params.outputs.tag }}
+          name: ${{ steps.params.outputs.name }}
+          files: dist/*.zip
           generate_release_notes: true
-          prerelease: ${{ contains(github.ref, '-Preview') }}
+          draft: ${{ steps.params.outputs.is_draft }}
+          prerelease: ${{ steps.params.outputs.is_prerelease }}
