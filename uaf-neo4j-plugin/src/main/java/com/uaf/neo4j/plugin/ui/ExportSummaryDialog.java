@@ -1,6 +1,7 @@
 package com.uaf.neo4j.plugin.ui;
 
 import com.uaf.neo4j.plugin.ExportLog;
+import com.uaf.neo4j.plugin.UAFNeo4jPlugin;
 import com.uaf.neo4j.plugin.neo4j.Neo4jExportService.ExportResult;
 
 import javax.swing.*;
@@ -44,6 +45,17 @@ public class ExportSummaryDialog extends JDialog {
             openLogBtn.addActionListener(e -> openFile(logFile));
             buttons.add(openLogBtn);
         }
+
+        JButton browseBtn = new JButton("Browse Graph…");
+        browseBtn.setToolTipText("Open the Graph Inspector to explore exported nodes in Neo4j");
+        browseBtn.addActionListener(e -> {
+            dispose(); // close summary before opening inspector
+            UAFNeo4jPlugin plugin = UAFNeo4jPlugin.getInstance();
+            if (plugin != null) {
+                plugin.showGraphInspector();
+            }
+        });
+        buttons.add(browseBtn);
 
         JButton closeBtn = new JButton("Close");
         closeBtn.addActionListener(e -> dispose());

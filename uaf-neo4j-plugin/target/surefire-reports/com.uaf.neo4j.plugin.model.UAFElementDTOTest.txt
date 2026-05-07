@@ -1,4 +1,8 @@
 -------------------------------------------------------------------------------
 Test set: com.uaf.neo4j.plugin.model.UAFElementDTOTest
 -------------------------------------------------------------------------------
+<<<<<<< HEAD
 Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.041 s -- in com.uaf.neo4j.plugin.model.UAFElementDTOTest
+=======
+Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.040 s -- in com.uaf.neo4j.plugin.model.UAFElementDTOTest
+>>>>>>> fcef039354bfa1f4da5e7c4eb734e35c4a433586

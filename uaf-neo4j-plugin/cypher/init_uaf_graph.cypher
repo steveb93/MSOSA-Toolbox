@@ -4,11 +4,10 @@
 //
 //   cypher-shell -u neo4j -p Password123 -f init_uaf_graph.cypher
 //
-// Node identity: every UAF element node carries only its stereotype label
-// (e.g. :Capability, :OperationalPerformer) and is keyed on the 'id' property,
-// which holds the MSOSA element ID — globally unique per model and stable
-// across re-exports.  Names are NOT unique (elements in different domains
-// may share names), so never use name as a merge key.
+// Node identity: exported UAF elements carry only their stereotype label
+// (e.g. :Capability, :OperationalPerformer) and are keyed on 'id' (the MSOSA
+// element ID — globally unique per model and stable across re-exports).
+// Names are NOT unique (elements in different domains may share names).
 // =============================================================================
 
 // --- Constraints -------------------------------------------------------------
