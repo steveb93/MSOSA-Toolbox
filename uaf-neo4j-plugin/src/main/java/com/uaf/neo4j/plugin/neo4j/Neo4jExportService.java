@@ -50,6 +50,10 @@ public class Neo4jExportService implements AutoCloseable {
     // -------------------------------------------------------------------------
 
     public void exportNodes(List<UAFElementDTO> elements) {
+        exportNodes(elements, true);
+    }
+
+    public void exportNodes(List<UAFElementDTO> elements, boolean includeTaggedValues) {
         int total = elements.size();
         for (int i = 0; i < total; i += batchSize) {
             List<UAFElementDTO> batch = elements.subList(i, Math.min(i + batchSize, total));
@@ -57,7 +61,7 @@ public class Neo4jExportService implements AutoCloseable {
                 session.writeTransaction(tx -> {
                     for (UAFElementDTO dto : batch) {
                         tx.run(Neo4jCypherBuilder.nodeMergeCypher(dto),
-                               Neo4jCypherBuilder.nodeParams(dto));
+                               Neo4jCypherBuilder.nodeParams(dto, includeTaggedValues));
                     }
                     return null;
                 });
@@ -148,6 +152,87 @@ public class Neo4jExportService implements AutoCloseable {
         }
     }
 
+    /**
+     * Fetches a summary of every :UAFElement node from Neo4j for the Graph Inspector.
+     * Returns core properties only (no tv_* tagged values) for performance.
+     */
+    public List<Map<String, Object>> fetchAllUAFElements() {
+        List<Map<String, Object>> out = new ArrayList<>();
+        try (Session session = session()) {
+            session.readTransaction(tx -> {
+                org.neo4j.driver.Result res = tx.run(
+                    "MATCH (n) WHERE n.stereotype IS NOT NULL " +
+                    "RETURN n.id AS id, n.name AS name, n.stereotype AS stereotype, " +
+                    "n.domain AS domain, n.packageName AS packageName, " +
+                    "n.qualifiedName AS qualifiedName, n.documentation AS documentation " +
+                    "ORDER BY n.domain, n.name LIMIT 10000"
+                );
+                while (res.hasNext()) {
+                    org.neo4j.driver.Record rec = res.next();
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    for (String key : rec.keys()) {
+                        org.neo4j.driver.Value v = rec.get(key);
+                        row.put(key, v.isNull() ? "" : v.asString());
+                    }
+                    out.add(row);
+                }
+                return null;
+            });
+        }
+        return out;
+    }
+
+    /**
+     * Fetches the 1-hop neighbourhood of a single :UAFElement node.
+     * Returns up to 50 neighbour nodes and up to 200 relationships for the Graph tab.
+     */
+    public NeighbourhoodResult fetchNeighbourhood(String nodeId) {
+        List<Map<String, Object>> nodes = new ArrayList<>();
+        List<Map<String, Object>> rels  = new ArrayList<>();
+        try (Session session = session()) {
+            session.readTransaction(tx -> {
+                // Centre node + up to 50 direct UAF element neighbours
+                org.neo4j.driver.Result nodeRes = tx.run(
+                    "MATCH (centre {id: $id}) WHERE centre.stereotype IS NOT NULL " +
+                    "OPTIONAL MATCH (centre)-[]-(nb) WHERE nb.stereotype IS NOT NULL " +
+                    "WITH centre, collect(DISTINCT nb)[0..49] AS neighbours " +
+                    "WITH [centre] + [x IN neighbours WHERE x IS NOT NULL] AS all " +
+                    "UNWIND all AS n " +
+                    "RETURN n.id AS id, n.name AS name, n.stereotype AS stereotype, n.domain AS domain",
+                    java.util.Collections.singletonMap("id", nodeId));
+                while (nodeRes.hasNext()) {
+                    org.neo4j.driver.Record rec = nodeRes.next();
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    for (String key : rec.keys()) {
+                        org.neo4j.driver.Value v = rec.get(key);
+                        row.put(key, v.isNull() ? "" : v.asString());
+                    }
+                    nodes.add(row);
+                }
+                // All relationships touching the centre within the UAF subgraph
+                org.neo4j.driver.Result relRes = tx.run(
+                    "MATCH (centre {id: $id})-[r]-(nb) " +
+                    "WHERE centre.stereotype IS NOT NULL AND nb.stereotype IS NOT NULL " +
+                    "RETURN startNode(r).id AS fromId, endNode(r).id AS toId, type(r) AS relType " +
+                    "LIMIT 200",
+                    java.util.Collections.singletonMap("id", nodeId));
+                while (relRes.hasNext()) {
+                    org.neo4j.driver.Record rec = relRes.next();
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    for (String key : rec.keys()) {
+                        org.neo4j.driver.Value v = rec.get(key);
+                        row.put(key, v.isNull() ? "" : v.asString());
+                    }
+                    rels.add(row);
+                }
+                return null;
+            });
+        } catch (Exception e) {
+            LOG.warning("fetchNeighbourhood failed for " + nodeId + ": " + e.getMessage());
+        }
+        return new NeighbourhoodResult(nodes, rels);
+    }
+
     /** Test-only: verifies that the connection is alive without writing. */
     public boolean testConnection() {
         try {
@@ -176,6 +261,17 @@ public class Neo4jExportService implements AutoCloseable {
     }
 
     // -------------------------------------------------------------------------
+
+    public static final class NeighbourhoodResult {
+        public final List<Map<String, Object>> nodes;
+        public final List<Map<String, Object>> relationships;
+
+        public NeighbourhoodResult(List<Map<String, Object>> nodes,
+                                   List<Map<String, Object>> relationships) {
+            this.nodes         = nodes;
+            this.relationships = relationships;
+        }
+    }
 
     public static final class ExportResult {
         public int nodesWritten        = 0;
