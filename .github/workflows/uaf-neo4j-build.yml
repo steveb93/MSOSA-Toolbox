@@ -109,23 +109,48 @@ jobs:
           retention-days: 7
 
   # ── Version reference sync ────────────────────────────────────────────────
-  # Rewrites hardcoded version strings (e.g. in *.md) to match pom.xml.
+  # Rewrites hardcoded version strings in *.md to match the published tag.
+  # On publish (tag push or dispatch) the tag name is the canonical version.
+  # On plain branch pushes it falls back to the pom.xml version.
   # Skipped when the bot itself pushed (prevents infinite loop).
   sync-version-refs:
     name: Sync version references in docs
-    needs: build
+    needs: [build, verify-tag-branch]
     if: |
-      github.event_name == 'push' &&
-      github.actor != 'github-actions[bot]' &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/preview')
+      always() &&
+      needs.build.result == 'success' &&
+      (needs.verify-tag-branch.result == 'success' || needs.verify-tag-branch.result == 'skipped') &&
+      (
+        (github.event_name == 'push' && github.actor != 'github-actions[bot]' &&
+         (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/preview')) ||
+        startsWith(github.ref, 'refs/tags/v') ||
+        github.event_name == 'workflow_dispatch'
+      )
     runs-on: ubuntu-latest
     steps:
+      - name: Resolve version and target branch
+        id: resolve
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            V="${{ inputs.version }}"; VERSION="${V#v}"
+            BRANCH="${GITHUB_REF_NAME}"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            BRANCH="$([[ "${GITHUB_REF_NAME}" == *-Preview ]] && echo preview || echo main)"
+          else
+            VERSION="${{ needs.build.outputs.version }}"
+            BRANCH="${GITHUB_REF_NAME}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "branch=$BRANCH"   >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
         with:
+          ref: ${{ steps.resolve.outputs.branch }}
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Replace version strings in markdown
         run: |
-          VERSION="${{ needs.build.outputs.version }}"
+          VERSION="${{ steps.resolve.outputs.version }}"
           find . -name "*.md" -not -path "./.git/*" -exec sed -i \
             -E "s|uaf-neo4j-plugin-[0-9]+\.[0-9]+\.[0-9]+|uaf-neo4j-plugin-${VERSION}|g" {} +
       - name: Commit if anything changed
@@ -134,7 +159,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git diff --quiet && exit 0
           git add -A
-          git commit -m "chore: sync version references to ${{ needs.build.outputs.version }} [skip ci]"
+          git commit -m "chore: sync version references to ${{ steps.resolve.outputs.version }} [skip ci]"
           git push
 
   # ── Tag branch guard ──────────────────────────────────────────────────────
@@ -192,9 +217,15 @@ jobs:
             IS_PRERELEASE="false"
           else
             TAG="${GITHUB_REF_NAME}"
-            TYPE="release"
             IS_DRAFT="true"
             IS_PRERELEASE="${{ contains(github.ref, '-Preview') }}"
+            BARE="${GITHUB_REF_NAME#v}"
+            MINOR=$(echo "$BARE" | cut -d. -f2)
+            PATCH=$(echo "$BARE" | cut -d. -f3 | sed 's/-.*//')
+            if   [ "$MINOR" -eq 0 ] && [ "$PATCH" -eq 0 ]; then TYPE="major"
+            elif [ "$PATCH" -eq 0 ];                        then TYPE="minor"
+            else                                                 TYPE="patch"
+            fi
           fi
           echo "tag=$TAG"                     >> "$GITHUB_OUTPUT"
           echo "name=${TAG} (${TYPE})"        >> "$GITHUB_OUTPUT"
