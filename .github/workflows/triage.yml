@@ -23,10 +23,10 @@ jobs:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-      - uses: mschilde/auto-label-merge-conflicts@master
+      - uses: eps1lon/actions-label-merge-conflict@v3
         with:
-          CONFLICT_LABEL_NAME: "Has Conflicts"
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          dirtyLabel: "Has Conflicts"
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
 
   # ── Duplicate detection ───────────────────────────────────────────────────
   # Checks newly opened or edited issues for similarity against existing ones.
