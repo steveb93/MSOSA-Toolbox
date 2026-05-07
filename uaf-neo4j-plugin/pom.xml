@@ -13,7 +13,7 @@
     <description>MSOSA 2022x Refresh2 plugin to export UAF 1.2 elements and relationships to Neo4j</description>
 
     <properties>
-        <revision>0.4.0</revision>
+        <revision>0.5.0</revision>
         <java.version>11</java.version>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
