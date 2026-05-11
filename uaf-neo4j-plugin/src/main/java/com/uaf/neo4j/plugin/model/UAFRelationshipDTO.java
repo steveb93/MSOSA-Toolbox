@@ -11,7 +11,7 @@ import java.util.Objects;
  */
 public final class UAFRelationshipDTO {
 
-    // Covers the 29 UAF 1.2 relationship types; stored as the Neo4j type string.
+    // Covers the 31 relationship types (UAF 1.2, SysML 1.6, BPMN 2.0); stored as the Neo4j type string.
     public static final String REL_REALISES          = "REALISES";
     public static final String REL_TRACES_TO         = "TRACES_TO";
     public static final String REL_ASSIGNED_TO       = "ASSIGNED_TO";
@@ -41,6 +41,8 @@ public final class UAFRelationshipDTO {
     public static final String REL_GENERALIZATION    = "GENERALIZATION";
     public static final String REL_INFORMATION_FLOW  = "INFORMATION_FLOW";
     public static final String REL_CONTROL_FLOW      = "CONTROL_FLOW";
+    public static final String REL_SEQUENCE_FLOW     = "SEQUENCE_FLOW";
+    public static final String REL_MESSAGE_FLOW      = "MESSAGE_FLOW";
 
     public final String id;
     public final String uafType;         // UML/UAF metaclass name
@@ -49,6 +51,7 @@ public final class UAFRelationshipDTO {
     public final String targetId;
     public final String name;
     public final String domain;
+    public final String language;
     public final Map<String, Object> taggedValues;
 
     private UAFRelationshipDTO(Builder b) {
@@ -59,6 +62,7 @@ public final class UAFRelationshipDTO {
         this.targetId     = b.targetId;
         this.name         = b.name;
         this.domain       = b.domain;
+        this.language     = b.language;
         this.taggedValues = Collections.unmodifiableMap(new LinkedHashMap<>(b.taggedValues));
     }
 
@@ -75,6 +79,7 @@ public final class UAFRelationshipDTO {
         private String uafType   = "Dependency";
         private String name      = "";
         private String domain    = "UNKNOWN";
+        private String language  = "UAF";
         private final Map<String, Object> taggedValues = new LinkedHashMap<>();
 
         private Builder(String id, String sourceId, String targetId, String neo4jType) {
@@ -84,9 +89,10 @@ public final class UAFRelationshipDTO {
             this.neo4jType = Objects.requireNonNull(neo4jType, "neo4jType");
         }
 
-        public Builder uafType(String v)   { this.uafType = v;   return this; }
-        public Builder name(String v)      { this.name    = v;   return this; }
-        public Builder domain(String v)    { this.domain  = v;   return this; }
+        public Builder uafType(String v)   { this.uafType   = v; return this; }
+        public Builder name(String v)      { this.name      = v; return this; }
+        public Builder domain(String v)    { this.domain    = v; return this; }
+        public Builder language(String v)  { this.language  = v; return this; }
 
         public Builder taggedValue(String key, Object value) {
             if (value != null) taggedValues.put(key, value);

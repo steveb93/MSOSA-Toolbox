@@ -3,22 +3,14 @@ package com.uaf.neo4j.plugin;
 import com.nomagic.magicdraw.actions.MDAction;
 import com.nomagic.magicdraw.core.Application;
 import com.nomagic.magicdraw.core.Project;
-import com.uaf.neo4j.plugin.model.UAFElementDTO;
-import com.uaf.neo4j.plugin.model.UAFModelTraverser;
-import com.uaf.neo4j.plugin.model.UAFRelationshipDTO;
-import com.uaf.neo4j.plugin.neo4j.Neo4jExportService;
-import com.uaf.neo4j.plugin.neo4j.Neo4jExportService.ExportResult;
-import com.uaf.neo4j.plugin.ui.ExportSummaryDialog;
+import com.uaf.neo4j.plugin.ui.ExportConfigDialog;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
-import java.util.List;
-import java.util.Properties;
 
 /**
- * Tools → UAF Neo4j Export → Export to Neo4j
- * Runs model traversal + Neo4j write in a background SwingWorker so the UI
- * remains responsive during export.
+ * Tools → UAF Neo4j Export → Export to Neo4j...
+ * Opens ExportConfigDialog where the user selects domains, options, and triggers the export.
  */
 public class ExportAction extends MDAction {
 
@@ -37,62 +29,7 @@ public class ExportAction extends MDAction {
                 JOptionPane.WARNING_MESSAGE);
             return;
         }
-
-        Properties config = UAFNeo4jPlugin.getInstance().getConfig();
-        ExportLog log = new ExportLog(project.getName());
-
-        new SwingWorker<ExportResult, String>() {
-
-            @Override
-            protected ExportResult doInBackground() throws Exception {
-                publish("Traversing UAF model...");
-                UAFModelTraverser traverser = new UAFModelTraverser(project);
-                List<UAFElementDTO> elements = traverser.getElements();
-                List<UAFRelationshipDTO> relationships = traverser.getRelationships();
-
-                publish(String.format("Found %d elements, %d relationships. Connecting to Neo4j...",
-                    elements.size(), relationships.size()));
-
-                try (Neo4jExportService service = new Neo4jExportService(config)) {
-                    service.init();
-                    publish("Writing nodes...");
-                    service.exportNodes(elements);
-                    publish("Writing relationships...");
-                    service.exportRelationships(relationships);
-                    publish("Linking to UAF metamodel stereotypes...");
-                    service.exportInstanceOfLinks(elements);
-                    publish("Writing system model provenance...");
-                    service.exportSystemModel(traverser.getSystemModelId(), traverser.getSystemModelName());
-                    service.exportDefinesLinks(traverser.getSystemModelId(), elements);
-                    return service.getResult();
-                }
-            }
-
-            @Override
-            protected void process(List<String> chunks) {
-                for (String msg : chunks) {
-                    log.add(msg);
-                }
-            }
-
-            @Override
-            protected void done() {
-                try {
-                    ExportResult result = get();
-                    log.finish(result);
-                    new ExportSummaryDialog(null, result, log).setVisible(true);
-                } catch (Exception ex) {
-                    Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
-                    log.finishWithException(cause.getMessage());
-                    JOptionPane.showMessageDialog(
-                        null,
-                        "Export failed: " + cause.getMessage(),
-                        "UAF Neo4j Export",
-                        JOptionPane.ERROR_MESSAGE);
-                }
-            }
-
-        }.execute();
+        new ExportConfigDialog(null, project).setVisible(true);
     }
 
     @Override
