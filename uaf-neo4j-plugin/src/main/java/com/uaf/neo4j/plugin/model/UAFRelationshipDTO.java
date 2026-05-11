@@ -11,7 +11,7 @@ import java.util.Objects;
  */
 public final class UAFRelationshipDTO {
 
-    // Covers the 29 UAF 1.2 relationship types; stored as the Neo4j type string.
+    // Covers the 31 relationship types (UAF 1.2, SysML 1.6, BPMN 2.0); stored as the Neo4j type string.
     public static final String REL_REALISES          = "REALISES";
     public static final String REL_TRACES_TO         = "TRACES_TO";
     public static final String REL_ASSIGNED_TO       = "ASSIGNED_TO";
