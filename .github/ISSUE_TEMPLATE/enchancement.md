@@ -2,7 +2,7 @@
 name: Enchancement
 about: 'Create a enhancement '
 title: ''
-labels: 'Status: Pending, Type: Enhancement'
+labels: 'Type: Enhancement'
 assignees: ''
 
 ---

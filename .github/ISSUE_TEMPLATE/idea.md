@@ -1,8 +1,8 @@
 ---
-name: Feature request
+name: Idea
 about: Suggest an idea for this project
 title: ''
-labels: 'Status: Pending'
+labels: ''
 assignees: ''
 
 ---
