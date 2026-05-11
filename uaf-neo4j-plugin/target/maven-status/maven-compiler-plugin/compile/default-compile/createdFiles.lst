@@ -3,6 +3,7 @@ com\uaf\neo4j\plugin\ui\GraphPanel.class
 com\uaf\neo4j\plugin\model\UAFStereotypeRegistry$Domain.class
 com\uaf\neo4j\plugin\ui\ExportSummaryDialog.class
 com\uaf\neo4j\plugin\ui\GraphInspectorDialog$5.class
+com\uaf\neo4j\plugin\ui\GraphPanel$3.class
 com\uaf\neo4j\plugin\ExportAction.class
 com\uaf\neo4j\plugin\model\UAFElementDTO$Builder.class
 com\uaf\neo4j\plugin\model\UAFModelTraverser.class
@@ -22,6 +23,7 @@ com\uaf\neo4j\plugin\ui\GraphInspectorDialog$1.class
 com\uaf\neo4j\plugin\model\UAFRelationshipDTO$Builder.class
 com\uaf\neo4j\plugin\GraphInspectorAction.class
 com\uaf\neo4j\plugin\ui\ConnectionDialog.class
+com\uaf\neo4j\plugin\ui\GraphPanel$2.class
 com\uaf\neo4j\plugin\model\UAFRelationshipDTO.class
 com\uaf\neo4j\plugin\neo4j\Neo4jExportService$NeighbourhoodResult.class
 com\uaf\neo4j\plugin\ui\ExportConfigDialog$2.class

@@ -163,7 +163,7 @@ public class Neo4jExportService implements AutoCloseable {
                 org.neo4j.driver.Result res = tx.run(
                     "MATCH (n) WHERE n.stereotype IS NOT NULL " +
                     "RETURN n.id AS id, n.name AS name, n.stereotype AS stereotype, " +
-                    "n.domain AS domain, n.packageName AS packageName, " +
+                    "n.domain AS domain, n.language AS language, n.packageName AS packageName, " +
                     "n.qualifiedName AS qualifiedName, n.documentation AS documentation " +
                     "ORDER BY n.domain, n.name LIMIT 10000"
                 );
@@ -198,7 +198,7 @@ public class Neo4jExportService implements AutoCloseable {
                     "WITH centre, collect(DISTINCT nb)[0..49] AS neighbours " +
                     "WITH [centre] + [x IN neighbours WHERE x IS NOT NULL] AS all " +
                     "UNWIND all AS n " +
-                    "RETURN n.id AS id, n.name AS name, n.stereotype AS stereotype, n.domain AS domain",
+                    "RETURN n.id AS id, n.name AS name, n.stereotype AS stereotype, n.domain AS domain, n.language AS language",
                     java.util.Collections.singletonMap("id", nodeId));
                 while (nodeRes.hasNext()) {
                     org.neo4j.driver.Record rec = nodeRes.next();
@@ -278,7 +278,8 @@ public class Neo4jExportService implements AutoCloseable {
         public int relationshipsWritten = 0;
         public int instanceLinksWritten = 0;
         public int definesLinksWritten  = 0;
-        public final List<String> errors = new ArrayList<>();
+        public final List<String>         errors         = new ArrayList<>();
+        public final Map<String, Integer> languageCounts = new LinkedHashMap<>();
 
         public boolean hasErrors() {
             return !errors.isEmpty();

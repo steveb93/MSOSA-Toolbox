@@ -62,6 +62,9 @@ public class UAFNeo4jPlugin extends Plugin {
         config.setProperty("export.tagged.values",  "true");
         config.setProperty("export.relationships",  "true");
         config.setProperty("export.instance.links", "true");
+        config.setProperty("export.language.uaf",   "true");
+        config.setProperty("export.language.sysml", "true");
+        config.setProperty("export.language.bpmn",  "true");
 
         File configFile = getConfigFile();
         if (configFile.exists()) {
@@ -101,6 +104,22 @@ public class UAFNeo4jPlugin extends Plugin {
             graphInspectorDialog.setVisible(true);
             graphInspectorDialog.toFront();
             graphInspectorDialog.requestFocus();
+        });
+    }
+
+    /**
+     * Opens the Export Configuration dialog. Safe to call from a non-modal context
+     * (e.g. the Graph Inspector). The dialog is modal and will block its caller.
+     */
+    public void showExportDialog() {
+        SwingUtilities.invokeLater(() -> {
+            Project project = Application.getInstance().getProject();
+            if (project == null) {
+                Application.getInstance().getGUILog()
+                    .showError("No project is open. Please open a UAF project first.");
+                return;
+            }
+            new com.uaf.neo4j.plugin.ui.ExportConfigDialog(null, project).setVisible(true);
         });
     }
 

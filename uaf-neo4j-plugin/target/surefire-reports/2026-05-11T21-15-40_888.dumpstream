@@ -1,5 +1,0 @@
-# Created at 2026-05-11T21:15:41.180
-Boot Manifest-JAR contains absolute paths in classpath 'F:\OneDrive\_VSCode\MSOSA-Toolbox\uaf-neo4j-plugin\target\test-classes'
-Hint: <argLine>-Djdk.net.URLClassPath.disableClassPathURLCheck=true</argLine>
-'other' has different root
-
