@@ -18,7 +18,7 @@ public class AboutAction extends MDAction {
     public void actionPerformed(ActionEvent e) {
         JOptionPane.showMessageDialog(
             null,
-            "<html><b>UAF Neo4j Export Plugin v1.0.0</b><br><br>" +
+            "<html><b>UAF Neo4j Export Plugin v0.4.0</b><br><br>" +
             "Exports UAF 1.2 elements and relationships from MSOSA 2022x<br>" +
             "into a Neo4j knowledge graph via the Bolt protocol.<br><br>" +
             "Target: bolt://localhost:7687 (Docker container)<br>" +

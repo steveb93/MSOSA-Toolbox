@@ -10,13 +10,15 @@ import java.util.Map;
  * Builds parameterised Cypher statements for idempotent MERGE writes.
  *
  * Design decisions:
- * - Each UAF element node carries only its stereotype label (e.g. :Capability).
- *   The MSOSA element ID is the unique merge key — names are not unique across
- *   the model (operational and physical elements can share names).
- * - All properties are passed as parameters (never string-interpolated) to
- *   prevent Cypher injection.
- * - INSTANCE_OF links point to existing :Stereotype nodes in the UAF
- *   domain metamodel graph (assumed present from init_uaf_graph.cypher).
+ * - Each element node carries only its stereotype label (e.g. :Capability, :Block, :Task).
+ *   The MSOSA element ID is the unique merge key — names are not unique across the model.
+ * - All properties are passed as parameters (never string-interpolated) to prevent
+ *   Cypher injection. Labels and rel-types (which cannot be parameterised) pass through
+ *   sanitiseLabel() / sanitiseRelType() which strip everything except [a-zA-Z0-9_].
+ * - Every node and relationship carries a `language` property (UAF / SysML / BPMN)
+ *   set from UAFStereotypeRegistry, enabling language-scoped queries on hybrid models.
+ * - INSTANCE_OF links point to existing :Stereotype nodes in the metamodel graph
+ *   (assumed present from init_uaf_graph.cypher).
  * - Relationship endpoint lookups use id only (no label filter) because the
  *   source/target label is not available at relationship-write time.
  */
@@ -28,9 +30,9 @@ public class Neo4jCypherBuilder {
     // Nodes
 
     /**
-     * Returns a Cypher string that MERGEs on id and SETs all properties.
+     * Returns a Cypher string that MERGEs on id and SETs all properties including language.
      * Label is injected by string formatting — safe because it comes from
-     * UAFStereotypeRegistry (not user input).
+     * UAFStereotypeRegistry (not user input) and passes through sanitiseLabel().
      */
     public static String nodeMergeCypher(UAFElementDTO dto) {
         String label = sanitiseLabel(dto.neo4jLabel);
@@ -38,11 +40,16 @@ public class Neo4jCypherBuilder {
             "MERGE (n:%s {id: $id})\n" +
             "SET n += $props\n" +
             "SET n.stereotype = $stereotype\n" +
-            "SET n.domain     = $domain",
+            "SET n.domain     = $domain\n" +
+            "SET n.language   = $language",
             label);
     }
 
     public static Map<String, Object> nodeParams(UAFElementDTO dto) {
+        return nodeParams(dto, true);
+    }
+
+    public static Map<String, Object> nodeParams(UAFElementDTO dto, boolean includeTaggedValues) {
         Map<String, Object> props = new HashMap<>();
         props.put("name",          dto.name);
         props.put("qualifiedName", dto.qualifiedName);
@@ -52,10 +59,11 @@ public class Neo4jCypherBuilder {
         props.put("documentation", dto.documentation);
         props.put("modelFile",     dto.modelFileName);
 
-        // Flatten tagged values into top-level properties (prefixed tv_)
-        for (Map.Entry<String, Object> tv : dto.taggedValues.entrySet()) {
-            String key = "tv_" + tv.getKey().replaceAll("[^a-zA-Z0-9_]", "_");
-            props.put(key, tv.getValue());
+        if (includeTaggedValues) {
+            for (Map.Entry<String, Object> tv : dto.taggedValues.entrySet()) {
+                String key = "tv_" + tv.getKey().replaceAll("[^a-zA-Z0-9_]", "_");
+                props.put(key, tv.getValue());
+            }
         }
 
         Map<String, Object> params = new HashMap<>();
@@ -63,6 +71,7 @@ public class Neo4jCypherBuilder {
         params.put("props",      props);
         params.put("stereotype", dto.stereotype);
         params.put("domain",     dto.domain);
+        params.put("language",   dto.language);
         return params;
     }
 
@@ -79,20 +88,22 @@ public class Neo4jCypherBuilder {
             "MATCH (src {id: $srcId})\n" +
             "MATCH (tgt {id: $tgtId})\n" +
             "MERGE (src)-[r:%s {id: $id}]->(tgt)\n" +
-            "SET r.uafType = $uafType\n" +
-            "SET r.name    = $name\n" +
-            "SET r.domain  = $domain",
+            "SET r.uafType  = $uafType\n" +
+            "SET r.name     = $name\n" +
+            "SET r.domain   = $domain\n" +
+            "SET r.language = $language",
             type);
     }
 
     public static Map<String, Object> relationshipParams(UAFRelationshipDTO dto) {
         Map<String, Object> p = new HashMap<>();
-        p.put("id",      dto.id);
-        p.put("srcId",   dto.sourceId);
-        p.put("tgtId",   dto.targetId);
-        p.put("uafType", dto.uafType);
-        p.put("name",    dto.name);
-        p.put("domain",  dto.domain);
+        p.put("id",       dto.id);
+        p.put("srcId",    dto.sourceId);
+        p.put("tgtId",    dto.targetId);
+        p.put("uafType",  dto.uafType);
+        p.put("name",     dto.name);
+        p.put("domain",   dto.domain);
+        p.put("language", dto.language);
         return p;
     }
 

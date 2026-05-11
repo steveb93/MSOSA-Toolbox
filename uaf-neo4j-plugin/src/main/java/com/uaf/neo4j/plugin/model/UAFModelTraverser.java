@@ -13,8 +13,12 @@ import java.util.*;
 import java.util.logging.Logger;
 
 /**
- * Walks the full MSOSA project model tree, identifies UAF-stereotyped elements,
- * extracts tagged values, and returns typed DTOs ready for Neo4j export.
+ * Walks the full MSOSA project model tree, identifies stereotyped elements across
+ * UAF 1.2, SysML 1.6, and BPMN 2.0, extracts tagged values, and returns typed
+ * DTOs ready for Neo4j export.
+ *
+ * Language origin is resolved from UAFStereotypeRegistry and written to every
+ * element and relationship DTO so hybrid models remain queryable by language.
  */
 public class UAFModelTraverser {
 
@@ -23,9 +27,9 @@ public class UAFModelTraverser {
     // UML metaclass name → Neo4j relationship type (base mapping before stereotype override)
     private static final Map<String, String> RELATION_TYPE_MAP = new LinkedHashMap<>();
 
-    // UAF relationship stereotype name → Neo4j relationship type.
+    // Multi-language relationship stereotype name → Neo4j relationship type.
     // Kept separate from UAFStereotypeRegistry so that relationship stereotypes
-    // (which are applied to UML relationship elements, not to blocks/classes)
+    // (applied to UML relationship elements, not to blocks/classes/tasks)
     // are never mistaken for element stereotypes and never create nodes.
     private static final Map<String, String> RELATIONSHIP_STEREOTYPE_MAP = new LinkedHashMap<>();
 
@@ -47,11 +51,18 @@ public class UAFModelTraverser {
         RELATION_TYPE_MAP.put("Derive",               UAFRelationshipDTO.REL_INFLUENCES);
         RELATION_TYPE_MAP.put("ComponentRealization", UAFRelationshipDTO.REL_REALISES);
 
-        RELATIONSHIP_STEREOTYPE_MAP.put("Exhibits",  UAFRelationshipDTO.REL_EXHIBITS);
-        RELATIONSHIP_STEREOTYPE_MAP.put("Refines",   UAFRelationshipDTO.REL_REFINES);
-        RELATIONSHIP_STEREOTYPE_MAP.put("Satisfies", UAFRelationshipDTO.REL_SATISFIES);
-        RELATIONSHIP_STEREOTYPE_MAP.put("Exposes",   UAFRelationshipDTO.REL_EXPOSES);
-        RELATIONSHIP_STEREOTYPE_MAP.put("Provides",  UAFRelationshipDTO.REL_PROVIDES);
+        RELATIONSHIP_STEREOTYPE_MAP.put("Exhibits",      UAFRelationshipDTO.REL_EXHIBITS);
+        RELATIONSHIP_STEREOTYPE_MAP.put("Refines",       UAFRelationshipDTO.REL_REFINES);
+        RELATIONSHIP_STEREOTYPE_MAP.put("Satisfies",     UAFRelationshipDTO.REL_SATISFIES);
+        RELATIONSHIP_STEREOTYPE_MAP.put("Exposes",       UAFRelationshipDTO.REL_EXPOSES);
+        RELATIONSHIP_STEREOTYPE_MAP.put("Provides",      UAFRelationshipDTO.REL_PROVIDES);
+        // SysML relationship stereotypes
+        RELATIONSHIP_STEREOTYPE_MAP.put("Allocate",      UAFRelationshipDTO.REL_ALLOCATED_TO);
+        RELATIONSHIP_STEREOTYPE_MAP.put("DeriveReqt",    UAFRelationshipDTO.REL_INFLUENCES);
+        RELATIONSHIP_STEREOTYPE_MAP.put("Copy",          UAFRelationshipDTO.REL_TRACES_TO);
+        // BPMN relationship stereotypes
+        RELATIONSHIP_STEREOTYPE_MAP.put("SequenceFlow",  UAFRelationshipDTO.REL_SEQUENCE_FLOW);
+        RELATIONSHIP_STEREOTYPE_MAP.put("MessageFlow",   UAFRelationshipDTO.REL_MESSAGE_FLOW);
     }
 
     private final Project project;
@@ -124,21 +135,21 @@ public class UAFModelTraverser {
             return;
         }
 
-        // Pick the first UAF-known stereotype
-        Stereotype uafStereo = null;
+        // Pick the first known stereotype (UAF, SysML, or BPMN)
+        Stereotype matchedStereo = null;
         UAFStereotypeRegistry.StereotypeInfo info = null;
         for (Stereotype s : applied) {
             String sName = s.getName();
             Optional<UAFStereotypeRegistry.StereotypeInfo> found = UAFStereotypeRegistry.get(sName);
             if (found.isPresent()) {
-                uafStereo = s;
-                info      = found.get();
+                matchedStereo = s;
+                info          = found.get();
                 break;
             }
         }
 
-        if (uafStereo == null) {
-            // Not a UAF element — still recurse
+        if (matchedStereo == null) {
+            // No recognised stereotype — still recurse into packages
             if (element instanceof Package) {
                 traversePackage((Package) element, qualifiedName(element, parentQName));
             }
@@ -159,10 +170,11 @@ public class UAFModelTraverser {
 
         String docs = ModelHelper.getComment(element);
 
-        UAFElementDTO.Builder eb = UAFElementDTO.builder(id, name != null ? name : "", uafStereo.getName())
+        UAFElementDTO.Builder eb = UAFElementDTO.builder(id, name != null ? name : "", matchedStereo.getName())
             .qualifiedName(qname)
             .neo4jLabel(info.neo4jLabel)
-            .domain(info.domain.name())
+            .domain(info.domain != null ? info.domain.name() : "NONE")
+            .language(info.language)
             .packageName(pkgName)
             .diagramId(diagId)
             .diagramName(diagName)
@@ -170,7 +182,7 @@ public class UAFModelTraverser {
             .modelFileName(modelFileName);
 
         // Extract all tagged values for this stereotype
-        extractTaggedValues(element, uafStereo, eb);
+        extractTaggedValues(element, matchedStereo, eb);
 
         // Extract owned UML class attributes (covers ResourceInformation / OperationalInformation
         // data properties and attributes inherited via ERD entity mappings)
@@ -247,9 +259,9 @@ public class UAFModelTraverser {
             String metaclass = rel.getClass().getSimpleName();
             String neo4jType = RELATION_TYPE_MAP.getOrDefault(metaclass, UAFRelationshipDTO.REL_DEPENDENCY);
 
-            // Override rel type with UAF relationship stereotype if present.
-            // RELATIONSHIP_STEREOTYPE_MAP is checked first — these are stereotypes applied
-            // to UML relationship elements (not blocks/classes) and must never create nodes.
+            // Override base rel type with a language-specific relationship stereotype if present.
+            // RELATIONSHIP_STEREOTYPE_MAP is checked first — these stereotypes are applied to
+            // UML/SysML/BPMN relationship elements (not blocks/classes/tasks) and must never create nodes.
             List<Stereotype> relStereos = StereotypesHelper.getStereotypes(rel);
             for (Stereotype rs : relStereos) {
                 String fromRelMap = RELATIONSHIP_STEREOTYPE_MAP.get(rs.getName());
@@ -273,7 +285,8 @@ public class UAFModelTraverser {
                     UAFRelationshipDTO.builder(safeId(rel), srcId, targetId, neo4jType)
                         .uafType(metaclass)
                         .name(relName != null ? relName : "")
-                        .domain(srcInfo.domain.name())
+                        .domain(srcInfo.domain != null ? srcInfo.domain.name() : "NONE")
+                        .language(srcInfo.language)
                         .build()
                 );
             }

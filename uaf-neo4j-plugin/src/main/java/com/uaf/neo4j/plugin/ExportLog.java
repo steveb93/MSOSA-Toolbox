@@ -3,6 +3,7 @@ package com.uaf.neo4j.plugin;
 import com.uaf.neo4j.plugin.neo4j.Neo4jExportService.ExportResult;
 
 import java.io.IOException;
+import java.util.Map;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -43,6 +44,11 @@ public class ExportLog {
     public void finish(ExportResult result) {
         lines.add(RULE);
         lines.add("Nodes written         : " + result.nodesWritten);
+        if (!result.languageCounts.isEmpty()) {
+            result.languageCounts.entrySet().stream()
+                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+                .forEach(e -> lines.add("  " + e.getKey() + "              : " + e.getValue()));
+        }
         lines.add("Relationships written  : " + result.relationshipsWritten);
         lines.add("INSTANCE_OF links      : " + result.instanceLinksWritten);
         lines.add("DEFINES links          : " + result.definesLinksWritten);

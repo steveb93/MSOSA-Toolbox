@@ -1,6 +1,7 @@
 package com.uaf.neo4j.plugin.ui;
 
 import com.uaf.neo4j.plugin.ExportLog;
+import com.uaf.neo4j.plugin.UAFNeo4jPlugin;
 import com.uaf.neo4j.plugin.neo4j.Neo4jExportService.ExportResult;
 
 import javax.swing.*;
@@ -10,7 +11,9 @@ import java.awt.*;
 import java.awt.datatransfer.StringSelection;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 /**
@@ -45,6 +48,17 @@ public class ExportSummaryDialog extends JDialog {
             buttons.add(openLogBtn);
         }
 
+        JButton browseBtn = new JButton("Browse Graph…");
+        browseBtn.setToolTipText("Open the Graph Inspector to explore exported nodes in Neo4j");
+        browseBtn.addActionListener(e -> {
+            dispose(); // close summary before opening inspector
+            UAFNeo4jPlugin plugin = UAFNeo4jPlugin.getInstance();
+            if (plugin != null) {
+                plugin.showGraphInspector();
+            }
+        });
+        buttons.add(browseBtn);
+
         JButton closeBtn = new JButton("Close");
         closeBtn.addActionListener(e -> dispose());
         buttons.add(closeBtn);
@@ -60,17 +74,23 @@ public class ExportSummaryDialog extends JDialog {
     }
 
     private JPanel buildSummaryPanel(ExportResult result) {
-        String[][] rows = {
-            {"Nodes written",          String.valueOf(result.nodesWritten)},
-            {"Relationships written",  String.valueOf(result.relationshipsWritten)},
-            {"INSTANCE_OF links",      String.valueOf(result.instanceLinksWritten)},
-            {"DEFINES links",          String.valueOf(result.definesLinksWritten)},
-            {"Errors",                 String.valueOf(result.errors.size())}
-        };
+        List<String[]> rowList = new ArrayList<>();
+        rowList.add(new String[]{"Nodes written", String.valueOf(result.nodesWritten)});
+        if (!result.languageCounts.isEmpty()) {
+            result.languageCounts.entrySet().stream()
+                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+                .forEach(e -> rowList.add(new String[]{"  └ " + e.getKey(), String.valueOf(e.getValue())}));
+        }
+        rowList.add(new String[]{"Relationships written", String.valueOf(result.relationshipsWritten)});
+        rowList.add(new String[]{"INSTANCE_OF links",     String.valueOf(result.instanceLinksWritten)});
+        rowList.add(new String[]{"DEFINES links",         String.valueOf(result.definesLinksWritten)});
+        rowList.add(new String[]{"Errors",                String.valueOf(result.errors.size())});
+
+        String[][] rows = rowList.toArray(new String[0][]);
         JTable table = new JTable(new DefaultTableModel(rows, new String[]{"Category", "Count"}) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         });
-        table.setPreferredScrollableViewportSize(new Dimension(360, 80));
+        table.setPreferredScrollableViewportSize(new Dimension(360, 110));
 
         JPanel panel = new JPanel(new BorderLayout(0, 8));
         panel.setBorder(new EmptyBorder(12, 12, 4, 12));
