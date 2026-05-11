@@ -18,6 +18,9 @@ CREATE CONSTRAINT system_model_id IF NOT EXISTS
 CREATE CONSTRAINT stereotype_name IF NOT EXISTS
   FOR (s:Stereotype) REQUIRE s.name IS UNIQUE;
 
+CREATE CONSTRAINT modelling_language_name IF NOT EXISTS
+  FOR (l:ModellingLanguage) REQUIRE l.name IS UNIQUE;
+
 CREATE CONSTRAINT domain_name IF NOT EXISTS
   FOR (d:Domain) REQUIRE d.name IS UNIQUE;
 
@@ -32,6 +35,13 @@ CREATE FULLTEXT INDEX uaf_element_text IF NOT EXISTS
        ResourceArtifact|HardwareElement|SoftwareElement|ServicePerformer|
        ServiceFunction|Organization|Project|SecurityDomain|Measurement)
   ON EACH [n.name, n.qualifiedName, n.documentation];
+
+// --- Modelling language anchor nodes -----------------------------------------
+
+MERGE (:ModellingLanguage {name: 'UAF',   version: '1.2'});
+MERGE (:ModellingLanguage {name: 'SysML', version: '1.6'});
+MERGE (:ModellingLanguage {name: 'UML',   version: '2.5'});
+MERGE (:ModellingLanguage {name: 'BPMN',  version: '2.0'});
 
 // --- Domain anchor nodes -----------------------------------------------------
 
@@ -145,5 +155,10 @@ MERGE (:Stereotype {name: 'ActualLocation',           domain: 'SHARED'});
 
 MATCH (s:Stereotype), (d:Domain {name: s.domain})
 MERGE (s)-[:BELONGS_TO]->(d);
+
+// --- Wire all UAF Stereotype nodes to the UAF ModellingLanguage --------------
+
+MATCH (s:Stereotype), (l:ModellingLanguage {name: 'UAF'})
+MERGE (s)-[:DEFINED_BY]->(l);
 
 RETURN "UAF graph initialised." AS status;

@@ -49,6 +49,7 @@ public final class UAFRelationshipDTO {
     public final String targetId;
     public final String name;
     public final String domain;
+    public final String language;
     public final Map<String, Object> taggedValues;
 
     private UAFRelationshipDTO(Builder b) {
@@ -59,6 +60,7 @@ public final class UAFRelationshipDTO {
         this.targetId     = b.targetId;
         this.name         = b.name;
         this.domain       = b.domain;
+        this.language     = b.language;
         this.taggedValues = Collections.unmodifiableMap(new LinkedHashMap<>(b.taggedValues));
     }
 
@@ -75,6 +77,7 @@ public final class UAFRelationshipDTO {
         private String uafType   = "Dependency";
         private String name      = "";
         private String domain    = "UNKNOWN";
+        private String language  = "UAF";
         private final Map<String, Object> taggedValues = new LinkedHashMap<>();
 
         private Builder(String id, String sourceId, String targetId, String neo4jType) {
@@ -84,9 +87,10 @@ public final class UAFRelationshipDTO {
             this.neo4jType = Objects.requireNonNull(neo4jType, "neo4jType");
         }
 
-        public Builder uafType(String v)   { this.uafType = v;   return this; }
-        public Builder name(String v)      { this.name    = v;   return this; }
-        public Builder domain(String v)    { this.domain  = v;   return this; }
+        public Builder uafType(String v)   { this.uafType   = v; return this; }
+        public Builder name(String v)      { this.name      = v; return this; }
+        public Builder domain(String v)    { this.domain    = v; return this; }
+        public Builder language(String v)  { this.language  = v; return this; }
 
         public Builder taggedValue(String key, Object value) {
             if (value != null) taggedValues.put(key, value);

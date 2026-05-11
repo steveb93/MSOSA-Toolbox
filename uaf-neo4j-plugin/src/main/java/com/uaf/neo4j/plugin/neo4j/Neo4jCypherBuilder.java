@@ -38,7 +38,8 @@ public class Neo4jCypherBuilder {
             "MERGE (n:%s {id: $id})\n" +
             "SET n += $props\n" +
             "SET n.stereotype = $stereotype\n" +
-            "SET n.domain     = $domain",
+            "SET n.domain     = $domain\n" +
+            "SET n.language   = $language",
             label);
     }
 
@@ -68,6 +69,7 @@ public class Neo4jCypherBuilder {
         params.put("props",      props);
         params.put("stereotype", dto.stereotype);
         params.put("domain",     dto.domain);
+        params.put("language",   dto.language);
         return params;
     }
 
@@ -84,20 +86,22 @@ public class Neo4jCypherBuilder {
             "MATCH (src {id: $srcId})\n" +
             "MATCH (tgt {id: $tgtId})\n" +
             "MERGE (src)-[r:%s {id: $id}]->(tgt)\n" +
-            "SET r.uafType = $uafType\n" +
-            "SET r.name    = $name\n" +
-            "SET r.domain  = $domain",
+            "SET r.uafType  = $uafType\n" +
+            "SET r.name     = $name\n" +
+            "SET r.domain   = $domain\n" +
+            "SET r.language = $language",
             type);
     }
 
     public static Map<String, Object> relationshipParams(UAFRelationshipDTO dto) {
         Map<String, Object> p = new HashMap<>();
-        p.put("id",      dto.id);
-        p.put("srcId",   dto.sourceId);
-        p.put("tgtId",   dto.targetId);
-        p.put("uafType", dto.uafType);
-        p.put("name",    dto.name);
-        p.put("domain",  dto.domain);
+        p.put("id",       dto.id);
+        p.put("srcId",    dto.sourceId);
+        p.put("tgtId",    dto.targetId);
+        p.put("uafType",  dto.uafType);
+        p.put("name",     dto.name);
+        p.put("domain",   dto.domain);
+        p.put("language", dto.language);
         return p;
     }
 
