@@ -41,6 +41,8 @@ public final class UAFRelationshipDTO {
     public static final String REL_GENERALIZATION    = "GENERALIZATION";
     public static final String REL_INFORMATION_FLOW  = "INFORMATION_FLOW";
     public static final String REL_CONTROL_FLOW      = "CONTROL_FLOW";
+    public static final String REL_SEQUENCE_FLOW     = "SEQUENCE_FLOW";
+    public static final String REL_MESSAGE_FLOW      = "MESSAGE_FLOW";
 
     public final String id;
     public final String uafType;         // UML/UAF metaclass name

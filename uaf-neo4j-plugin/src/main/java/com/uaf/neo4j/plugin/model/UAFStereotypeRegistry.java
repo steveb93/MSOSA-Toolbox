@@ -3,11 +3,14 @@ package com.uaf.neo4j.plugin.model;
 import java.util.*;
 
 /**
- * Maps every UAF 1.2 stereotype name (as it appears in the MSOSA profile) to
- * a Neo4j node label and UAF domain.
+ * Single source of truth mapping stereotype names to Neo4j label, UAF domain,
+ * and modelling language (UAF, SysML, or BPMN).
  *
- * Stereotype names are case-sensitive and must match the MSOSA UAF profile
- * exactly. Verify against your installation via:
+ * UAF entries carry a Domain enum value; SysML and BPMN entries have domain=null
+ * since the UAF domain concept does not apply to those languages.
+ *
+ * Stereotype names are case-sensitive and must match what the MSOSA profile
+ * reports exactly. Verify UAF names via the MSOSA scripting console:
  *   StereotypesHelper.getAllStereotypes(project)
  */
 public class UAFStereotypeRegistry {
@@ -18,11 +21,13 @@ public class UAFStereotypeRegistry {
 
     public static final class StereotypeInfo {
         public final String neo4jLabel;
-        public final Domain domain;
+        public final Domain domain;   // null for non-UAF stereotypes
+        public final String language;
 
-        StereotypeInfo(String neo4jLabel, Domain domain) {
+        StereotypeInfo(String neo4jLabel, Domain domain, String language) {
             this.neo4jLabel = neo4jLabel;
-            this.domain = domain;
+            this.domain     = domain;
+            this.language   = language;
         }
     }
 
@@ -56,8 +61,9 @@ public class UAFStereotypeRegistry {
         reg("PerformerPort",            "PerformerPort",           Domain.OPERATIONAL);
         reg("OperationalRole",          "OperationalRole",         Domain.OPERATIONAL);
 
-        // --- BPMN data elements (operational information artifacts in process diagrams) ---
-        // Verify exact names via MSOSA scripting console if any are skipped on export.
+        // --- UAF-wrapped BPMN data elements (used in UAF operational process diagrams) ---
+        // These are UAF stereotypes applied to BPMN data artefacts in an OV context,
+        // distinct from the native BPMN 2.0 process elements registered below.
         reg("DataObject",               "DataObject",              Domain.OPERATIONAL);
         reg("DataInput",                "DataInput",               Domain.OPERATIONAL);
         reg("DataOutput",               "DataOutput",              Domain.OPERATIONAL);
@@ -124,10 +130,45 @@ public class UAFStereotypeRegistry {
         reg("Location",                 "Location",                Domain.SHARED);
         reg("ActualLocation",           "ActualLocation",          Domain.SHARED);
 
+        // --- SysML 1.6 ---
+        reg("Block",                    "Block",                   "SysML");
+        reg("Requirement",              "Requirement",             "SysML");
+        reg("InterfaceBlock",           "InterfaceBlock",          "SysML");
+        reg("ValueType",                "ValueType",               "SysML");
+        reg("ConstraintBlock",          "ConstraintBlock",         "SysML");
+        reg("FlowSpecification",        "FlowSpecification",       "SysML");
+        reg("FlowPort",                 "FlowPort",                "SysML");
+        reg("FullPort",                 "FullPort",                "SysML");
+        reg("ProxyPort",                "ProxyPort",               "SysML");
+        reg("ItemFlow",                 "ItemFlow",                "SysML");
+
+        // --- BPMN 2.0 ---
+        reg("Task",                     "Task",                    "BPMN");
+        reg("UserTask",                 "UserTask",                "BPMN");
+        reg("ServiceTask",              "ServiceTask",             "BPMN");
+        reg("SendTask",                 "SendTask",                "BPMN");
+        reg("ReceiveTask",              "ReceiveTask",             "BPMN");
+        reg("StartEvent",               "StartEvent",              "BPMN");
+        reg("EndEvent",                 "EndEvent",                "BPMN");
+        reg("IntermediateThrowEvent",   "IntermediateThrowEvent",  "BPMN");
+        reg("IntermediateCatchEvent",   "IntermediateCatchEvent",  "BPMN");
+        reg("ExclusiveGateway",         "ExclusiveGateway",        "BPMN");
+        reg("ParallelGateway",          "ParallelGateway",         "BPMN");
+        reg("InclusiveGateway",         "InclusiveGateway",        "BPMN");
+        reg("EventBasedGateway",        "EventBasedGateway",       "BPMN");
+        reg("SubProcess",               "SubProcess",              "BPMN");
+        reg("CallActivity",             "CallActivity",            "BPMN");
+        reg("Lane",                     "Lane",                    "BPMN");
+        reg("Pool",                     "Pool",                    "BPMN");
+
     }
 
     private static void reg(String stereotype, String label, Domain domain) {
-        REGISTRY.put(stereotype, new StereotypeInfo(label, domain));
+        REGISTRY.put(stereotype, new StereotypeInfo(label, domain, "UAF"));
+    }
+
+    private static void reg(String stereotype, String label, String language) {
+        REGISTRY.put(stereotype, new StereotypeInfo(label, null, language));
     }
 
     public static Optional<StereotypeInfo> get(String stereotypeName) {

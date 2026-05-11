@@ -1,17 +1,19 @@
-# UAF 1.2 → Neo4j Knowledge Graph Exporter
+﻿# UAF 1.2 → Neo4j Knowledge Graph Exporter
 ## Catia Magic MSOSA 2022x Refresh2 Plugin
 
 ---
 
 ## Overview
 
-This plugin exports UAF 1.2 architectural elements and relationships from a
-Catia Magic MSOSA 2022x Refresh2 project into a Neo4j graph database running in Docker.
+This plugin exports architectural elements and relationships from a Catia Magic MSOSA
+2022x Refresh2 project into a Neo4j graph database running in Docker. It supports
+hybrid models combining **UAF 1.2**, **SysML 1.6**, and **BPMN 2.0** — each element
+and relationship is tagged with its modelling language so cross-language queries are
+possible from day one.
 
 Exported instance nodes are automatically linked via `:INSTANCE_OF` relationships
-to pre-existing UAF domain meta-model stereotype nodes already in your graph,
-creating a live, queryable knowledge graph spanning both the meta-model and
-instance-level architecture data.
+to pre-existing metamodel stereotype nodes already in your graph, creating a live,
+queryable knowledge graph spanning both the metamodel and instance-level architecture data.
 
 ```
 MSOSA Project
@@ -69,10 +71,10 @@ uaf-neo4j-plugin/
 │   │   │   ├── GraphInspectorAction.java        ← Opens GraphInspectorDialog
 │   │   │   ├── AboutAction.java
 │   │   │   ├── model/
-│   │   │   │   ├── UAFStereotypeRegistry.java   ← Single source of truth: stereotype → domain/layer
-│   │   │   │   ├── UAFModelTraverser.java        ← Walks MSOSA project, extracts DTOs
+│   │   │   │   ├── UAFStereotypeRegistry.java   ← Single source of truth: stereotype → label/domain/language
+│   │   │   │   ├── UAFModelTraverser.java        ← Walks MSOSA project, extracts DTOs (UAF + SysML + BPMN)
 │   │   │   │   ├── UAFElementDTO.java            ← Immutable node DTO (builder pattern)
-│   │   │   │   └── UAFRelationshipDTO.java       ← Immutable edge DTO (28 type constants)
+│   │   │   │   └── UAFRelationshipDTO.java       ← Immutable edge DTO (31 type constants)
 │   │   │   ├── neo4j/
 │   │   │   │   ├── Neo4jCypherBuilder.java       ← Parameterised MERGE Cypher
 │   │   │   │   └── Neo4jExportService.java       ← Bolt driver lifecycle; batched writes; graph queries
@@ -129,7 +131,7 @@ cd docker-compose
 docker compose up -d
 ```
 
-Then initialise the UAF metamodel schema once:
+Then initialise the multi-language metamodel schema once:
 
 ```powershell
 cypher-shell -u neo4j -p Password123 -f ../uaf-neo4j-plugin/cypher/init_uaf_graph.cypher
@@ -192,9 +194,9 @@ Changes are saved immediately and take effect without restarting MSOSA.
 
 ## Node Structure in Neo4j
 
-Each exported UAF element carries **only its stereotype label** (e.g. `:Capability`,
-`:OperationalPerformer`). There is no generic `:UAFElement` label. To match all exported
-elements regardless of stereotype, filter on the `stereotype` property:
+Each exported element carries **only its stereotype label** (e.g. `:Capability`,
+`:Block`, `:Task`). There is no generic label. To match all exported elements
+regardless of stereotype, filter on the `stereotype` property:
 
 ```cypher
 MATCH (n) WHERE n.stereotype IS NOT NULL ...
@@ -207,8 +209,9 @@ MATCH (n) WHERE n.stereotype IS NOT NULL ...
 | `id` | MagicDraw element ID — stable MERGE key |
 | `name` | Element name from model |
 | `qualifiedName` | Fully qualified model path |
-| `stereotype` | Applied UAF stereotype name (e.g. `"Capability"`) |
-| `domain` | UAF domain (`STRATEGIC` / `OPERATIONAL` / `RESOURCE` / `SERVICE` / `PERSONNEL` / `ACQUISITION` / `SECURITY`) |
+| `stereotype` | Applied stereotype name (e.g. `"Capability"`, `"Block"`, `"Task"`) |
+| `language` | Modelling language origin: `UAF`, `SysML`, or `BPMN` |
+| `domain` | UAF domain (`STRATEGIC` / `OPERATIONAL` / `RESOURCE` / `SERVICE` / `PERSONNEL` / `ACQUISITION` / `SECURITY`) — `NONE` for non-UAF elements |
 | `packageName` | Package hierarchy |
 | `diagramId` / `diagramName` | Diagrams that include this element |
 | `documentation` | Model comments / notes |
@@ -270,8 +273,13 @@ RETURN src.name, act.name, r.tv_frequency;
 // Each element is owned by the project that exported it
 (:SystemModel {id, name})-[:DEFINES]->(:Capability)
 
-// Each element links to the UAF metamodel
+// Each element links to its stereotype in the metamodel
 (:Capability)-[:INSTANCE_OF]->(:Stereotype)-[:BELONGS_TO]->(:Domain)
+
+// Each stereotype is anchored to its modelling language
+(:Stereotype)-[:DEFINED_BY]->(:ModellingLanguage {name: 'UAF 1.2'})
+(:Block)-[:INSTANCE_OF]->(:Stereotype)-[:DEFINED_BY]->(:ModellingLanguage {name: 'SysML 1.6'})
+(:Task)-[:INSTANCE_OF]->(:Stereotype)-[:DEFINED_BY]->(:ModellingLanguage {name: 'BPMN 2.0'})
 ```
 
 When two MSOSA projects share elements via project usage (same MagicDraw element IDs),
@@ -291,16 +299,16 @@ losing provenance.
 
 ### UAF Instance Relationships
 
-Relationships carry: `id`, `uafType` (UML metaclass), `name`, `domain`, plus any `tv_*` tagged values.
+Relationships carry: `id`, `uafType` (UML metaclass), `name`, `domain`, `language`, plus any `tv_*` tagged values.
 
-**Supported types (28):**
+**Supported types (31):**
 
 `REALISES` · `TRACES_TO` · `ASSIGNED_TO` · `SATISFIES` · `REFINES` · `INFLUENCES` ·
 `DEPENDS_ON` · `COMPOSED_OF` · `SPECIALISES` · `EXHIBITS` · `CONTRIBUTES_TO` ·
 `EXPOSES` · `PROVIDES` · `PERFORMS` · `CONNECTED_TO` · `FLOWS_TO` · `TRIGGERS` ·
 `PRECEDES` · `ENABLES` · `SUPPORTS` · `IMPLEMENTS` · `ALLOCATED_TO` · `INSTANCE_OF` ·
 `CONTAINED_IN` · `ASSOCIATED_WITH` · `DEPENDENCY` · `GENERALIZATION` ·
-`INFORMATION_FLOW` · `CONTROL_FLOW`
+`INFORMATION_FLOW` · `CONTROL_FLOW` · `SEQUENCE_FLOW` · `MESSAGE_FLOW`
 
 ### Metamodel Relationships
 
@@ -308,6 +316,7 @@ Relationships carry: `id`, `uafType` (UML metaclass), `name`, `domain`, plus any
 |---|---|---|
 | `INSTANCE_OF` | stereotype node (e.g. `:Capability`) | `:Stereotype` |
 | `BELONGS_TO` | `:Stereotype` | `:Domain` |
+| `DEFINED_BY` | `:Stereotype` | `:ModellingLanguage` |
 
 ---
 
@@ -358,6 +367,18 @@ RETURN n.name, n.stereotype, models ORDER BY modelCount DESC;
 MATCH (n:Capability {name: 'MyCapability'})-[r]-(m)
 WHERE m.stereotype IS NOT NULL
 RETURN n, r, m;
+
+// All SysML elements in the graph
+MATCH (n) WHERE n.language = 'SysML'
+RETURN n.name, n.stereotype ORDER BY n.stereotype;
+
+// Cross-language traceability: SysML Requirements satisfied by UAF Capabilities
+MATCH (r:Requirement {language: 'SysML'})<-[:SATISFIES|TRACES_TO]-(c:Capability {language: 'UAF'})
+RETURN c.name AS capability, r.name AS requirement ORDER BY c.name;
+
+// All modelling languages present in the graph
+MATCH (n) WHERE n.language IS NOT NULL
+RETURN n.language, count(*) AS total ORDER BY total DESC;
 ```
 
 ---
@@ -366,7 +387,7 @@ RETURN n, r, m;
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| "No UAF elements found" | No UAF stereotype applied | Ensure UAF 1.2 profile is loaded; elements have UAF stereotypes |
+| "No UAF elements found" | No recognised stereotype applied | Ensure the relevant profile is loaded (UAF 1.2, SysML 1.6, or BPMN 2.0); elements must carry a stereotype known to `UAFStereotypeRegistry` |
 | Connection refused | Neo4j container not running | `docker compose up -d`; check port 7687 |
 | Authentication failed | Wrong credentials | Update on the Connection tab of the export dialog |
 | INSTANCE_OF links missing | Stereotype nodes not in DB | Run `cypher/init_uaf_graph.cypher` |

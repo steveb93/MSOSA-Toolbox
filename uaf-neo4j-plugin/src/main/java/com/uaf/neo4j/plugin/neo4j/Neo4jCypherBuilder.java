@@ -10,13 +10,15 @@ import java.util.Map;
  * Builds parameterised Cypher statements for idempotent MERGE writes.
  *
  * Design decisions:
- * - Each UAF element node carries only its stereotype label (e.g. :Capability).
- *   The MSOSA element ID is the unique merge key — names are not unique across
- *   the model (operational and physical elements can share names).
- * - All properties are passed as parameters (never string-interpolated) to
- *   prevent Cypher injection.
- * - INSTANCE_OF links point to existing :Stereotype nodes in the UAF
- *   domain metamodel graph (assumed present from init_uaf_graph.cypher).
+ * - Each element node carries only its stereotype label (e.g. :Capability, :Block, :Task).
+ *   The MSOSA element ID is the unique merge key — names are not unique across the model.
+ * - All properties are passed as parameters (never string-interpolated) to prevent
+ *   Cypher injection. Labels and rel-types (which cannot be parameterised) pass through
+ *   sanitiseLabel() / sanitiseRelType() which strip everything except [a-zA-Z0-9_].
+ * - Every node and relationship carries a `language` property (UAF / SysML / BPMN)
+ *   set from UAFStereotypeRegistry, enabling language-scoped queries on hybrid models.
+ * - INSTANCE_OF links point to existing :Stereotype nodes in the metamodel graph
+ *   (assumed present from init_uaf_graph.cypher).
  * - Relationship endpoint lookups use id only (no label filter) because the
  *   source/target label is not available at relationship-write time.
  */
@@ -28,9 +30,9 @@ public class Neo4jCypherBuilder {
     // Nodes
 
     /**
-     * Returns a Cypher string that MERGEs on id and SETs all properties.
+     * Returns a Cypher string that MERGEs on id and SETs all properties including language.
      * Label is injected by string formatting — safe because it comes from
-     * UAFStereotypeRegistry (not user input).
+     * UAFStereotypeRegistry (not user input) and passes through sanitiseLabel().
      */
     public static String nodeMergeCypher(UAFElementDTO dto) {
         String label = sanitiseLabel(dto.neo4jLabel);

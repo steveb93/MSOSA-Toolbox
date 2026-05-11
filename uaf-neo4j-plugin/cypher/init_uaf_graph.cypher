@@ -151,14 +151,52 @@ MERGE (:Stereotype {name: 'ImplementationConstraint', domain: 'SHARED'});
 MERGE (:Stereotype {name: 'Location',                 domain: 'SHARED'});
 MERGE (:Stereotype {name: 'ActualLocation',           domain: 'SHARED'});
 
+// --- SysML 1.6 Stereotype nodes ----------------------------------------------
+
+MERGE (:Stereotype {name: 'Block',                  language: 'SysML'});
+MERGE (:Stereotype {name: 'Requirement',             language: 'SysML'});
+MERGE (:Stereotype {name: 'InterfaceBlock',          language: 'SysML'});
+MERGE (:Stereotype {name: 'ValueType',               language: 'SysML'});
+MERGE (:Stereotype {name: 'ConstraintBlock',         language: 'SysML'});
+MERGE (:Stereotype {name: 'FlowSpecification',       language: 'SysML'});
+MERGE (:Stereotype {name: 'FlowPort',                language: 'SysML'});
+MERGE (:Stereotype {name: 'FullPort',                language: 'SysML'});
+MERGE (:Stereotype {name: 'ProxyPort',               language: 'SysML'});
+MERGE (:Stereotype {name: 'ItemFlow',                language: 'SysML'});
+
+// --- BPMN 2.0 Stereotype nodes -----------------------------------------------
+
+MERGE (:Stereotype {name: 'Task',                    language: 'BPMN'});
+MERGE (:Stereotype {name: 'UserTask',                language: 'BPMN'});
+MERGE (:Stereotype {name: 'ServiceTask',             language: 'BPMN'});
+MERGE (:Stereotype {name: 'SendTask',                language: 'BPMN'});
+MERGE (:Stereotype {name: 'ReceiveTask',             language: 'BPMN'});
+MERGE (:Stereotype {name: 'StartEvent',              language: 'BPMN'});
+MERGE (:Stereotype {name: 'EndEvent',                language: 'BPMN'});
+MERGE (:Stereotype {name: 'IntermediateThrowEvent',  language: 'BPMN'});
+MERGE (:Stereotype {name: 'IntermediateCatchEvent',  language: 'BPMN'});
+MERGE (:Stereotype {name: 'ExclusiveGateway',        language: 'BPMN'});
+MERGE (:Stereotype {name: 'ParallelGateway',         language: 'BPMN'});
+MERGE (:Stereotype {name: 'InclusiveGateway',        language: 'BPMN'});
+MERGE (:Stereotype {name: 'EventBasedGateway',       language: 'BPMN'});
+MERGE (:Stereotype {name: 'SubProcess',              language: 'BPMN'});
+MERGE (:Stereotype {name: 'CallActivity',            language: 'BPMN'});
+MERGE (:Stereotype {name: 'Lane',                    language: 'BPMN'});
+MERGE (:Stereotype {name: 'Pool',                    language: 'BPMN'});
+
 // --- Wire Stereotype nodes to their Domain -----------------------------------
 
 MATCH (s:Stereotype), (d:Domain {name: s.domain})
 MERGE (s)-[:BELONGS_TO]->(d);
 
-// --- Wire all UAF Stereotype nodes to the UAF ModellingLanguage --------------
+// --- Back-fill language on UAF Stereotype nodes (idempotent) -----------------
 
-MATCH (s:Stereotype), (l:ModellingLanguage {name: 'UAF'})
+MATCH (s:Stereotype) WHERE s.language IS NULL
+SET s.language = 'UAF';
+
+// --- Wire all Stereotype nodes to their ModellingLanguage --------------------
+
+MATCH (s:Stereotype), (l:ModellingLanguage {name: s.language})
 MERGE (s)-[:DEFINED_BY]->(l);
 
 RETURN "UAF graph initialised." AS status;
