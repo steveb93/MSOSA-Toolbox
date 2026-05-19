@@ -10,6 +10,7 @@ import com.uaf.neo4j.plugin.model.UAFStereotypeRegistry.StereotypeInfo;
 import com.uaf.neo4j.plugin.export.ExportResult;
 import com.uaf.neo4j.plugin.export.ExportService;
 import com.uaf.neo4j.plugin.neo4j.Neo4jExportService;
+import com.uaf.neo4j.plugin.rdf.RDFExportService;
 import com.nomagic.magicdraw.core.Project;
 import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Element;
 import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.NamedElement;
@@ -53,6 +54,12 @@ public class ExportConfigDialog extends JDialog {
     private final JCheckBox exportUAFBox;
     private final JCheckBox exportSysMLBox;
     private final JCheckBox exportBPMNBox;
+
+    // ── Targets ───────────────────────────────────────────────────────────────
+    private final JCheckBox  targetLpgBox;
+    private final JCheckBox  targetRdfBox;
+    private final JCheckBox  fusekiPushBox;
+    private final JTextField rdfOutputPathField;
 
     // ── Package selection ─────────────────────────────────────────────────────
     private final LinkedHashMap<String, JCheckBox> packageBoxes  = new LinkedHashMap<>();
@@ -112,6 +119,41 @@ public class ExportConfigDialog extends JDialog {
             Boolean.parseBoolean(cfg.getProperty("export.language.sysml", "true")));
         exportBPMNBox  = new JCheckBox("BPMN 2.0",
             Boolean.parseBoolean(cfg.getProperty("export.language.bpmn",  "true")));
+
+        targetLpgBox = new JCheckBox("Neo4j (LPG via Cypher)",
+            Boolean.parseBoolean(cfg.getProperty("export.target.lpg", "true")));
+        targetLpgBox.setToolTipText(
+            "<html>Write the traversed model to Neo4j over Bolt as Cypher MERGE statements.<br>" +
+            "This is the system of record. Connection settings live under the <i>Connection</i> tab.</html>");
+
+        targetRdfBox = new JCheckBox("RDF Turtle file (and optionally PUT to Fuseki)",
+            Boolean.parseBoolean(cfg.getProperty("export.target.rdf", "false")));
+        targetRdfBox.setToolTipText(
+            "<html>Write the traversed model as an RDF Turtle dump to the path below.<br>" +
+            "If <i>Also PUT to Fuseki</i> is ticked, the same TTL bytes are pushed to the configured<br>" +
+            "Fuseki dataset via SPARQL 1.1 Graph Store Protocol — refreshing the SPARQL view in one step.</html>");
+
+        fusekiPushBox = new JCheckBox("Also PUT to Fuseki /data endpoint",
+            Boolean.parseBoolean(cfg.getProperty("fuseki.push.enabled", "false")));
+        fusekiPushBox.setToolTipText(
+            "<html>Push the generated Turtle to the configured Fuseki dataset.<br>" +
+            "Fuseki URL and credentials live under the <i>Connection</i> tab.<br>" +
+            "Removes the need for the manual <code>dump_to_rdf.py</code> + restart step.</html>");
+
+        rdfOutputPathField = new JTextField(cfg.getProperty("rdf.output.path",
+            System.getProperty("user.home") + "/uaf-instance.ttl"), 36);
+        rdfOutputPathField.setToolTipText(
+            "<html>Where the Turtle dump is written. Absolute path recommended — the plugin's working " +
+            "directory is MSOSA's install dir, so relative paths land in unexpected places.</html>");
+
+        // Sub-options of the RDF target follow its enabled state
+        java.awt.event.ItemListener rdfToggle = e -> {
+            boolean on = targetRdfBox.isSelected();
+            fusekiPushBox.setEnabled(on);
+            rdfOutputPathField.setEnabled(on);
+        };
+        targetRdfBox.addItemListener(rdfToggle);
+        rdfToggle.itemStateChanged(null); // sync initial state
 
         globalStatusLabel.setForeground(STATUS_IDLE);
         globalStatusLabel.setFont(globalStatusLabel.getFont().deriveFont(Font.PLAIN, 11f));
@@ -346,6 +388,47 @@ public class ExportConfigDialog extends JDialog {
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBorder(new EmptyBorder(16, 18, 16, 18));
 
+        // ── Export Targets ────────────────────────────────────────────────────
+        JLabel targetsHeading = sectionLabel("Export Targets");
+        targetsHeading.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(targetsHeading);
+        panel.add(Box.createVerticalStrut(8));
+
+        JSeparator sep0 = new JSeparator();
+        sep0.setAlignmentX(Component.LEFT_ALIGNMENT);
+        sep0.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+        panel.add(sep0);
+        panel.add(Box.createVerticalStrut(10));
+
+        targetLpgBox.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(targetLpgBox);
+        panel.add(Box.createVerticalStrut(8));
+
+        targetRdfBox.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(targetRdfBox);
+        panel.add(Box.createVerticalStrut(4));
+
+        // Indented RDF sub-options
+        JPanel rdfSub = new JPanel();
+        rdfSub.setLayout(new BoxLayout(rdfSub, BoxLayout.Y_AXIS));
+        rdfSub.setAlignmentX(Component.LEFT_ALIGNMENT);
+        rdfSub.setBorder(new EmptyBorder(0, 24, 0, 0));
+
+        JPanel pathRow = new JPanel(new BorderLayout(8, 0));
+        pathRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        pathRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
+        JLabel pathLbl = new JLabel("Turtle output:");
+        pathRow.add(pathLbl, BorderLayout.WEST);
+        pathRow.add(rdfOutputPathField, BorderLayout.CENTER);
+        rdfSub.add(pathRow);
+        rdfSub.add(Box.createVerticalStrut(6));
+
+        fusekiPushBox.setAlignmentX(Component.LEFT_ALIGNMENT);
+        rdfSub.add(fusekiPushBox);
+
+        panel.add(rdfSub);
+        panel.add(Box.createVerticalStrut(14));
+
         // ── Export Data ───────────────────────────────────────────────────────
         JLabel dataHeading = sectionLabel("Export Data");
         dataHeading.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -545,13 +628,23 @@ public class ExportConfigDialog extends JDialog {
     }
 
     private Properties allProps() {
-        Properties p = connectionProps();
+        // Start from the plugin's saved config so fuseki.* and other ConnectionDialog-managed
+        // keys flow through to RDFExportService. The Save Config button persists the
+        // overrides; runExport() also uses this result directly so the live UI state always
+        // wins over stale on-disk values for the duration of the export.
+        Properties p = new Properties();
+        p.putAll(UAFNeo4jPlugin.getInstance().getConfig());
+        p.putAll(connectionProps());
         p.setProperty("export.tagged.values",  String.valueOf(exportTaggedValuesBox.isSelected()));
         p.setProperty("export.relationships",  String.valueOf(exportRelationshipsBox.isSelected()));
         p.setProperty("export.instance.links", String.valueOf(exportInstanceLinksBox.isSelected()));
         p.setProperty("export.language.uaf",   String.valueOf(exportUAFBox.isSelected()));
         p.setProperty("export.language.sysml", String.valueOf(exportSysMLBox.isSelected()));
         p.setProperty("export.language.bpmn",  String.valueOf(exportBPMNBox.isSelected()));
+        p.setProperty("export.target.lpg",     String.valueOf(targetLpgBox.isSelected()));
+        p.setProperty("export.target.rdf",     String.valueOf(targetRdfBox.isSelected()));
+        p.setProperty("fuseki.push.enabled",   String.valueOf(fusekiPushBox.isSelected()));
+        p.setProperty("rdf.output.path",       rdfOutputPathField.getText().trim());
         return p;
     }
 
@@ -582,10 +675,22 @@ public class ExportConfigDialog extends JDialog {
             return;
         }
 
+        // Build the ordered list of export targets the user has ticked. Order matters because the
+        // first target's result is what the summary dialog renders; LPG is the system of record so
+        // it goes first when both are selected.
+        final boolean tgtLpg = targetLpgBox.isSelected();
+        final boolean tgtRdf = targetRdfBox.isSelected();
+        if (!tgtLpg && !tgtRdf) {
+            JOptionPane.showMessageDialog(this,
+                "Please select at least one export target (LPG and/or RDF).",
+                "UAF Neo4j Export", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
         final boolean inclTaggedValues  = exportTaggedValuesBox.isSelected();
         final boolean inclRelationships = exportRelationshipsBox.isSelected();
         final boolean inclInstanceLinks = exportInstanceLinksBox.isSelected();
-        final Properties connProps      = connectionProps();
+        final Properties connProps      = allProps();
         final ExportLog  log            = new ExportLog(project.getName());
         final Set<String> langFilter    = Collections.unmodifiableSet(selectedLanguages);
 
@@ -594,9 +699,9 @@ public class ExportConfigDialog extends JDialog {
         progressBar.setIndeterminate(true);
         progressBar.setVisible(true);
 
-        new SwingWorker<ExportResult, String>() {
+        new SwingWorker<Map<String, ExportResult>, String>() {
             @Override
-            protected ExportResult doInBackground() throws Exception {
+            protected Map<String, ExportResult> doInBackground() throws Exception {
                 publish("Traversing model (languages: " + String.join(", ", langFilter) + ")…");
                 UAFModelTraverser traverser = new UAFModelTraverser(project);
 
@@ -610,7 +715,6 @@ public class ExportConfigDialog extends JDialog {
                     })
                     .collect(Collectors.toList());
 
-                // Tally per-language counts for the export log and summary
                 Map<String, Integer> langCounts = new LinkedHashMap<>();
                 for (UAFElementDTO el : elements) {
                     String lang = (el.language == null || el.language.isEmpty()) ? "UAF" : el.language;
@@ -626,28 +730,43 @@ public class ExportConfigDialog extends JDialog {
                         .collect(Collectors.toList())
                     : Collections.emptyList();
 
-                publish(String.format("Found %d elements, %d relationships. Connecting to Neo4j…",
-                    elements.size(), relationships.size()));
+                publish(String.format("Found %d elements, %d relationships across %d package(s).",
+                    elements.size(), relationships.size(), selectedPackages.size()));
 
-                try (ExportService svc = new Neo4jExportService(connProps)) {
-                    svc.init();
-                    publish("Writing nodes…");
-                    svc.exportNodes(elements, inclTaggedValues);
+                Map<String, ExportResult> results = new LinkedHashMap<>();
+                if (tgtLpg) results.put("LPG (Neo4j)", runOneTarget(
+                    "LPG (Neo4j)", new Neo4jExportService(connProps),
+                    elements, relationships, langCounts, traverser));
+                if (tgtRdf) results.put("RDF (Turtle/Fuseki)", runOneTarget(
+                    "RDF (Turtle/Fuseki)", new RDFExportService(connProps),
+                    elements, relationships, langCounts, traverser));
+                return results;
+            }
 
+            /** Runs the full export pipeline against a single ExportService. Always closes svc. */
+            private ExportResult runOneTarget(String name, ExportService svc,
+                                              List<UAFElementDTO> elements,
+                                              List<UAFRelationshipDTO> relationships,
+                                              Map<String, Integer> langCounts,
+                                              UAFModelTraverser traverser) {
+                try (ExportService autoClosed = svc) {
+                    publish("[" + name + "] Connecting…");
+                    autoClosed.init();
+                    publish("[" + name + "] Writing nodes…");
+                    autoClosed.exportNodes(elements, inclTaggedValues);
                     if (!relationships.isEmpty()) {
-                        publish("Writing relationships…");
-                        svc.exportRelationships(relationships);
+                        publish("[" + name + "] Writing relationships…");
+                        autoClosed.exportRelationships(relationships);
                     }
                     if (inclInstanceLinks) {
-                        publish("Linking to metamodel stereotypes…");
-                        svc.exportInstanceOfLinks(elements);
+                        publish("[" + name + "] Linking to metamodel stereotypes…");
+                        autoClosed.exportInstanceOfLinks(elements);
                     }
-                    publish("Writing system model provenance…");
-                    svc.exportSystemModel(traverser.getSystemModelId(), traverser.getSystemModelName());
-                    svc.exportDefinesLinks(traverser.getSystemModelId(), elements);
-
-                    svc.getResult().languageCounts.putAll(langCounts);
-                    return svc.getResult();
+                    publish("[" + name + "] Writing system model provenance…");
+                    autoClosed.exportSystemModel(traverser.getSystemModelId(), traverser.getSystemModelName());
+                    autoClosed.exportDefinesLinks(traverser.getSystemModelId(), elements);
+                    autoClosed.getResult().languageCounts.putAll(langCounts);
+                    return autoClosed.getResult();
                 }
             }
 
@@ -662,11 +781,15 @@ public class ExportConfigDialog extends JDialog {
                 progressBar.setVisible(false);
                 setButtonsEnabled(true);
                 try {
-                    ExportResult result = get();
-                    log.finish(result);
-                    appendLog("Export complete — " + result.nodesWritten + " nodes, "
-                        + result.relationshipsWritten + " relationships.");
-                    new ExportSummaryDialog(null, result, log).setVisible(true);
+                    Map<String, ExportResult> results = get();
+                    ExportResult combined = mergeResults(results);
+                    log.finish(combined);
+                    for (Map.Entry<String, ExportResult> e : results.entrySet()) {
+                        appendLog("[" + e.getKey() + "] complete — "
+                            + e.getValue().nodesWritten + " nodes, "
+                            + e.getValue().relationshipsWritten + " relationships.");
+                    }
+                    new ExportSummaryDialog(null, combined, log).setVisible(true);
                     dispose();
                 } catch (Exception ex) {
                     Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
@@ -675,6 +798,26 @@ public class ExportConfigDialog extends JDialog {
                 }
             }
         }.execute();
+    }
+
+    /**
+     * Combine per-target {@link ExportResult}s into one for {@link ExportSummaryDialog}.
+     * Counts take the max across targets (both targets process the same elements, so max
+     * represents the work actually attempted). Errors are prefixed with the target name so
+     * the user can tell which path failed.
+     */
+    private static ExportResult mergeResults(Map<String, ExportResult> results) {
+        ExportResult out = new ExportResult();
+        for (Map.Entry<String, ExportResult> e : results.entrySet()) {
+            ExportResult r = e.getValue();
+            out.nodesWritten         = Math.max(out.nodesWritten,         r.nodesWritten);
+            out.relationshipsWritten = Math.max(out.relationshipsWritten, r.relationshipsWritten);
+            out.instanceLinksWritten = Math.max(out.instanceLinksWritten, r.instanceLinksWritten);
+            out.definesLinksWritten  = Math.max(out.definesLinksWritten,  r.definesLinksWritten);
+            for (String err : r.errors) out.errors.add("[" + e.getKey() + "] " + err);
+            if (out.languageCounts.isEmpty()) out.languageCounts.putAll(r.languageCounts);
+        }
+        return out;
     }
 
     private void appendLog(String msg) {
