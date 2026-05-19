@@ -59,6 +59,15 @@ public class ExportSummaryDialog extends JDialog {
         });
         buttons.add(browseBtn);
 
+        JButton copyRefreshBtn = new JButton("Copy SPARQL Refresh Cmd");
+        copyRefreshBtn.setToolTipText(
+            "Copies the shell command that re-dumps Neo4j → Fuseki for the SPARQL overlay");
+        copyRefreshBtn.addActionListener(e -> copyToClipboard(java.util.List.of(
+            "python ontology/codegen/dump_to_rdf.py",
+            "docker compose -f docker-compose/docker-compose.yml -f docker-compose/docker-compose.fuseki.yml restart fuseki"
+        )));
+        buttons.add(copyRefreshBtn);
+
         JButton closeBtn = new JButton("Close");
         closeBtn.addActionListener(e -> dispose());
         buttons.add(closeBtn);
@@ -107,6 +116,14 @@ public class ExportSummaryDialog extends JDialog {
             errPanel.add(errLabel,                    BorderLayout.NORTH);
             errPanel.add(new JScrollPane(errorArea),  BorderLayout.CENTER);
             panel.add(errPanel, BorderLayout.CENTER);
+        } else {
+            // SPARQL refresh hint (only shown when there are no errors competing for attention)
+            JLabel hint = new JLabel(
+                "<html><i>Next:</i> the SPARQL view (Fuseki) is now stale. " +
+                "Use <b>Copy SPARQL Refresh Cmd</b> below to grab the dump+restart command, " +
+                "or run it manually from the repo root.</html>");
+            hint.setBorder(new EmptyBorder(4, 4, 4, 4));
+            panel.add(hint, BorderLayout.CENTER);
         }
 
         return panel;
