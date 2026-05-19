@@ -1,6 +1,6 @@
 package com.uaf.neo4j.plugin;
 
-import com.uaf.neo4j.plugin.neo4j.Neo4jExportService.ExportResult;
+import com.uaf.neo4j.plugin.export.ExportResult;
 
 import java.io.IOException;
 import java.util.Map;
