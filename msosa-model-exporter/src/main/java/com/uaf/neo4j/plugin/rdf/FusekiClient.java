@@ -24,6 +24,7 @@ import java.util.Base64;
 public final class FusekiClient {
 
     private final URI dataUrl;
+    private final URI sparqlUrl;
     private final String authHeader;
     private final HttpClient client;
 
@@ -36,10 +37,33 @@ public final class FusekiClient {
     public FusekiClient(String baseUrl, String user, String password) {
         String base = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
         this.dataUrl    = URI.create(base + "/data");
+        this.sparqlUrl  = URI.create(base + "/sparql");
         this.authHeader = buildAuthHeader(user, password);
         this.client     = HttpClient.newBuilder()
                                     .connectTimeout(Duration.ofSeconds(10))
                                     .build();
+    }
+
+    /**
+     * Cheap, non-destructive probe — runs {@code ASK WHERE { }} against the dataset's
+     * SPARQL query endpoint. Returns true on any 2xx; any other response (including
+     * "No endpoint for request" or a connection error) returns false.
+     */
+    public boolean testConnection() {
+        try {
+            URI probeUri = URI.create(sparqlUrl + "?query=ASK%20WHERE%20%7B%7D");
+            HttpRequest.Builder rb = HttpRequest.newBuilder(probeUri)
+                .timeout(Duration.ofSeconds(10))
+                .header("Accept", "application/sparql-results+json")
+                .GET();
+            if (authHeader != null) {
+                rb.header("Authorization", authHeader);
+            }
+            HttpResponse<String> resp = client.send(rb.build(), BodyHandlers.ofString(StandardCharsets.UTF_8));
+            return resp.statusCode() >= 200 && resp.statusCode() < 300;
+        } catch (Exception ex) {
+            return false;
+        }
     }
 
     /**
