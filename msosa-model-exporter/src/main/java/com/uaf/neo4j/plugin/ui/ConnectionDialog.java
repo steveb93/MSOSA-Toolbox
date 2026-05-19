@@ -2,6 +2,7 @@ package com.uaf.neo4j.plugin.ui;
 
 import com.uaf.neo4j.plugin.UAFNeo4jPlugin;
 import com.uaf.neo4j.plugin.neo4j.Neo4jExportService;
+import com.uaf.neo4j.plugin.rdf.FusekiClient;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -66,17 +67,20 @@ public class ConnectionDialog extends JDialog {
         sc.anchor = GridBagConstraints.WEST;
         form.add(statusLabel, sc);
 
-        JButton testBtn   = new JButton("Test Connection");
-        JButton saveBtn   = new JButton("Save");
-        JButton cancelBtn = new JButton("Cancel");
+        JButton testNeo4jBtn  = new JButton("Test Neo4j");
+        JButton testFusekiBtn = new JButton("Test Fuseki");
+        JButton saveBtn       = new JButton("Save");
+        JButton cancelBtn     = new JButton("Cancel");
 
-        testBtn.addActionListener(e -> testConnection());
-        saveBtn.addActionListener(e -> { save(); dispose(); });
-        cancelBtn.addActionListener(e -> dispose());
+        testNeo4jBtn .addActionListener(e -> testNeo4j());
+        testFusekiBtn.addActionListener(e -> testFuseki());
+        saveBtn      .addActionListener(e -> { save(); dispose(); });
+        cancelBtn    .addActionListener(e -> dispose());
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         buttons.setBorder(new EmptyBorder(4, 12, 12, 12));
-        buttons.add(testBtn);
+        buttons.add(testNeo4jBtn);
+        buttons.add(testFusekiBtn);
         buttons.add(saveBtn);
         buttons.add(cancelBtn);
 
@@ -89,9 +93,9 @@ public class ConnectionDialog extends JDialog {
         setLocationRelativeTo(parent);
     }
 
-    private void testConnection() {
+    private void testNeo4j() {
         statusLabel.setForeground(Color.DARK_GRAY);
-        statusLabel.setText("Testing...");
+        statusLabel.setText("Testing Neo4j…");
 
         new SwingWorker<Boolean, Void>() {
             @Override
@@ -109,10 +113,45 @@ public class ConnectionDialog extends JDialog {
                 try {
                     boolean ok = get();
                     statusLabel.setForeground(ok ? new Color(0, 120, 0) : Color.RED);
-                    statusLabel.setText(ok ? "Connection successful." : "Connection failed — check URI and credentials.");
+                    statusLabel.setText(ok ? "Neo4j connection successful." :
+                        "Neo4j connection failed — check Bolt URI and credentials.");
                 } catch (Exception e) {
                     statusLabel.setForeground(Color.RED);
-                    statusLabel.setText("Error: " + e.getMessage());
+                    statusLabel.setText("Neo4j error: " + e.getMessage());
+                }
+            }
+        }.execute();
+    }
+
+    private void testFuseki() {
+        statusLabel.setForeground(Color.DARK_GRAY);
+        statusLabel.setText("Testing Fuseki…");
+
+        Properties cfg = currentProps();
+        final String url  = cfg.getProperty("fuseki.url",      "");
+        final String user = cfg.getProperty("fuseki.user",     "");
+        final String pwd  = cfg.getProperty("fuseki.password", "");
+
+        new SwingWorker<Boolean, Void>() {
+            @Override
+            protected Boolean doInBackground() {
+                try {
+                    return new FusekiClient(url, user, pwd).testConnection();
+                } catch (Exception ex) {
+                    return false;
+                }
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    boolean ok = get();
+                    statusLabel.setForeground(ok ? new Color(0, 120, 0) : Color.RED);
+                    statusLabel.setText(ok ? "Fuseki SPARQL endpoint reachable." :
+                        "Fuseki connection failed — check URL (must include dataset name, e.g. /uaf) and credentials.");
+                } catch (Exception e) {
+                    statusLabel.setForeground(Color.RED);
+                    statusLabel.setText("Fuseki error: " + e.getMessage());
                 }
             }
         }.execute();
