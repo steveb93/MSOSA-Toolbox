@@ -1,7 +1,7 @@
 """Generate the full UAF + SysML + BPMN T-Box from the seeded :Stereotype metamodel.
 
 Reads the :Stereotype / :Domain nodes seeded by
-uaf-neo4j-plugin/cypher/init_uaf_graph.cypher (which mirror UAFStereotypeRegistry)
+cypher/init_uaf_graph.cypher (which mirror UAFStereotypeRegistry)
 and the REL_* constants in UAFRelationshipDTO.java. Emits ontology/uaf-mvo.ttl
 covering all three modelling languages (no domain filter) and
 ontology/n10s-mappings.cypher with full URI ↔ Neo4j-label mappings.

@@ -64,7 +64,7 @@ cd ../docker-compose
 docker compose up -d
 
 # initialise UAF metamodel schema (run once)
-cypher-shell -u neo4j -p Password123 -f cypher/init_uaf_graph.cypher
+cypher-shell -u neo4j -p Password123 -f ../cypher/init_uaf_graph.cypher
 ```
 
 `init_uaf_graph.cypher` creates constraints, full-text indexes, and the pre-existing metamodel nodes (`:Stereotype`, `:Domain`, `:ArchitectureLayer`) that exported instances link back to.

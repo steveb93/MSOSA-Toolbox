@@ -54,9 +54,7 @@ Neo4j (Docker :7687)
 ```
 uaf-neo4j-plugin/
 ├── (SDK jars live in /msosa-sdk/ at the repo root — shared across plugins)
-├── cypher/
-│   ├── init_uaf_graph.cypher               ← DB schema + metamodel initialisation (run once)
-│   └── query-cookbook.cypher               ← Example Cypher queries
+├── (Cypher schema lives in /cypher/ at the repo root — schema is a toolbox-wide asset)
 ├── src/
 │   ├── assembly/
 │   │   └── plugin-zip.xml                  ← Maven Assembly descriptor for deployable zip
@@ -131,7 +129,7 @@ docker compose up -d
 Then initialise the multi-language metamodel schema once:
 
 ```powershell
-cypher-shell -u neo4j -p Password123 -f ../uaf-neo4j-plugin/cypher/init_uaf_graph.cypher
+cypher-shell -u neo4j -p Password123 -f ../cypher/init_uaf_graph.cypher
 ```
 
 ---
