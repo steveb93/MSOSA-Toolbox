@@ -25,7 +25,7 @@ Neo4j (Docker :7687)
 
 ### 1. Install MSOSA SDK jars into local Maven repo
 
-The three MSOSA API jars are checked into `msosa-api/` in this directory. Run the provided script once from `uaf-neo4j-plugin/`:
+The MSOSA SDK jars are checked into `/msosa-sdk/` at the repo root (shared across any future MSOSA plugins). Run the provided script once from `uaf-neo4j-plugin/`:
 
 ```powershell
 .\install-msosa-jars.ps1
@@ -187,5 +187,5 @@ Changes take effect without restarting MSOSA.
 | Connection refused | Neo4j container not running | `docker compose up -d`; check port 7687 |
 | INSTANCE_OF links missing | Stereotype nodes absent | Re-run `init_uaf_graph.cypher` |
 | Slow export on large model | Batch size too small | Increase `neo4j.batch.size` to 500–1000 |
-| `ClassNotFoundException` on startup | SDK jars not in local Maven repo | Re-run the three `mvn install:install-file` commands above (jars are in `msosa-api/`) |
+| `ClassNotFoundException` on startup | SDK jars not in local Maven repo | Re-run `.\install-msosa-jars.ps1` (jars live in `/msosa-sdk/` at the repo root) |
 | Stereotype skipped silently | Name mismatch in registry | Verify name via MSOSA scripting console (see above) |

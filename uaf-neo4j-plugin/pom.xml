@@ -13,15 +13,15 @@
     <description>MSOSA 2022x Refresh2 plugin to export UAF 1.2 elements and relationships to Neo4j</description>
  
     <properties>
-        <revision>1.0.2-Preview</revision>
+        <revision>1.0.3-Preview</revision>
         <java.version>11</java.version>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <neo4j.driver.version>4.4.15</neo4j.driver.version>
-        <!-- MSOSA API jars checked into repo under uaf-neo4j-plugin/msosa-api/ -->
-        <msosa.api.dir>${project.basedir}/msosa-api</msosa.api.dir>
-        <msosa.api.version>2022x-hf2</msosa.api.version>
+        <!-- MSOSA SDK jars live in /msosa-sdk/ at the repo root (shared across plugins) -->
+        <msosa.sdk.dir>${project.basedir}/../msosa-sdk</msosa.sdk.dir>
+        <msosa.sdk.version>2022x-hf2</msosa.sdk.version>
     </properties>
 
     <dependencies>
@@ -48,45 +48,45 @@
         </dependency>
 
         <!--
-            MSOSA API jars — PROVIDED (on MSOSA classpath at runtime; not bundled).
-            Jars are checked into msosa-api/ in this directory. Install once with:
+            MSOSA SDK jars — PROVIDED (on MSOSA classpath at runtime; not bundled).
+            Jars are checked into /msosa-sdk/ at the repo root. Install once with:
 
             .\install-msosa-jars.ps1
         -->
         <dependency>
             <groupId>com.nomagic.magicdraw</groupId>
             <artifactId>md</artifactId>
-            <version>${msosa.api.version}</version>
+            <version>${msosa.sdk.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.nomagic.magicdraw</groupId>
             <artifactId>md-api</artifactId>
-            <version>${msosa.api.version}</version>
+            <version>${msosa.sdk.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.nomagic.magicdraw</groupId>
             <artifactId>uml2</artifactId>
-            <version>${msosa.api.version}</version>
+            <version>${msosa.sdk.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.nomagic.magicdraw</groupId>
             <artifactId>magicdraw-foundation</artifactId>
-            <version>${msosa.api.version}</version>
+            <version>${msosa.sdk.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.nomagic.magicdraw</groupId>
             <artifactId>magicdraw-core-diagram</artifactId>
-            <version>${msosa.api.version}</version>
+            <version>${msosa.sdk.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.dassault_systemes</groupId>
             <artifactId>modeler-foundation</artifactId>
-            <version>${msosa.api.version}</version>
+            <version>${msosa.sdk.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -98,7 +98,7 @@
         <dependency>
             <groupId>com.nomagic.magicdraw</groupId>
             <artifactId>magicdraw-modeling</artifactId>
-            <version>${msosa.api.version}</version>
+            <version>${msosa.sdk.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -116,7 +116,7 @@
         <dependency>
             <groupId>com.nomagic</groupId>
             <artifactId>nomagic-utils</artifactId>
-            <version>${msosa.api.version}</version>
+            <version>${msosa.sdk.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -128,7 +128,7 @@
         <dependency>
             <groupId>com.nomagic.magicdraw</groupId>
             <artifactId>magicdraw-common</artifactId>
-            <version>${msosa.api.version}</version>
+            <version>${msosa.sdk.version}</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>

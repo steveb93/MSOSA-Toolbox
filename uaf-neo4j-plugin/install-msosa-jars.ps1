@@ -1,8 +1,9 @@
 # Run from uaf-neo4j-plugin\ to register MSOSA SDK jars in your local Maven repo.
+# SDK jars live in /msosa-sdk/ at the repo root (shared across any future MSOSA plugins).
 # Usage: .\install-msosa-jars.ps1
 
 $ErrorActionPreference = "Stop"
-$jarsDir = Join-Path $PSScriptRoot "msosa-api"
+$jarsDir = Join-Path (Split-Path $PSScriptRoot -Parent) "msosa-sdk"
 $version  = "2022x-hf2"
 $group    = "com.nomagic.magicdraw"
 
