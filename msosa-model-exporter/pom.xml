@@ -13,12 +13,15 @@
     <description>MSOSA 2022x Hotfix 2 plugin that exports UAF 1.2 / SysML 1.6 / BPMN 2.0 models to Neo4j (LPG via Cypher). RDF emitter planned per ontology/NEXT-STEPS.md Stage 4.</description>
  
     <properties>
-        <revision>1.1.0-Preview</revision>
+        <revision>1.2.0-Preview</revision>
         <java.version>11</java.version>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <neo4j.driver.version>4.4.15</neo4j.driver.version>
+        <!-- Apache Jena 4.10.0 — last Jena release on Java 11. Jena 5.x requires Java 17, which
+             MSOSA 2022x HF2 does not ship. Pulls jena-core transitively. -->
+        <jena.version>4.10.0</jena.version>
         <!-- MSOSA SDK jars live in /msosa-sdk/ at the repo root (shared across plugins) -->
         <msosa.sdk.dir>${project.basedir}/../msosa-sdk</msosa.sdk.dir>
         <msosa.sdk.version>2022x-hf2</msosa.sdk.version>
@@ -45,6 +48,15 @@
             <groupId>com.github.vlsi.mxgraph</groupId>
             <artifactId>jgraphx</artifactId>
             <version>4.2.2</version>
+        </dependency>
+
+        <!-- Apache Jena ARQ — RDF model + Turtle writer + (unused here) SPARQL. Bundled + shaded
+             into com.uaf.shaded.jena.* so the runtime classpath cannot collide with anything
+             MagicDraw might bundle. Pulls jena-core, jena-iri, etc. transitively. -->
+        <dependency>
+            <groupId>org.apache.jena</groupId>
+            <artifactId>jena-arq</artifactId>
+            <version>${jena.version}</version>
         </dependency>
 
         <!--
@@ -189,6 +201,11 @@
                                 <relocation>
                                     <pattern>reactor</pattern>
                                     <shadedPattern>com.uaf.shaded.reactor</shadedPattern>
+                                </relocation>
+                                <!-- Apache Jena and its transitive deps -->
+                                <relocation>
+                                    <pattern>org.apache.jena</pattern>
+                                    <shadedPattern>com.uaf.shaded.jena</shadedPattern>
                                 </relocation>
                             </relocations>
                             <transformers>
