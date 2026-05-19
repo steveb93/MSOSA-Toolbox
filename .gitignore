@@ -18,7 +18,7 @@ __pycache__/
 ontology/dump/
 
 # Maven build output
-uaf-neo4j-plugin/target/
+msosa-model-exporter/target/
 
 # Atomic-write tempfiles from editor tools
 **/*.java.tmp.*

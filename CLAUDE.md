@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This repo converts UAF 1.2 (Unified Architecture Framework) system models into a Neo4j knowledge graph. There are two pipelines:
 
-1. **Java Maven plugin** (`uaf-neo4j-plugin/`) — installs into MSOSA (MagicDraw) 2022x Hotfix 2 and exports directly to Neo4j over Bolt from within the modelling tool.
+1. **Java Maven plugin** (`msosa-model-exporter/`) — installs into MSOSA (MagicDraw) 2022x Hotfix 2 and exports directly to Neo4j over Bolt from within the modelling tool.
 2. **Python MCP server** (`neo4j_mcp_driver/`) — exposes Neo4j Cypher queries to Claude Desktop via the Model Context Protocol, enabling Claude to query the graph.
 
 Neo4j runs in Docker (`docker-compose/docker-compose.yml`) on `bolt://localhost:7687` with credentials `neo4j / Password123`.
@@ -20,12 +20,12 @@ Neo4j runs in Docker (`docker-compose/docker-compose.yml`) on `bolt://localhost:
 The MSOSA 2022x SDK jars are checked into `/msosa-sdk/` at the repo root (shared classpath for any plugin in this toolbox). Register them once with the bundled script, then build:
 
 ```powershell
-cd uaf-neo4j-plugin
+cd msosa-model-exporter
 .\install-msosa-jars.ps1   # one-time: registers jars from ../msosa-sdk into your local Maven repo
 mvn package                # produces fat jar + deployable zip in target/
 ```
 
-The zip (`target/uaf-neo4j-plugin-1.0.1-Preview-plugin.zip`) extracts to a folder you drop into `<MSOSA_HOME>/plugins/`.
+The zip (`target/msosa-model-exporter-1.0.1-Preview-plugin.zip`) extracts to a folder you drop into `<MSOSA_HOME>/plugins/`.
 
 ### Python MCP Server
 
@@ -151,12 +151,12 @@ The strategic rationale, MVO/MVG cadence, and migration roadmap (Stages 1–4) a
 
 To deploy the plugin to MSOSA:
 
-1. Run `mvn package` in `uaf-neo4j-plugin/`
-2. Unzip `target/uaf-neo4j-plugin-1.0.1-Preview-plugin.zip` into `<MSOSA_HOME>/plugins/`
+1. Run `mvn package` in `msosa-model-exporter/`
+2. Unzip `target/msosa-model-exporter-1.0.1-Preview-plugin.zip` into `<MSOSA_HOME>/plugins/`
 3. Restart MSOSA
 4. Plugin appears under **Tools → UAF Neo4j Export**
 
-Connection settings are stored in `<MSOSA_HOME>/plugins/uaf-neo4j-plugin/neo4j-connection.properties` and editable via the **Configure Connection** dialog without restarting.
+Connection settings are stored in `<MSOSA_HOME>/plugins/msosa-model-exporter/neo4j-connection.properties` and editable via the **Configure Connection** dialog without restarting.
 
 ---
 

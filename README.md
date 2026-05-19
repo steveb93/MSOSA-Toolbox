@@ -26,7 +26,7 @@ References:
 
 | Component | Description | Status |
 |---|---|---|
-| [uaf-neo4j-plugin](uaf-neo4j-plugin/) | MSOSA plugin — exports UAF 1.2 / SysML 1.6 / BPMN 2.0 elements and relationships to a Neo4j knowledge graph over Bolt | [![Build](https://github.com/steveb93/UAF-Repo/actions/workflows/uaf-neo4j-build.yml/badge.svg)](https://github.com/steveb93/UAF-Repo/actions/workflows/packaging.yml) |
+| [msosa-model-exporter](msosa-model-exporter/) | MSOSA plugin — exports UAF 1.2 / SysML 1.6 / BPMN 2.0 elements and relationships to a Neo4j knowledge graph over Bolt | [![Build](https://github.com/steveb93/UAF-Repo/actions/workflows/msosa-model-exporter-build.yml/badge.svg)](https://github.com/steveb93/UAF-Repo/actions/workflows/msosa-model-exporter-build.yml) |
 | [neo4j_mcp_driver](neo4j_mcp_driver/) | Python MCP server — exposes `run_cypher` and `run_sparql` tools to Claude Desktop | — |
 | [ontology](ontology/) | Generated OWL T-Box, Fuseki configuration, dump script, anchor SPARQL queries | — |
 | [docker-compose](docker-compose/) | Neo4j stack + Fuseki SPARQL overlay (overlay file `docker-compose.fuseki.yml`) | — |
@@ -61,7 +61,7 @@ See [`ontology/NEXT-STEPS.md`](ontology/NEXT-STEPS.md) for Stage 3 (native tripl
 
 ```
 MSOSA-Toolbox/
-├── uaf-neo4j-plugin/                # MSOSA plugin — exports UAF model to Neo4j
+├── msosa-model-exporter/            # MSOSA plugin — exports UAF/SysML/BPMN model to Neo4j (LPG)
 │   ├── src/
 │   └── pom.xml
 ├── cypher/                          # Graph schema + metamodel seed (init_uaf_graph.cypher) + query cookbook
@@ -126,14 +126,14 @@ The CI pipeline handles building and publishing. Contributors own the version nu
 Use the Maven Versions Plugin to update the `revision` property in `pom.xml`:
 
 ```powershell
-cd uaf-neo4j-plugin
+cd msosa-model-exporter
 mvn versions:set-property -Dproperty=revision -DnewVersion=0.4.1
 ```
 
 Commit and push to `main`:
 
 ```powershell
-git add uaf-neo4j-plugin/pom.xml
+git add msosa-model-exporter/pom.xml
 git commit -m "chore: bump version to 0.4.1"
 git push origin main
 ```

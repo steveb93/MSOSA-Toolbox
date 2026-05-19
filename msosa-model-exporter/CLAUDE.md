@@ -25,7 +25,7 @@ Neo4j (Docker :7687)
 
 ### 1. Install MSOSA SDK jars into local Maven repo
 
-The MSOSA SDK jars are checked into `/msosa-sdk/` at the repo root (shared across any future MSOSA plugins). Run the provided script once from `uaf-neo4j-plugin/`:
+The MSOSA SDK jars are checked into `/msosa-sdk/` at the repo root (shared across any future MSOSA plugins). Run the provided script once from `msosa-model-exporter/`:
 
 ```powershell
 .\install-msosa-jars.ps1
@@ -38,16 +38,16 @@ mvn clean package
 ```
 
 Outputs:
-- `target/uaf-neo4j-plugin-1.0.1-Preview.jar` — fat jar (Neo4j driver bundled + relocated)
-- `target/uaf-neo4j-plugin-1.0.1-Preview-plugin.zip` — drop into `<MSOSA_HOME>/plugins/`
+- `target/msosa-model-exporter-1.0.1-Preview.jar` — fat jar (Neo4j driver bundled + relocated)
+- `target/msosa-model-exporter-1.0.1-Preview-plugin.zip` — drop into `<MSOSA_HOME>/plugins/`
 
 ### 3. Deploy to MSOSA
 
 Either use **Help → Resource/Plugin Manager → Install Plugin from File**, or unzip manually:
 
 ```
-<MSOSA_HOME>/plugins/uaf-neo4j-plugin/
-    uaf-neo4j-plugin-1.0.1-Preview.jar
+<MSOSA_HOME>/plugins/msosa-model-exporter/
+    msosa-model-exporter-1.0.1-Preview.jar
     plugin.xml
     neo4j-connection.properties
 ```
@@ -165,7 +165,7 @@ com.nomagic.uml2.ext.jmi.helpers.StereotypesHelper.getAllStereotypes(
 ## Connection Configuration
 
 Editable via **Tools → UAF Neo4j Export → Configure Connection** or directly in:
-`<MSOSA_HOME>/plugins/uaf-neo4j-plugin/neo4j-connection.properties`
+`<MSOSA_HOME>/plugins/msosa-model-exporter/neo4j-connection.properties`
 
 ```properties
 neo4j.uri=bolt://localhost:7687

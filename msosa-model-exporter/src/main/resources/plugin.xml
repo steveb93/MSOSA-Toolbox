@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <plugin id="com.uaf.neo4j.plugin"
-        name="UAF Neo4j Export Plugin"
+        name="MSOSA Model Exporter"
         version="${project.version}"
         internalVersion="202200000"
         ownClassloader="false"
@@ -13,6 +13,6 @@
     </requires>
 
     <runtime>
-        <library name="uaf-neo4j-plugin-${project.version}.jar"/>
+        <library name="msosa-model-exporter-${project.version}.jar"/>
     </runtime>
 </plugin>
