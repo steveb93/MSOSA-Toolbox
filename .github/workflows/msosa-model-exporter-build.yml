@@ -123,7 +123,7 @@ jobs:
       needs.build.result == 'success' &&
       (needs.verify-tag-branch.result == 'success' || needs.verify-tag-branch.result == 'skipped') &&
       (
-        (github.event_name == 'push' && github.actor != 'github-actions[bot]' &&
+        (github.event_name == 'push' &&
          (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/preview')) ||
         startsWith(github.ref, 'refs/tags/v') ||
         github.event_name == 'workflow_dispatch'
@@ -161,7 +161,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git diff --quiet && exit 0
           git add -A
-          git commit -m "chore: sync version references to ${{ steps.resolve.outputs.version }}"
+          git commit -m "chore: sync version references to ${{ steps.resolve.outputs.version }} [skip ci]"
           git push
 
   # ── Tag branch guard ──────────────────────────────────────────────────────
