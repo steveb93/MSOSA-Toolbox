@@ -130,70 +130,82 @@ MSOSA-Toolbox/
 
 ### Releasing a new version
 
-The CI pipeline handles building and publishing. Contributors own the version number and the git tag — CI does the rest.
+The CI pipeline handles building and publishing. Contributors own the version number and the git tag — CI does the rest. Two channels:
 
-#### Step 1 — Bump the version
+- **Full releases** ship from `main` with tags like `v1.3.2`.
+- **Preview releases** ship from `preview` with tags like `v1.3.2-Preview`. Use these for incremental work that hasn't been promoted to `main` yet.
 
-Use the Maven Versions Plugin to update the `revision` property in `pom.xml`:
+#### Step 1 — Bump the version on the target branch
+
+`<branch>` is `main` for a full release or `preview` for a preview. Make sure you're on the right one:
 
 ```powershell
+git checkout <branch>
+git pull origin <branch>
+
 cd msosa-model-exporter
-mvn versions:set-property -Dproperty=revision -DnewVersion=0.4.1
+mvn versions:set-property -Dproperty=revision -DnewVersion=1.3.2-Preview   # or 1.3.2 for main
+cd ..
 ```
 
-Commit and push to `main`:
+Commit and push:
 
 ```powershell
 git add msosa-model-exporter/pom.xml
-git commit -m "chore: bump version to 0.4.1"
-git push origin main
+git commit -m "chore: bump version to 1.3.2-Preview"
+git push origin <branch>
 ```
 
-CI will automatically update any hardcoded version strings in the docs to match.
+The push triggers the build workflow. As part of that run, the `sync-version-refs` job rewrites hardcoded `msosa-model-exporter-X.Y.Z` strings in `*.md` files to match the new revision, then pushes that as a follow-up commit (commit author: `github-actions[bot]`). The bot's commit does **not** re-trigger the workflow — the build and sync jobs filter on `github.event.head_commit.author.name` to break the loop.
 
 #### Step 2 — Tag the release
 
-Tags drive the release pipeline. The tag name **must** match the `revision` in `pom.xml` (with a `v` prefix).
+Tags drive the release pipeline. The tag name **must** match the `revision` in `pom.xml` (with a `v` prefix). Pull first so your local branch includes the bot's sync commit, then tag the tip:
 
 ```powershell
-# Full release from main
-git tag v0.4.1
-git push origin v0.4.1
+git pull origin <branch>
 
-# Preview release from preview branch
-git tag v0.4.1-Preview
-git push origin v0.4.1-Preview
+# Full release from main
+git tag v1.3.2
+git push origin v1.3.2
+
+# Preview release from preview
+git tag v1.3.2-Preview
+git push origin v1.3.2-Preview
 ```
+
+The tag may legitimately land on the bot's `chore: sync version references…` commit — that's fine. The release workflow fires regardless of whether the tagged commit was bot- or human-authored (the author filter only applies to branch pushes, not tag pushes).
 
 Pushing the tag triggers:
 
-1. Build and test
-2. Branch verification (release tags must come from `main`; `-Preview` tags from `preview`)
-3. Version string sync committed back to the base branch
-4. A **draft** GitHub Release created with the plugin zip attached and auto-generated release notes
+1. Build and test (against the tagged commit's source tree).
+2. Branch verification — `v*-Preview` tags must originate from `preview`; non-`-Preview` tags from `main`.
+3. A **draft** GitHub Release with the plugin zip attached and auto-generated release notes.
 
-#### Step 3 — Publish the draft release
+#### Step 3 — Publish the draft
 
 Open the draft at **GitHub → Releases**, review the notes, then click **Publish release**.
 
 > The release type (major / minor / patch) is auto-detected from the version number:
-> `v1.0.0` → major, `v0.5.0` → minor, `v0.4.1` → patch.
+> `v2.0.0` → major, `v1.4.0` → minor, `v1.3.2` → patch.
 
 ---
 
-#### Alternative: trigger via workflow_dispatch
+#### Alternative: trigger via `workflow_dispatch`
 
-Use this when you need to create a release without pushing a tag manually (e.g. from a CI environment or to control the draft flag explicitly).
+Use this when you need to cut a release without pushing a tag — e.g. re-running a release that failed mid-stream, or producing a non-draft release directly.
 
-Go to **Actions → Build & Release → Run workflow** and fill in:
+Go to **Actions → MSOSA Model Exporter — Build & Release → Run workflow** (the workflow file is `.github/workflows/msosa-model-exporter-build.yml`; GitHub's sidebar may cache the previous workflow display name `Build & Release` — same workflow either way) and fill in:
 
 | Input | Example | Notes |
 |---|---|---|
-| `version` | `v0.4.1` | Must match `revision` in `pom.xml` exactly |
-| `release_type` | `minor` | Informational — appears in the release title |
+| `version` | `v1.3.2-Preview` | Must match `revision` in `pom.xml` exactly |
+| `release_type` | `patch` | Informational — appears in the release title |
 | `draft` | `true` | Uncheck to publish immediately |
 
-The workflow verifies the version matches `pom.xml` before building and will fail fast if they differ.
+The workflow verifies the version matches `pom.xml` before building and fails fast if they differ.
+
+`workflow_dispatch` is only available when the workflow file exists on the **default branch** (`main`). If you've renamed the workflow on `preview` but not promoted to `main`, the dispatch UI won't surface the new file — use a tag push instead, or promote `preview → main` first.
 
 ---
 
