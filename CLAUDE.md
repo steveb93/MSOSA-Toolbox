@@ -17,21 +17,12 @@ Neo4j runs in Docker (`docker-compose/docker-compose.yml`) on `bolt://localhost:
 
 ### Java Plugin (Maven)
 
-Before first build, install the MagicDraw API jars from your MSOSA installation:
-
-```powershell
-mvn install:install-file -Dfile="C:/Program Files/MagicDraw/lib/magicdraw.jar" `
-    -DgroupId=com.nomagic.magicdraw -DartifactId=magicdraw-api -Dversion=2022x -Dpackaging=jar
-
-mvn install:install-file -Dfile="C:/Program Files/MagicDraw/lib/md_api.jar" `
-    -DgroupId=com.nomagic.magicdraw -DartifactId=md-api -Dversion=2022x -Dpackaging=jar
-```
-
-Then build from the plugin directory:
+The MSOSA 2022x SDK jars are checked into `/msosa-sdk/` at the repo root (shared classpath for any plugin in this toolbox). Register them once with the bundled script, then build:
 
 ```powershell
 cd uaf-neo4j-plugin
-mvn package          # produces fat jar + deployable zip in target/
+.\install-msosa-jars.ps1   # one-time: registers jars from ../msosa-sdk into your local Maven repo
+mvn package                # produces fat jar + deployable zip in target/
 ```
 
 The zip (`target/uaf-neo4j-plugin-1.0.1-Preview-plugin.zip`) extracts to a folder you drop into `<MSOSA_HOME>/plugins/`.
