@@ -33,7 +33,7 @@ References:
 
 > New plugins can be added as subdirectories following the conventions in [Contributing](#contributing).
 
-## Stage 2 ontology overlay (SPARQL)
+## Stage 2 ontology overlay (SPARQL) — and Stage 4 in-plugin RDF emitter
 
 Stage 2 of the migration described in `Ontology-Approach-to-Knowledge.md` is live: Apache Jena Fuseki provides a real SPARQL 1.1 endpoint with RDFS reasoning over a UAF Minimum Viable Ontology (MVO) covering **all 8 UAF domains plus SysML and BPMN** — 103 OWL classes, 31 ObjectProperties, code-generated from the seeded `:Stereotype` metamodel in Neo4j.
 
@@ -44,6 +44,17 @@ Stage 2 of the migration described in `Ontology-Approach-to-Knowledge.md` is liv
 
 **Refresh cadence after each MSOSA export**:
 
+The Stage 4 dual-emitter rollout (`v1.3.0-Preview` onwards) gives the plugin two write targets: the existing **Neo4j (LPG)** target and a new **RDF** target that writes Turtle to disk and optionally PUTs it to Fuseki via SPARQL 1.1 Graph Store Protocol — refreshing the SPARQL view in a single click with no docker restart.
+
+**Preferred path** (`v1.3.0-Preview` onwards):
+
+1. **Tools → MSOSA Model Exporter** in MagicDraw.
+2. Tick both **Neo4j (LPG via Cypher)** and **RDF Turtle file (and optionally PUT to Fuseki)** under *Export Targets*.
+3. Tick the **Also PUT to Fuseki /data endpoint** sub-option to push directly.
+4. Click **Export**. Both stores refresh in one operation.
+
+**Fallback / recovery path** (rebuild Fuseki from Neo4j when the plugin RDF emitter is off or has misbehaved):
+
 ```powershell
 # Re-dump Neo4j → ontology/dump/uaf-instance.ttl and reload Fuseki
 python ontology/codegen/dump_to_rdf.py
@@ -51,9 +62,9 @@ docker compose -f docker-compose/docker-compose.yml `
                -f docker-compose/docker-compose.fuseki.yml restart fuseki
 ```
 
-The Java plugin's **Tools → UAF Neo4j Export → Open SPARQL Endpoint** menu item opens the Fuseki UI directly; the post-export summary dialog has a **Copy SPARQL Refresh Cmd** button that copies the two-line refresh sequence above to the clipboard.
+The post-export summary dialog has a **Copy SPARQL Refresh Cmd** button that copies the fallback two-line sequence to the clipboard. The Java plugin's **Tools → MSOSA Model Exporter → Open SPARQL Endpoint** menu item opens the Fuseki UI directly.
 
-See [`ontology/NEXT-STEPS.md`](ontology/NEXT-STEPS.md) for Stage 3 (native triplestore, OWL 2 RL reasoning, SHACL validation) and Stage 4 (full RDF migration) gating criteria.
+See [`ontology/NEXT-STEPS.md`](ontology/NEXT-STEPS.md) for Stage 3 (native triplestore, OWL 2 RL reasoning, SHACL validation) and Stage 5 (composite AI / decision intelligence) gating criteria.
 
 ---
 
