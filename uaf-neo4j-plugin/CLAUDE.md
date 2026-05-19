@@ -38,8 +38,8 @@ mvn clean package
 ```
 
 Outputs:
-- `target/uaf-neo4j-plugin-1.0.3-Preview-Preview-Preview-Preview.jar` — fat jar (Neo4j driver bundled + relocated)
-- `target/uaf-neo4j-plugin-1.0.3-Preview-Preview-Preview-Preview-plugin.zip` — drop into `<MSOSA_HOME>/plugins/`
+- `target/uaf-neo4j-plugin-1.0.4-Preview-Preview-Preview-Preview-Preview.jar` — fat jar (Neo4j driver bundled + relocated)
+- `target/uaf-neo4j-plugin-1.0.4-Preview-Preview-Preview-Preview-Preview-plugin.zip` — drop into `<MSOSA_HOME>/plugins/`
 
 ### 3. Deploy to MSOSA
 
@@ -47,7 +47,7 @@ Either use **Help → Resource/Plugin Manager → Install Plugin from File**, or
 
 ```
 <MSOSA_HOME>/plugins/uaf-neo4j-plugin/
-    uaf-neo4j-plugin-1.0.3-Preview-Preview-Preview-Preview.jar
+    uaf-neo4j-plugin-1.0.4-Preview-Preview-Preview-Preview-Preview.jar
     plugin.xml
     neo4j-connection.properties
 ```
