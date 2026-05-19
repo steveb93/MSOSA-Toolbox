@@ -66,6 +66,16 @@ public class UAFNeo4jPlugin extends Plugin {
         config.setProperty("export.language.sysml", "true");
         config.setProperty("export.language.bpmn",  "true");
 
+        // Stage 2 SPARQL overlay (Apache Jena Fuseki sidecar). The Java plugin
+        // does not write to Fuseki directly — the dump script in
+        // ontology/codegen/dump_to_rdf.py reads from Neo4j after each export.
+        // These properties are referenced by OpenSparqlEndpointAction and
+        // ExportSummaryDialog so the user sees a consistent endpoint URL.
+        config.setProperty("fuseki.url",      "http://localhost:3030/uaf");
+        config.setProperty("fuseki.sparql",   "http://localhost:3030/uaf/sparql");
+        config.setProperty("fuseki.user",     "admin");
+        config.setProperty("fuseki.password", "Password123");
+
         File configFile = getConfigFile();
         if (configFile.exists()) {
             try (FileInputStream fis = new FileInputStream(configFile)) {

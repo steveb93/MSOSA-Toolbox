@@ -171,6 +171,32 @@ The **Graph Inspector** provides two ways to explore:
 
 ---
 
+### Step 5 — Query via SPARQL (optional, Stage 2 overlay)
+
+The plugin writes to Neo4j as the **system of record**, but a **SPARQL endpoint** is available as an overlay via Apache Jena Fuseki. The overlay is loaded from a periodic RDF dump of the Neo4j graph plus an OWL T-Box generated from `UAFStereotypeRegistry`. RDFS subsumption reasoning is on, so queries like "all uaf:StrategicElement instances" resolve without manual property paths.
+
+Start the overlay:
+
+```powershell
+# from repo root
+docker compose -f docker-compose/docker-compose.yml `
+               -f docker-compose/docker-compose.fuseki.yml up -d
+```
+
+Refresh the SPARQL view after each export:
+
+```powershell
+python ontology/codegen/dump_to_rdf.py
+docker compose -f docker-compose/docker-compose.yml `
+               -f docker-compose/docker-compose.fuseki.yml restart fuseki
+```
+
+The post-export dialog's **Copy SPARQL Refresh Cmd** button copies this two-line sequence to the clipboard. The menu item **Tools → UAF Neo4j Export → Open SPARQL Endpoint…** opens the Fuseki UI in your browser.
+
+See `../ontology/queries/semantic-search-examples.sparql` for anchor queries and `../ontology/NEXT-STEPS.md` for Stage 3+ (native triplestore, OWL 2 RL reasoning, SHACL validation).
+
+---
+
 ## Connection Configuration
 
 Connection settings are stored in:
@@ -180,11 +206,18 @@ Connection settings are stored in:
 
 Default values:
 ```properties
+# Neo4j (system of record)
 neo4j.uri=bolt://localhost:7687
 neo4j.user=neo4j
 neo4j.password=Password123
 neo4j.database=neo4j
 neo4j.batch.size=500
+
+# Fuseki SPARQL (Stage 2 ontology overlay)
+fuseki.url=http://localhost:3030/uaf
+fuseki.sparql=http://localhost:3030/uaf/sparql
+fuseki.user=admin
+fuseki.password=Password123
 ```
 
 Settings can be edited at runtime on the **Connection** tab of the Export Configuration dialog.

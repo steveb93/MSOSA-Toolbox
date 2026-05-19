@@ -22,3 +22,7 @@ ontology/retired/ontop/jdbc/
 
 # Maven build output
 uaf-neo4j-plugin/target/
+
+# Atomic-write tempfiles from editor tools
+**/*.java.tmp.*
+**/*.py.tmp.*

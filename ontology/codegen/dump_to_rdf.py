@@ -26,8 +26,12 @@ OUT_DIR = REPO_ROOT / "ontology" / "dump"
 OUT_FILE = OUT_DIR / "uaf-instance.ttl"
 
 UAF = Namespace("http://msosa-toolbox.local/uaf#")
+SYSML = Namespace("http://msosa-toolbox.local/sysml#")
+BPMN = Namespace("http://msosa-toolbox.local/bpmn#")
 UAFINST = Namespace("http://msosa-toolbox.local/uaf/instance#")
 UAFTV = Namespace("http://msosa-toolbox.local/uaf/tag#")
+
+NS_FOR_LANG = {"UAF": UAF, "SysML": SYSML, "BPMN": BPMN}
 
 
 def to_camel(rel_type: str) -> str:
@@ -43,8 +47,9 @@ def instance_uri(node_id: str) -> URIRef:
     return UAFINST[SAFE_ID.sub("_", str(node_id))]
 
 
-def class_uri(label: str) -> URIRef:
-    return UAF[label]
+def class_uri(label: str, language: str | None) -> URIRef:
+    ns = NS_FOR_LANG.get(language or "UAF", UAF)
+    return ns[label]
 
 
 def property_uri(rel_type: str) -> URIRef:
@@ -69,8 +74,9 @@ def add_node(g: Graph, record: dict) -> None:
     if node_id is None:
         return
     iri = instance_uri(node_id)
+    language = record.get("language") or "UAF"
     for label in labels:
-        g.add((iri, RDF.type, class_uri(label)))
+        g.add((iri, RDF.type, class_uri(label, language)))
     if record.get("name"):
         g.add((iri, RDFS.label, Literal(record["name"], datatype=XSD.string)))
     for k in ("qualifiedName", "documentation", "domain", "layer", "language",
@@ -101,6 +107,8 @@ def add_relationship(g: Graph, record: dict) -> None:
 def dump(uri: str, user: str, password: str, database: str) -> tuple[int, int]:
     g = Graph()
     g.bind("uaf", UAF)
+    g.bind("sysml", SYSML)
+    g.bind("bpmn", BPMN)
     g.bind("uafinst", UAFINST)
     g.bind("uaftv", UAFTV)
     g.bind("rdfs", RDFS)
@@ -116,10 +124,11 @@ def dump(uri: str, user: str, password: str, database: str) -> tuple[int, int]:
             # doesn't matter here.
             for record in session.run(
                 """
-                MATCH (n)-[:INSTANCE_OF]->(:Stereotype)
+                MATCH (n)-[:INSTANCE_OF]->(s:Stereotype)
                 RETURN labels(n) AS labels, n.id AS id, n.name AS name,
                        n.qualifiedName AS qualifiedName, n.documentation AS documentation,
-                       n.domain AS domain, n.layer AS layer, n.language AS language,
+                       n.domain AS domain, n.layer AS layer,
+                       coalesce(n.language, s.language, 'UAF') AS language,
                        n.packageName AS packageName,
                        properties(n) AS props
                 """

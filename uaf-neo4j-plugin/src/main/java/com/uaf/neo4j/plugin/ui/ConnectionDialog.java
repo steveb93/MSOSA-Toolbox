@@ -18,6 +18,9 @@ public class ConnectionDialog extends JDialog {
     private final JPasswordField passwordField;
     private final JTextField  databaseField;
     private final JTextField  batchSizeField;
+    private final JTextField  fusekiUrlField;
+    private final JTextField  fusekiUserField;
+    private final JPasswordField fusekiPasswordField;
     private final JLabel      statusLabel;
 
     public ConnectionDialog(Frame parent) {
@@ -30,6 +33,9 @@ public class ConnectionDialog extends JDialog {
         passwordField = new JPasswordField(cfg.getProperty("neo4j.password", ""), 20);
         databaseField = new JTextField(cfg.getProperty("neo4j.database", "neo4j"), 15);
         batchSizeField = new JTextField(cfg.getProperty("neo4j.batch.size", "500"), 8);
+        fusekiUrlField = new JTextField(cfg.getProperty("fuseki.url", "http://localhost:3030/uaf"), 30);
+        fusekiUserField = new JTextField(cfg.getProperty("fuseki.user", "admin"), 20);
+        fusekiPasswordField = new JPasswordField(cfg.getProperty("fuseki.password", ""), 20);
         statusLabel   = new JLabel(" ");
 
         JPanel form = new JPanel(new GridBagLayout());
@@ -38,11 +44,20 @@ public class ConnectionDialog extends JDialog {
         GridBagConstraints fc = fieldConstraints();
 
         int row = 0;
+
+        // --- Neo4j (system of record) -------------------------------------------------
+        addSeparator(form, "Neo4j (Bolt)", row++);
         addRow(form, "Bolt URI:",      uriField,       lc, fc, row++);
         addRow(form, "Username:",      userField,       lc, fc, row++);
         addRow(form, "Password:",      passwordField,   lc, fc, row++);
         addRow(form, "Database:",      databaseField,   lc, fc, row++);
         addRow(form, "Batch size:",    batchSizeField,  lc, fc, row++);
+
+        // --- Fuseki (SPARQL overlay, Stage 2 ontology) --------------------------------
+        addSeparator(form, "Fuseki SPARQL (Stage 2 ontology overlay)", row++);
+        addRow(form, "Fuseki URL:",    fusekiUrlField,      lc, fc, row++);
+        addRow(form, "Fuseki user:",   fusekiUserField,     lc, fc, row++);
+        addRow(form, "Fuseki password:", fusekiPasswordField, lc, fc, row++);
 
         // Status row
         GridBagConstraints sc = new GridBagConstraints();
@@ -109,12 +124,30 @@ public class ConnectionDialog extends JDialog {
 
     private Properties currentProps() {
         Properties p = new Properties();
+        // Preserve any non-form properties (export flags etc.) from the live config.
+        p.putAll(UAFNeo4jPlugin.getInstance().getConfig());
         p.setProperty("neo4j.uri",       uriField.getText().trim());
         p.setProperty("neo4j.user",      userField.getText().trim());
         p.setProperty("neo4j.password",  new String(passwordField.getPassword()));
         p.setProperty("neo4j.database",  databaseField.getText().trim());
         p.setProperty("neo4j.batch.size", batchSizeField.getText().trim());
+        String fusekiUrl = fusekiUrlField.getText().trim();
+        p.setProperty("fuseki.url",      fusekiUrl);
+        p.setProperty("fuseki.sparql",   fusekiUrl.endsWith("/sparql") ? fusekiUrl : fusekiUrl + "/sparql");
+        p.setProperty("fuseki.user",     fusekiUserField.getText().trim());
+        p.setProperty("fuseki.password", new String(fusekiPasswordField.getPassword()));
         return p;
+    }
+
+    private static void addSeparator(JPanel panel, String label, int row) {
+        JLabel header = new JLabel(label);
+        header.setFont(header.getFont().deriveFont(Font.BOLD));
+        GridBagConstraints c = new GridBagConstraints();
+        c.gridx = 0; c.gridy = row; c.gridwidth = 2;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.anchor = GridBagConstraints.WEST;
+        c.insets = new Insets(8, 0, 4, 0);
+        panel.add(header, c);
     }
 
     // -------------------------------------------------------------------------

@@ -24,6 +24,7 @@ public class UAFExporterActionsConfigurator implements AMConfigurator {
 
         uafMenu.addAction(new ExportAction());
         uafMenu.addAction(new GraphInspectorAction());
+        uafMenu.addAction(new OpenSparqlEndpointAction());
         uafMenu.addAction(new AboutAction());
 
         tools.addAction(uafMenu);
