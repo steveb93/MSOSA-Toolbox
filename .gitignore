@@ -1,25 +1,24 @@
-# Byte-compiled / optimized / DLL files
+# IDE / editor
 .vscode/
-# Virtual environment
+.idea/
+
+# Python
 .venv/
-# Claude data
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Claude Code local data
 .claude/
 
 # Logs
 *.log
-# Unit test / coverage reports
-*.pyc
 
-# Test scripts
-Test/
-test/
-# mcp driver
-neo4j_mcp_driver.egg-info/
-# Python cache
-__pycache__/
+# Generated A-Box (large, refreshed after every MSOSA export — re-run dump_to_rdf.py)
+ontology/dump/
 
+# Third-party JDBC bundle from the retired Ontop attempt (binary, manual download)
+ontology/retired/ontop/jdbc/
 
-# Claude notes
-CLAUDE.md
-
-
+# Maven build output
+uaf-neo4j-plugin/target/
