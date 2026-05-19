@@ -57,13 +57,13 @@ This document describes what comes next, in the order the staging in `Ontology-A
 
 **Concrete tasks.**
 
-- [ ] **Preparatory refactor (can be done in Stage 3):** extract an `ExportService` interface from `Neo4jExportService` so a new `RDFExportService` can sit alongside without touching the traverser or DTOs. This is in scope right now if you want to avoid future churn — the DTO layer is already clean enough.
-- [ ] Add Apache Jena (or RDF4J) as a Maven dependency. No relocation needed (it doesn't conflict with MagicDraw's bundled libs the way the Neo4j driver did).
-- [ ] Implement `RDFTripleBuilder` mirroring `Neo4jCypherBuilder` — same DTO inputs, Turtle/JSON-LD output instead of Cypher.
-- [ ] Implement `RDFExportService` — manages the writer lifecycle, batches triples, writes to disk or an HTTP `/data` endpoint (Fuseki Graph Store Protocol).
-- [ ] Extend `ExportConfigDialog` with a target-type radio: "Neo4j (Cypher)" vs "RDF (Turtle/JSON-LD)".
+- [x] **Preparatory refactor** — extracted an `ExportService` interface from `Neo4jExportService` so a new `RDFExportService` sits alongside without touching the traverser or DTOs. Shipped in `v1.1.0-Preview`.
+- [x] Add Apache Jena as a Maven dependency. Shipped in `v1.2.0-Preview` as `jena-arq:4.10.0` (last release on Java 11), relocated to `com.uaf.shaded.jena.*` to be safe — 3,791 class files cleanly shaded, zero unshaded leak.
+- [x] Implement `RDFTripleBuilder` mirroring `Neo4jCypherBuilder`. IRI conventions kept byte-identical to `dump_to_rdf.py` so SPARQL queries written against the Python dump still match. Shipped in `v1.2.0-Preview`.
+- [x] Implement `RDFExportService` — buffers triples in an in-memory Jena model; on close, writes Turtle to disk and optionally PUTs to Fuseki's Graph Store Protocol endpoint. Shipped in `v1.2.0-Preview`.
+- [x] Extend `ExportConfigDialog` with a target-type chooser: "Neo4j (LPG via Cypher)" and "RDF Turtle file (and optionally PUT to Fuseki)" with multi-target loop and merged summary. Shipped in `v1.3.0-Preview`.
 - [ ] Migrate the MCP server to SPARQL-only or keep both tools depending on operational needs.
-- [ ] Decommission the dump script — no longer needed because the plugin writes RDF directly.
+- [ ] Decommission the dump script — no longer needed for routine refreshes (the plugin writes RDF directly) but `ontology/codegen/dump_to_rdf.py` remains as the recovery path for rebuilding Fuseki from the Neo4j system of record. Decommission only when the plugin RDF emitter has been live and unchanged for ≥1 quarter.
 
 **Gating criteria** (per `Ontology-Approach-to-Knowledge.md` §10).
 
@@ -103,8 +103,8 @@ These are independent of stage progression. Pick up whichever pays off soonest i
 
 ### Refresh automation
 
-- [ ] Add a `dump_to_rdf` invocation to `ExportConfigDialog` so the user can opt in to refresh-on-export. This was explicitly **not** done in Stage 2 (kept the Python script and Java plugin loosely coupled) but is the lowest-effort UX win for the "I just exported, why is SPARQL stale" pain point.
-- [ ] Replace "restart fuseki" with a Fuseki Graph Store Protocol `PUT` to `/uaf/data` — faster than a container restart, no downtime, and works without docker compose access. ~10 lines of Python on top of the existing dump.
+- [x] Add an RDF emission path inside `ExportConfigDialog` so the user can opt in to refresh-on-export. Shipped in `v1.3.0-Preview` — the dialog now offers "Neo4j (LPG)" and "RDF" as independent target checkboxes, defaulting to LPG-only to preserve the v1.0.x behaviour.
+- [x] Replace "restart fuseki" with a Fuseki Graph Store Protocol `PUT` to `/uaf/data` — implemented as `com.uaf.neo4j.plugin.rdf.FusekiClient` using Java 11's built-in `HttpClient`. Tick "Also PUT to Fuseki /data endpoint" in the export dialog to enable. Shipped in `v1.3.0-Preview`.
 
 ### Quality and tests
 
