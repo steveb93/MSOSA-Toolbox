@@ -77,8 +77,7 @@ MSOSA-Toolbox/
 │   ├── fuseki/configuration/uaf.ttl # Fuseki assembler config (in-mem dataset + RDFS reasoner)
 │   ├── queries/                     # Anchor SPARQL queries grounding semantic-search use case
 │   ├── dump/                        # (gitignored) latest A-Box dump
-│   ├── retired/                     # Dead-end attempts kept for posterity (n10s, Ontop)
-│   └── NEXT-STEPS.md                # Stage 3+ roadmap
+│   └── NEXT-STEPS.md                # Stage 3+ roadmap (decision log records n10s/Ontop rejection)
 ├── Test/                            # Python tests (connection, MCP tools, SPARQL endpoint)
 ├── Ontology-Approach-to-Knowledge.md # Strategy doc — Gartner-anchored, ISO 15288 aligned
 └── CLAUDE.md                        # End-to-end stand-up + architectural decisions
@@ -96,7 +95,7 @@ MSOSA-Toolbox/
 | Python | 3.12 | MCP server, codegen, dump script |
 | Python deps | `mcp`, `neo4j`, `httpx`, `rdflib` | Install via `pip install -e .[dev]` |
 | Docker Desktop | Latest | Neo4j + Fuseki containers |
-| Neo4j | **5.26** (pinned) | n10s pins us to 5.x for now; see `ontology/retired/RETIRED.md` |
+| Neo4j | **5.26** (pinned) | n10s pins us to 5.x for now; see decision log in `ontology/NEXT-STEPS.md` for n10s/Ontop rejection rationale |
 | Apache Jena Fuseki | latest stable (`stain/jena-fuseki:latest`) | SPARQL 1.1 + RDFS reasoner |
 
 ---
