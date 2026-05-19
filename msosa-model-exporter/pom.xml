@@ -6,14 +6,14 @@
     <modelVersion>4.0.0</modelVersion>
  
     <groupId>com.uaf.neo4j</groupId>
-    <artifactId>uaf-neo4j-plugin</artifactId>
+    <artifactId>msosa-model-exporter</artifactId>
     <version>${revision}</version>
     <packaging>jar</packaging>
-    <name>UAF Neo4j Export Plugin</name>
-    <description>MSOSA 2022x Refresh2 plugin to export UAF 1.2 elements and relationships to Neo4j</description>
+    <name>MSOSA Model Exporter</name>
+    <description>MSOSA 2022x Hotfix 2 plugin that exports UAF 1.2 / SysML 1.6 / BPMN 2.0 models to Neo4j (LPG via Cypher). RDF emitter planned per ontology/NEXT-STEPS.md Stage 4.</description>
  
     <properties>
-        <revision>1.0.4-Preview</revision>
+        <revision>1.0.5-Preview</revision>
         <java.version>11</java.version>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>

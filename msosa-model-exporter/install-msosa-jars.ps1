@@ -1,4 +1,4 @@
-# Run from uaf-neo4j-plugin\ to register MSOSA SDK jars in your local Maven repo.
+# Run from msosa-model-exporter\ to register MSOSA SDK jars in your local Maven repo.
 # SDK jars live in /msosa-sdk/ at the repo root (shared across any future MSOSA plugins).
 # Usage: .\install-msosa-jars.ps1
 

@@ -1,4 +1,4 @@
-name: Build & Release
+name: MSOSA Model Exporter — Build & Release
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   pull_request:
     branches: ["main", "preview"]
     paths:
-      - "uaf-neo4j-plugin/**"
+      - "msosa-model-exporter/**"
       - "msosa-sdk/**"
       - "cypher/**"
   schedule:
@@ -49,7 +49,7 @@ jobs:
       - id: detect
         run: |
           SINCE=$(date -u -d '24 hours ago' '+%Y-%m-%dT%H:%M:%SZ')
-          COUNT=$(git log --oneline --after="$SINCE" -- uaf-neo4j-plugin/ msosa-sdk/ cypher/ | wc -l)
+          COUNT=$(git log --oneline --after="$SINCE" -- msosa-model-exporter/ msosa-sdk/ cypher/ | wc -l)
           echo "has_changes=$([ "$COUNT" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
   # ── Main build ────────────────────────────────────────────────────────────
@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: uaf-neo4j-plugin
+        working-directory: msosa-model-exporter
     outputs:
       version: ${{ steps.get-version.outputs.version }}
     steps:
@@ -77,7 +77,7 @@ jobs:
           java-version: "11"
           distribution: "temurin"
           cache: maven
-          cache-dependency-path: uaf-neo4j-plugin/pom.xml
+          cache-dependency-path: msosa-model-exporter/pom.xml
       - name: Install API jars
         shell: pwsh
         run: ./install-msosa-jars.ps1
@@ -102,12 +102,12 @@ jobs:
       - name: Update dependency graph
         uses: advanced-security/maven-dependency-submission-action@v4
         with:
-          directory: uaf-neo4j-plugin
+          directory: msosa-model-exporter
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v4
         with:
           name: plugin-zip
-          path: uaf-neo4j-plugin/target/uaf-neo4j-plugin-*-plugin.zip
+          path: msosa-model-exporter/target/msosa-model-exporter-*-plugin.zip
           retention-days: 7
 
   # ── Version reference sync ────────────────────────────────────────────────
@@ -154,7 +154,7 @@ jobs:
         run: |
           VERSION="${{ steps.resolve.outputs.version }}"
           find . -name "*.md" -not -path "./.git/*" -exec sed -i \
-            -E "s|uaf-neo4j-plugin-[0-9]+\.[0-9]+\.[0-9]+|uaf-neo4j-plugin-${VERSION}|g" {} +
+            -E "s|msosa-model-exporter-[0-9]+\.[0-9]+\.[0-9]+|msosa-model-exporter-${VERSION}|g" {} +
       - name: Commit if anything changed
         run: |
           git config user.name "github-actions[bot]"

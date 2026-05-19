@@ -23,6 +23,7 @@
         <file>
             <source>src/main/resources/com.uaf.neo4j.plugin.xml</source>
             <outputDirectory>.</outputDirectory>
+            <filtered>true</filtered>
         </file>
     </files>
 </assembly>

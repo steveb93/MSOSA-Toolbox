@@ -52,7 +52,7 @@ Neo4j (Docker :7687)
 ## Project Structure
 
 ```
-uaf-neo4j-plugin/
+msosa-model-exporter/
 ├── (SDK jars live in /msosa-sdk/ at the repo root — shared across plugins)
 ├── (Cypher schema lives in /cypher/ at the repo root — schema is a toolbox-wide asset)
 ├── src/
@@ -101,16 +101,16 @@ uaf-neo4j-plugin/
 
 **Option A — Plugin Manager:**
 1. In MSOSA: **Help → Resource/Plugin Manager → Install Plugin from File**
-2. Select `target/uaf-neo4j-plugin-1.0.4-Preview-Preview-Preview-Preview-Preview-plugin.zip`
+2. Select `target/msosa-model-exporter-0.5.0-plugin.zip`
 3. Restart MSOSA when prompted
 
 **Option B — Manual:**
 
-Unzip `target/uaf-neo4j-plugin-1.0.4-Preview-Preview-Preview-Preview-Preview-plugin.zip` into `<MSOSA_HOME>/plugins/`:
+Unzip `target/msosa-model-exporter-0.5.0-plugin.zip` into `<MSOSA_HOME>/plugins/`:
 
 ```
-<MSOSA_HOME>/plugins/uaf-neo4j-plugin/
-    uaf-neo4j-plugin-1.0.4-Preview-Preview-Preview-Preview-Preview.jar
+<MSOSA_HOME>/plugins/msosa-model-exporter/
+    msosa-model-exporter-0.5.0.jar
     plugin.xml
     neo4j-connection.properties
 ```
@@ -196,7 +196,7 @@ See `../ontology/queries/semantic-search-examples.sparql` for anchor queries and
 
 Connection settings are stored in:
 ```
-<MSOSA_HOME>/plugins/uaf-neo4j-plugin/neo4j-connection.properties
+<MSOSA_HOME>/plugins/msosa-model-exporter/neo4j-connection.properties
 ```
 
 Default values:
@@ -420,7 +420,7 @@ RETURN n.language, count(*) AS total ORDER BY total DESC;
 | Authentication failed | Wrong credentials | Update on the Connection tab of the export dialog |
 | INSTANCE_OF links missing | Stereotype nodes not in DB | Run `cypher/init_uaf_graph.cypher` |
 | Slow export | Large model + small batch | Increase `neo4j.batch.size` to 500–1000 on the Connection tab |
-| `ClassNotFoundException` on startup | SDK jars not in local Maven repo | Re-run `.\install-msosa-jars.ps1` from `uaf-neo4j-plugin/` |
+| `ClassNotFoundException` on startup | SDK jars not in local Maven repo | Re-run `.\install-msosa-jars.ps1` from `msosa-model-exporter/` |
 | Stereotype skipped silently | Name mismatch in `UAFStereotypeRegistry` | Verify name via MSOSA scripting console — see CLAUDE.md |
 | Graph tab shows placeholder after selection | Node has no UAF relationships in Neo4j | Export relationships (Options tab) or check that init Cypher was run |
 | Graph Inspector shows 0 nodes | Plugin JAR not rebuilt after a code change, or database empty | Run `MATCH (n) WHERE n.stereotype IS NOT NULL RETURN count(n)` in Neo4j Browser; if > 0, redeploy the plugin JAR |
