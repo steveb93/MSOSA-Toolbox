@@ -34,10 +34,6 @@ public class ExportConfigDialog extends JDialog {
     private static final Color LEFT_BG      = new Color(248, 249, 251);
     private static final Color BORDER_SUBTLE= new Color(218, 219, 224);
 
-    // ── Full-screen state ─────────────────────────────────────────────────────
-    private Rectangle normalBounds;
-    private boolean   isMaximised = false;
-
     // ── Header ────────────────────────────────────────────────────────────────
     private final JLabel globalStatusLabel = new JLabel("● Not connected");
 
@@ -155,21 +151,6 @@ public class ExportConfigDialog extends JDialog {
         loadElementCounts();
     }
 
-    // ── Full-screen ───────────────────────────────────────────────────────────
-
-    private void toggleMaximise() {
-        if (!isMaximised) {
-            normalBounds = getBounds();
-            Rectangle max = GraphicsEnvironment.getLocalGraphicsEnvironment()
-                                               .getMaximumWindowBounds();
-            setBounds(max);
-            isMaximised = true;
-        } else {
-            if (normalBounds != null) setBounds(normalBounds);
-            isMaximised = false;
-        }
-    }
-
     // ── Model scanning ────────────────────────────────────────────────────────
 
     private List<String> topLevelPackageNames() {
@@ -243,24 +224,8 @@ public class ExportConfigDialog extends JDialog {
         textBlock.add(title);
         textBlock.add(subtitle);
 
-        JButton maxBtn = new JButton("⊞");
-        maxBtn.setToolTipText("Toggle full screen");
-        maxBtn.setFont(maxBtn.getFont().deriveFont(Font.PLAIN, 13f));
-        maxBtn.setForeground(HDR_SUBTITLE);
-        maxBtn.setBackground(new Color(65, 65, 65));
-        maxBtn.setBorderPainted(false);
-        maxBtn.setFocusPainted(false);
-        maxBtn.setOpaque(true);
-        maxBtn.setMargin(new Insets(2, 7, 2, 7));
-        maxBtn.addActionListener(e -> toggleMaximise());
-
-        JPanel east = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        east.setOpaque(false);
-        east.add(globalStatusLabel);
-        east.add(maxBtn);
-
-        header.add(textBlock, BorderLayout.CENTER);
-        header.add(east,      BorderLayout.EAST);
+        header.add(textBlock,         BorderLayout.CENTER);
+        header.add(globalStatusLabel, BorderLayout.EAST);
         return header;
     }
 
