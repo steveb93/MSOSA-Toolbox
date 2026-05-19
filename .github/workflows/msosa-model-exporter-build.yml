@@ -56,8 +56,20 @@ jobs:
   build:
     name: Build Plugin
     needs: [check-changes]
+    # Skip rebuilds caused by the version-sync bot's own push to a branch — it
+    # neither changes source nor needs rebuilding. Branch pushes only:
+    # tag pushes must still build even when the tag points at a bot commit,
+    # because that's the supported way to cut a release after a bot sync
+    # landed at the tip of preview.
+    #
+    # github.actor on a PAT-authenticated push is the PAT owner, not the bot,
+    # so we check the commit *author* which is reliably set by
+    # `git config user.name "github-actions[bot]"` in sync-version-refs.
     if: |
       always() &&
+      !(github.event_name == 'push' &&
+        startsWith(github.ref, 'refs/heads/') &&
+        github.event.head_commit.author.name == 'github-actions[bot]') &&
       needs.check-changes.result != 'failure' &&
       (needs.check-changes.result == 'skipped' ||
        needs.check-changes.outputs.has_changes == 'true')
@@ -114,17 +126,32 @@ jobs:
   # Rewrites hardcoded version strings in *.md to match the published tag.
   # On publish (tag push or dispatch) the tag name is the canonical version.
   # On plain branch pushes it falls back to the pom.xml version.
-  # Skipped when the bot itself pushed (prevents infinite loop).
+  #
+  # Loop prevention: the bot pushes back to preview/main using a PAT, which
+  # means github.actor on the resulting workflow run is the PAT owner, NOT
+  # 'github-actions[bot]'. The actor-guard alone is therefore insufficient.
+  # We filter on the COMMIT AUTHOR (set via `git config user.name` to
+  # 'github-actions[bot]' in this job) which is reliable regardless of which
+  # token did the push.
+  #
+  # Do NOT add `[skip ci]` to the bot's commit message — GitHub treats [skip ci]
+  # as a hard skip on tag pushes too, silently blocking the release pipeline
+  # when the bot's commit ends up at the tip of preview and a tag is then
+  # pushed (this was the v1.3.1-Preview release that didn't fire).
   sync-version-refs:
     name: Sync version references in docs
     needs: [build, verify-tag-branch]
+    # Branch-push arm carries the author filter — that's the only event type
+    # that can be self-triggered by the bot. Tag pushes and workflow_dispatch
+    # are always operator-initiated, so they're unconditionally allowed.
     if: |
       always() &&
       needs.build.result == 'success' &&
       (needs.verify-tag-branch.result == 'success' || needs.verify-tag-branch.result == 'skipped') &&
       (
         (github.event_name == 'push' &&
-         (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/preview')) ||
+         (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/preview') &&
+         github.event.head_commit.author.name != 'github-actions[bot]') ||
         startsWith(github.ref, 'refs/tags/v') ||
         github.event_name == 'workflow_dispatch'
       )
@@ -161,7 +188,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git diff --quiet && exit 0
           git add -A
-          git commit -m "chore: sync version references to ${{ steps.resolve.outputs.version }} [skip ci]"
+          git commit -m "chore: sync version references to ${{ steps.resolve.outputs.version }}"
           git push
 
   # ── Tag branch guard ──────────────────────────────────────────────────────
