@@ -2,7 +2,7 @@
 // UAF Neo4j Graph Initialisation
 // Run this ONCE against your Docker Neo4j instance before the first export.
 //
-//   cypher-shell -u neo4j -p Password123 -f init_uaf_graph.cypher
+//   cypher-shell -u neo4j -p Password123 -f cypher/init_uaf_graph.cypher
 //
 // Node identity: exported UAF elements carry only their stereotype label
 // (e.g. :Capability, :OperationalPerformer) and are keyed on 'id' (the MSOSA

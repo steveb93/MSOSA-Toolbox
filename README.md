@@ -63,8 +63,8 @@ See [`ontology/NEXT-STEPS.md`](ontology/NEXT-STEPS.md) for Stage 3 (native tripl
 MSOSA-Toolbox/
 ├── uaf-neo4j-plugin/                # MSOSA plugin — exports UAF model to Neo4j
 │   ├── src/
-│   ├── cypher/                      # Graph initialisation scripts (seeds :Stereotype/:Domain)
 │   └── pom.xml
+├── cypher/                          # Graph schema + metamodel seed (init_uaf_graph.cypher) + query cookbook
 ├── msosa-sdk/                       # MSOSA 2022x SDK jars (shared build classpath for any plugin)
 ├── neo4j_mcp_driver/                # Python MCP server — run_cypher + run_sparql tools
 ├── docker-compose/

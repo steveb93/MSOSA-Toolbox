@@ -46,7 +46,7 @@ docker compose down
 ### Graph Initialisation (run once before first export)
 
 ```powershell
-cypher-shell -u neo4j -p Password123 -f uaf-neo4j-plugin/cypher/init_uaf_graph.cypher
+cypher-shell -u neo4j -p Password123 -f cypher/init_uaf_graph.cypher
 ```
 
 ### Neo4j Connection Test
@@ -130,7 +130,7 @@ cd F:/OneDrive/_VSCode/MSOSA-Toolbox/docker-compose
 docker compose -f docker-compose.yml -f docker-compose.fuseki.yml up -d
 
 # 2. Seed the UAF metamodel into Neo4j (idempotent)
-cypher-shell -u neo4j -p Password123 -f ../uaf-neo4j-plugin/cypher/init_uaf_graph.cypher
+cypher-shell -u neo4j -p Password123 -f ../cypher/init_uaf_graph.cypher
 
 # 3. Generate the T-Box from the seeded metamodel
 python ../ontology/codegen/generate_mvo.py
