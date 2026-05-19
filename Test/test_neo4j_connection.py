@@ -41,7 +41,7 @@ def test_uaf_metamodel_nodes_exist(neo4j_driver):
         count = session.run("MATCH (d:Domain) RETURN count(d) AS n").single()["n"]
     assert count > 0, (
         "No :Domain nodes found. Run: "
-        "cypher-shell -u neo4j -p Password123 -f uaf-neo4j-plugin/cypher/init_uaf_graph.cypher"
+        "cypher-shell -u neo4j -p Password123 -f cypher/init_uaf_graph.cypher"
     )
 
 

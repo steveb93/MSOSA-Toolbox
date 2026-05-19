@@ -9,6 +9,7 @@ on:
     paths:
       - "uaf-neo4j-plugin/**"
       - "msosa-sdk/**"
+      - "cypher/**"
   schedule:
     - cron: "0 2 * * *"   # Nightly at 02:00 UTC
   workflow_dispatch:
@@ -48,7 +49,7 @@ jobs:
       - id: detect
         run: |
           SINCE=$(date -u -d '24 hours ago' '+%Y-%m-%dT%H:%M:%SZ')
-          COUNT=$(git log --oneline --after="$SINCE" -- uaf-neo4j-plugin/ msosa-sdk/ | wc -l)
+          COUNT=$(git log --oneline --after="$SINCE" -- uaf-neo4j-plugin/ msosa-sdk/ cypher/ | wc -l)
           echo "has_changes=$([ "$COUNT" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
   # ── Main build ────────────────────────────────────────────────────────────
