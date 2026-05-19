@@ -7,8 +7,9 @@ import com.uaf.neo4j.plugin.model.UAFModelTraverser;
 import com.uaf.neo4j.plugin.model.UAFRelationshipDTO;
 import com.uaf.neo4j.plugin.model.UAFStereotypeRegistry;
 import com.uaf.neo4j.plugin.model.UAFStereotypeRegistry.StereotypeInfo;
+import com.uaf.neo4j.plugin.export.ExportResult;
+import com.uaf.neo4j.plugin.export.ExportService;
 import com.uaf.neo4j.plugin.neo4j.Neo4jExportService;
-import com.uaf.neo4j.plugin.neo4j.Neo4jExportService.ExportResult;
 import com.nomagic.magicdraw.core.Project;
 import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Element;
 import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.NamedElement;
@@ -498,7 +499,7 @@ public class ExportConfigDialog extends JDialog {
 
         new SwingWorker<Boolean, Void>() {
             @Override protected Boolean doInBackground() {
-                try (Neo4jExportService svc = new Neo4jExportService(connProps)) {
+                try (ExportService svc = new Neo4jExportService(connProps)) {
                     svc.init();
                     return svc.testConnection();
                 } catch (Exception ex) { return false; }
@@ -628,7 +629,7 @@ public class ExportConfigDialog extends JDialog {
                 publish(String.format("Found %d elements, %d relationships. Connecting to Neo4j…",
                     elements.size(), relationships.size()));
 
-                try (Neo4jExportService svc = new Neo4jExportService(connProps)) {
+                try (ExportService svc = new Neo4jExportService(connProps)) {
                     svc.init();
                     publish("Writing nodes…");
                     svc.exportNodes(elements, inclTaggedValues);
