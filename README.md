@@ -2,24 +2,58 @@
 
 ![MSOSA](https://img.shields.io/badge/MSOSA-2022x%20HF2-0076A8)
 ![UAF](https://img.shields.io/badge/UAF-1.2-orange)
+![SysML](https://img.shields.io/badge/SysML-1.6-blueviolet)
+![BPMN](https://img.shields.io/badge/BPMN-2.0-yellow)
 ![Java](https://img.shields.io/badge/Java-11-yellowgreen?logo=openjdk&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
-![Neo4j](https://img.shields.io/badge/Neo4j-5.x-008CC1?logo=neo4j&logoColor=white)
+![Neo4j](https://img.shields.io/badge/Neo4j-5.26-008CC1?logo=neo4j&logoColor=white)
+![Fuseki](https://img.shields.io/badge/Fuseki-SPARQL%201.1-d22128)
+![Ontology](https://img.shields.io/badge/Ontology-MVO%20v0.2-5b8fb9)
 
 > [!IMPORTANT]
 > All plugins in this toolbox target **No Magic MSOSA 2022x Hotfix 2** (MagicDraw). They are not tested against earlier or later MSOSA releases.
 
-A curated collection of open-source plugins and tooling that extend **MSOSA 2022x HF2** for teams working with the [UAF 1.2](https://www.omg.org/spec/UAF/) profile defined by the Object Management Group (OMG).
+A curated collection of open-source plugins and tooling that extend **MSOSA 2022x HF2** for teams working with **UAF 1.2**, **SysML 1.6**, and **BPMN 2.0** in MSOSA. The toolbox builds a **hybrid knowledge graph** — Neo4j is the system of record (labelled property graph + Cypher), and Apache Jena Fuseki adds a SPARQL 1.1 endpoint with RDFS reasoning over a UAF Minimum Viable Ontology. The two stores are kept in step by a Python dump script that runs after each MSOSA export.
+
+References:
+- [UAF 1.2 specification](https://www.omg.org/spec/UAF/) — OMG
+- [`Ontology-Approach-to-Knowledge.md`](Ontology-Approach-to-Knowledge.md) — strategic rationale for the LPG-plus-RDF approach (Gartner-anchored, ISO/IEC/IEEE 15288 aligned)
+- [`ontology/NEXT-STEPS.md`](ontology/NEXT-STEPS.md) — Stage 3+ migration roadmap
 
 ---
 
-## Plugins
+## Components
 
-| Plugin | Description | Status |
-|--------|-------------|--------|
-| [uaf-neo4j-plugin](uaf-neo4j-plugin/) | Exports UAF 1.2 model elements and relationships to a Neo4j knowledge graph over Bolt | [![Build](https://github.com/steveb93/UAF-Repo/actions/workflows/uaf-neo4j-build.yml/badge.svg)](https://github.com/steveb93/UAF-Repo/actions/workflows/packaging.yml) |
+| Component | Description | Status |
+|---|---|---|
+| [uaf-neo4j-plugin](uaf-neo4j-plugin/) | MSOSA plugin — exports UAF 1.2 / SysML 1.6 / BPMN 2.0 elements and relationships to a Neo4j knowledge graph over Bolt | [![Build](https://github.com/steveb93/UAF-Repo/actions/workflows/uaf-neo4j-build.yml/badge.svg)](https://github.com/steveb93/UAF-Repo/actions/workflows/packaging.yml) |
+| [neo4j_mcp_driver](neo4j_mcp_driver/) | Python MCP server — exposes `run_cypher` and `run_sparql` tools to Claude Desktop | — |
+| [ontology](ontology/) | Generated OWL T-Box, Fuseki configuration, dump script, anchor SPARQL queries | — |
+| [docker-compose](docker-compose/) | Neo4j stack + Fuseki SPARQL overlay (overlay file `docker-compose.fuseki.yml`) | — |
 
 > New plugins can be added as subdirectories following the conventions in [Contributing](#contributing).
+
+## Stage 2 ontology overlay (SPARQL)
+
+Stage 2 of the migration described in `Ontology-Approach-to-Knowledge.md` is live: Apache Jena Fuseki provides a real SPARQL 1.1 endpoint with RDFS reasoning over a UAF Minimum Viable Ontology (MVO) covering **all 8 UAF domains plus SysML and BPMN** — 103 OWL classes, 31 ObjectProperties, code-generated from the seeded `:Stereotype` metamodel in Neo4j.
+
+**Endpoints**:
+- Bolt (system of record): `bolt://localhost:7687`
+- SPARQL (overlay): `http://localhost:3030/uaf/sparql`
+- Fuseki web UI: `http://localhost:3030/`
+
+**Refresh cadence after each MSOSA export**:
+
+```powershell
+# Re-dump Neo4j → ontology/dump/uaf-instance.ttl and reload Fuseki
+python ontology/codegen/dump_to_rdf.py
+docker compose -f docker-compose/docker-compose.yml `
+               -f docker-compose/docker-compose.fuseki.yml restart fuseki
+```
+
+The Java plugin's **Tools → UAF Neo4j Export → Open SPARQL Endpoint** menu item opens the Fuseki UI directly; the post-export summary dialog has a **Copy SPARQL Refresh Cmd** button that copies the two-line refresh sequence above to the clipboard.
+
+See [`ontology/NEXT-STEPS.md`](ontology/NEXT-STEPS.md) for Stage 3 (native triplestore, OWL 2 RL reasoning, SHACL validation) and Stage 4 (full RDF migration) gating criteria.
 
 ---
 
@@ -27,13 +61,27 @@ A curated collection of open-source plugins and tooling that extend **MSOSA 2022
 
 ```
 MSOSA-Toolbox/
-├── uaf-neo4j-plugin/       # MSOSA plugin — exports UAF model to Neo4j
+├── uaf-neo4j-plugin/                # MSOSA plugin — exports UAF model to Neo4j
 │   ├── src/
-│   ├── cypher/             # Graph initialisation scripts
+│   ├── cypher/                      # Graph initialisation scripts (seeds :Stereotype/:Domain)
 │   └── pom.xml
-├── neo4j_mcp_driver/       # Python MCP server — exposes Neo4j to Claude Desktop
-├── docker-compose/         # Neo4j container setup
-└── Test/                   # Connection and smoke tests
+├── neo4j_mcp_driver/                # Python MCP server — run_cypher + run_sparql tools
+├── docker-compose/
+│   ├── docker-compose.yml           # Neo4j 5.26 + n10s + APOC + GDS
+│   └── docker-compose.fuseki.yml    # Fuseki SPARQL overlay (Stage 2)
+├── ontology/
+│   ├── uaf-mvo.ttl                  # AUTO-GENERATED T-Box (UAF + SysML + BPMN)
+│   ├── codegen/
+│   │   ├── generate_mvo.py          # T-Box codegen from the seeded :Stereotype metamodel
+│   │   └── dump_to_rdf.py           # Neo4j → Turtle A-Box dump (rdflib)
+│   ├── fuseki/configuration/uaf.ttl # Fuseki assembler config (in-mem dataset + RDFS reasoner)
+│   ├── queries/                     # Anchor SPARQL queries grounding semantic-search use case
+│   ├── dump/                        # (gitignored) latest A-Box dump
+│   ├── retired/                     # Dead-end attempts kept for posterity (n10s, Ontop)
+│   └── NEXT-STEPS.md                # Stage 3+ roadmap
+├── Test/                            # Python tests (connection, MCP tools, SPARQL endpoint)
+├── Ontology-Approach-to-Knowledge.md # Strategy doc — Gartner-anchored, ISO 15288 aligned
+└── CLAUDE.md                        # End-to-end stand-up + architectural decisions
 ```
 
 ---
@@ -42,12 +90,14 @@ MSOSA-Toolbox/
 
 | Requirement | Version | Notes |
 |-------------|---------|-------|
-| MSOSA (MagicDraw) | **2022x HF2** | UAF 1.2 profile must be installed |
+| MSOSA (MagicDraw) | **2022x HF2** | UAF 1.2 + SysML 1.6 + BPMN 2.0 profiles |
 | Java JDK | 11 | Required to build the Maven plugin |
 | Apache Maven | 3.8+ | |
-| Python | 3.12 | For the MCP server |
-| Docker Desktop | Latest | Runs the Neo4j container |
-| Neo4j | 5.x | Provided via Docker Compose |
+| Python | 3.12 | MCP server, codegen, dump script |
+| Python deps | `mcp`, `neo4j`, `httpx`, `rdflib` | Install via `pip install -e .[dev]` |
+| Docker Desktop | Latest | Neo4j + Fuseki containers |
+| Neo4j | **5.26** (pinned) | n10s pins us to 5.x for now; see `ontology/retired/RETIRED.md` |
+| Apache Jena Fuseki | latest stable (`stain/jena-fuseki:latest`) | SPARQL 1.1 + RDFS reasoner |
 
 ---
 
