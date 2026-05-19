@@ -65,6 +65,7 @@ MSOSA-Toolbox/
 │   ├── src/
 │   ├── cypher/                      # Graph initialisation scripts (seeds :Stereotype/:Domain)
 │   └── pom.xml
+├── msosa-sdk/                       # MSOSA 2022x SDK jars (shared build classpath for any plugin)
 ├── neo4j_mcp_driver/                # Python MCP server — run_cypher + run_sparql tools
 ├── docker-compose/
 │   ├── docker-compose.yml           # Neo4j 5.26 + n10s + APOC + GDS

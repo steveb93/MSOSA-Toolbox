@@ -53,10 +53,7 @@ Neo4j (Docker :7687)
 
 ```
 uaf-neo4j-plugin/
-├── msosa-api/                              ← Full MSOSA 2022x SDK jar set (checked in)
-│   ├── md.jar                              ← MagicDraw core API
-│   ├── md_api.jar                          ← MagicDraw public API interfaces
-│   └── com.nomagic.magicdraw.uml2-*.jar   ← UML2 / StereotypesHelper (+ ~100 transitive jars)
+├── (SDK jars live in /msosa-sdk/ at the repo root — shared across plugins)
 ├── cypher/
 │   ├── init_uaf_graph.cypher               ← DB schema + metamodel initialisation (run once)
 │   └── query-cookbook.cypher               ← Example Cypher queries
