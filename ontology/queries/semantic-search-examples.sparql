@@ -1,0 +1,146 @@
+# Semantic-search anchor queries for the Claude-fronted UAF use case.
+# Each query is independent; copy one into run_sparql via the MCP tool.
+#
+# Prefixes are registered by ontology/n10s-init.cypher and are implicit in
+# n10s SPARQL execution (n10s prepends them at parse time):
+#   uaf:      http://msosa-toolbox.local/uaf#
+#   uafprop:  http://msosa-toolbox.local/uaf/prop#
+#   sysml:    http://msosa-toolbox.local/sysml#
+#   bpmn:     http://msosa-toolbox.local/bpmn#
+
+# -----------------------------------------------------------------------------
+# 1. All Capabilities by name
+# Smoke test — confirms the endpoint reaches the MVG.
+# -----------------------------------------------------------------------------
+PREFIX uaf: <http://msosa-toolbox.local/uaf#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?capability ?name WHERE {
+  ?capability a uaf:Capability ;
+              rdfs:label ?name .
+}
+ORDER BY ?name
+LIMIT 100
+
+# -----------------------------------------------------------------------------
+# 2. Subsumption — every Strategic element instance
+# Returns Capability, Vision, EndState, … without naming each subclass.
+# Proves the T-Box import worked (rdfs:subClassOf inference).
+# -----------------------------------------------------------------------------
+PREFIX uaf: <http://msosa-toolbox.local/uaf#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?element ?type ?name WHERE {
+  ?element a ?type ;
+           rdfs:label ?name .
+  ?type rdfs:subClassOf* uaf:StrategicElement .
+}
+ORDER BY ?type ?name
+LIMIT 200
+
+# -----------------------------------------------------------------------------
+# 3. Canonical UAF chain — Capability -> OperationalActivity -> ResourceFunction
+# The five-hop traceability cited in the Ontology-Approach doc §4.3.
+# Multi-hop SPARQL property path; equivalent to a Cypher MATCH with three rel filters.
+# -----------------------------------------------------------------------------
+PREFIX uaf: <http://msosa-toolbox.local/uaf#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?capName ?opActName ?resFuncName WHERE {
+  ?cap a uaf:Capability ;
+       rdfs:label ?capName ;
+       (uaf:realises|uaf:enables|uaf:supports)+ ?opAct .
+  ?opAct a uaf:OperationalActivity ;
+         rdfs:label ?opActName ;
+         (uaf:allocatedTo|uaf:performs|uaf:implements)+ ?resFunc .
+  ?resFunc a uaf:ResourceFunction ;
+           rdfs:label ?resFuncName .
+}
+LIMIT 50
+
+# -----------------------------------------------------------------------------
+# 4. Orphan detection — Capabilities with no realising OperationalActivity
+# Knowledge-discovery use case (Gartner §3.3). NOT EXISTS is the SPARQL clause.
+# -----------------------------------------------------------------------------
+PREFIX uaf: <http://msosa-toolbox.local/uaf#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?cap ?name WHERE {
+  ?cap a uaf:Capability ;
+       rdfs:label ?name .
+  FILTER NOT EXISTS {
+    ?cap (uaf:realises|uaf:enables|uaf:supports|uaf:exhibits) ?opAct .
+    ?opAct a uaf:OperationalActivity .
+  }
+}
+ORDER BY ?name
+
+# -----------------------------------------------------------------------------
+# 5. Cross-language — UAF Capabilities that trace to SysML Requirements
+# Hybrid-ontology query. Mirrors init_uaf_graph.cypher cookbook query 14.
+# -----------------------------------------------------------------------------
+PREFIX uaf: <http://msosa-toolbox.local/uaf#>
+PREFIX sysml: <http://msosa-toolbox.local/sysml#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?capName ?reqName WHERE {
+  ?cap a uaf:Capability ;
+       rdfs:label ?capName ;
+       (uaf:satisfies|uaf:tracesTo|uaf:refines) ?req .
+  ?req a sysml:Requirement ;
+       rdfs:label ?reqName .
+}
+ORDER BY ?capName
+
+# -----------------------------------------------------------------------------
+# 6. Resource artefacts contributing to a named Capability
+# Recommendation-engine anchor: surface candidates that could fill a gap.
+# Replace "CAPABILITY_NAME" with a real capability name from query 1.
+# -----------------------------------------------------------------------------
+PREFIX uaf: <http://msosa-toolbox.local/uaf#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT DISTINCT ?artefact ?artefactName ?artefactType WHERE {
+  ?cap a uaf:Capability ;
+       rdfs:label "CAPABILITY_NAME" .
+  ?cap (uaf:realises|uaf:dependsOn|uaf:allocatedTo|uaf:composedOf)+ ?artefact .
+  ?artefact a ?artefactType ;
+            rdfs:label ?artefactName .
+  ?artefactType rdfs:subClassOf* uaf:ResourceElement .
+}
+LIMIT 100
+
+# -----------------------------------------------------------------------------
+# 7. BPMN process tasks linked to UAF Operational Activities
+# Cross-language traceability for hybrid models with BPMN process diagrams.
+# -----------------------------------------------------------------------------
+PREFIX uaf: <http://msosa-toolbox.local/uaf#>
+PREFIX bpmn: <http://msosa-toolbox.local/bpmn#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?taskName ?opActName WHERE {
+  ?task a ?taskType ;
+        rdfs:label ?taskName .
+  ?taskType rdfs:subClassOf* bpmn:Task .
+  ?task (uaf:implements|uaf:realises|uaf:tracesTo) ?opAct .
+  ?opAct a uaf:OperationalActivity ;
+         rdfs:label ?opActName .
+}
+ORDER BY ?opActName
+
+# -----------------------------------------------------------------------------
+# 8. Impact analysis — what would I lose if this OperationalActivity were removed
+# "If I remove X, what Capabilities are degraded and what ResourceFunctions
+# become stranded?" Cited in Ontology-Approach doc §8 (enterprise architects).
+# Replace "ACTIVITY_NAME" with a real activity name.
+# -----------------------------------------------------------------------------
+PREFIX uaf: <http://msosa-toolbox.local/uaf#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?affected ?affectedType ?affectedName WHERE {
+  ?opAct a uaf:OperationalActivity ;
+         rdfs:label "ACTIVITY_NAME" .
+  {
+    ?cap (uaf:realises|uaf:enables|uaf:supports) ?opAct .
+    ?cap a ?affectedType ;
+         rdfs:label ?affectedName .
+    BIND(?cap AS ?affected)
+  } UNION {
+    ?opAct (uaf:allocatedTo|uaf:performs|uaf:implements) ?resFunc .
+    ?resFunc a ?affectedType ;
+             rdfs:label ?affectedName .
+    BIND(?resFunc AS ?affected)
+  }
+}

@@ -3,7 +3,9 @@ name = "neo4j-mcp-driver"
 version = "0.1.0"
 dependencies = [
     "mcp",
-    "neo4j"
+    "neo4j",
+    "httpx",
+    "rdflib"
 ]
 
 [build-system]

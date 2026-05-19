@@ -1,6 +1,10 @@
 services:
   neo4j:
-    image: neo4j:latest
+    # Pinned to 5.26 (LTS-line) because neosemantics 5.26.0 is the latest n10s release
+    # and there is no n10s build for the 2026.x calendar-versioned line yet.
+    # Track https://github.com/neo4j-labs/neosemantics/releases and bump when a
+    # 2026.x build appears.
+    image: neo4j:5.26
     container_name: neo4j-docker
     restart: unless-stopped
     ports:
@@ -11,6 +15,13 @@ services:
       - NEO4J_AUTH=neo4j/Password123
       - NEO4J_PLUGINS=["apoc","apoc-extended", "bloom", "graph-data-science", "genai"]
       - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
+      # neosemantics (n10s) — drop neosemantics-<version>.jar into F:/neo4j-docker/plugins manually;
+      # it is not in the auto-installable NEO4J_PLUGINS list. See ontology/README for the matching
+      # version table. The settings below register the /rdf SPARQL endpoint and unrestrict n10s.*.
+      # Neo4j 5.x: setting was renamed from dbms.* to server.* — using the new name.
+      - NEO4J_server_unmanaged__extension__classes=n10s.endpoint=/rdf
+      - NEO4J_dbms_security_procedures_unrestricted=n10s.*,apoc.*,gds.*
+      - NEO4J_dbms_security_procedures_allowlist=n10s.*,apoc.*,gds.*
     volumes:
       - F:/neo4j-docker/data:/data
       - F:/neo4j-docker/logs:/logs
