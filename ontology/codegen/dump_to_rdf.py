@@ -4,6 +4,26 @@ Walks all :UAFElement nodes and the relationships between them, emits each as
 RDF using the namespaces declared by the MVO (ontology/uaf-mvo.ttl).
 
 Output: ontology/dump/uaf-instance.ttl
+
+STATUS (as of Stage 4, v1.3.0-Preview):
+    The msosa-model-exporter plugin can now emit RDF directly from the MSOSA
+    model — tick "RDF Turtle file (and optionally PUT to Fuseki)" in the export
+    dialog. That path is preferred for routine post-export refreshes: it avoids
+    the Bolt round-trip, runs inside the same SwingWorker that wrote Cypher, and
+    optionally pushes to Fuseki via Graph Store Protocol (no docker restart
+    needed).
+
+    This script is kept as the recovery path:
+      - Run it when the plugin RDF emitter has a regression and you need a
+        known-good TTL rebuild from Neo4j (the system of record).
+      - Run it when Fuseki goes out of step with Neo4j for any reason (manual
+        Cypher edits, partial export, etc.) and you need to re-derive the SPARQL
+        view from scratch.
+      - Keep it pinned to the same IRI conventions as
+        msosa-model-exporter/src/main/java/com/uaf/neo4j/plugin/rdf/RDFTripleBuilder.java;
+        the two MUST stay byte-identical or SPARQL queries will silently miss.
+
+Output: ontology/dump/uaf-instance.ttl
 Run after each MSOSA export so the SPARQL view stays in step with Neo4j.
 
 Usage:
