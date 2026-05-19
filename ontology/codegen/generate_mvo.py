@@ -31,7 +31,7 @@ from neo4j import GraphDatabase
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RELATIONSHIP_DTO = (
     REPO_ROOT
-    / "uaf-neo4j-plugin"
+    / "msosa-model-exporter"
     / "src"
     / "main"
     / "java"
