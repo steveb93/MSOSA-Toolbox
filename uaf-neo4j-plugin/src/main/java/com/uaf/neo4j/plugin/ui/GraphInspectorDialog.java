@@ -66,10 +66,6 @@ public class GraphInspectorDialog extends JDialog {
     private final JLabel       statusLabel = new JLabel("Connecting to Neo4j…");
     private final JProgressBar loadingBar  = new JProgressBar();
 
-    // ── Full-screen toggle ────────────────────────────────────────────────────
-    private Rectangle normalBounds;
-    private boolean   isMaximised = false;
-
     private static final List<String> PROP_ORDER = Arrays.asList(
         "id", "name", "qualifiedName", "stereotype", "domain", "language", "packageName", "documentation"
     );
@@ -198,19 +194,7 @@ public class GraphInspectorDialog extends JDialog {
         textBlock.add(title);
         textBlock.add(subtitle);
 
-        JButton maxBtn = new JButton("⊞");
-        maxBtn.setToolTipText("Toggle full screen");
-        maxBtn.setFont(maxBtn.getFont().deriveFont(Font.PLAIN, 13f));
-        maxBtn.setMargin(new Insets(2, 8, 2, 8));
-        maxBtn.setForeground(new Color(200, 200, 200));
-        maxBtn.setBackground(new Color(65, 65, 65));
-        maxBtn.setBorderPainted(false);
-        maxBtn.setFocusPainted(false);
-        maxBtn.setOpaque(true);
-        maxBtn.addActionListener(e -> toggleMaximise());
-
         header.add(textBlock, BorderLayout.CENTER);
-        header.add(maxBtn,    BorderLayout.EAST);
         return header;
     }
 
@@ -460,21 +444,6 @@ public class GraphInspectorDialog extends JDialog {
                 } catch (Exception ignored) {}
             }
         }.execute();
-    }
-
-    // ── Full-screen toggle ────────────────────────────────────────────────────
-
-    private void toggleMaximise() {
-        if (!isMaximised) {
-            normalBounds = getBounds();
-            Rectangle screen = GraphicsEnvironment.getLocalGraphicsEnvironment()
-                .getMaximumWindowBounds();
-            setBounds(screen);
-            isMaximised = true;
-        } else {
-            if (normalBounds != null) setBounds(normalBounds);
-            isMaximised = false;
-        }
     }
 
     // ── Locate in MSOSA ───────────────────────────────────────────────────────
