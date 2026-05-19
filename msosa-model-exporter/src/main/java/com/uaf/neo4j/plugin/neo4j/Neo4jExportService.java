@@ -1,5 +1,7 @@
 package com.uaf.neo4j.plugin.neo4j;
 
+import com.uaf.neo4j.plugin.export.ExportResult;
+import com.uaf.neo4j.plugin.export.ExportService;
 import com.uaf.neo4j.plugin.model.UAFElementDTO;
 import com.uaf.neo4j.plugin.model.UAFRelationshipDTO;
 
@@ -9,12 +11,12 @@ import java.util.*;
 import java.util.logging.Logger;
 
 /**
- * Manages the Neo4j Bolt driver lifecycle and performs batched, idempotent
- * writes of UAF nodes, relationships, and metamodel links.
+ * LPG emitter — opens the Neo4j Bolt driver and performs batched, idempotent
+ * Cypher writes of UAF nodes, relationships, and metamodel links.
  *
- * Implements AutoCloseable — use in a try-with-resources block.
+ * Implements {@link ExportService}; use in a try-with-resources block.
  */
-public class Neo4jExportService implements AutoCloseable {
+public class Neo4jExportService implements ExportService {
 
     private static final Logger LOG = Logger.getLogger(Neo4jExportService.class.getName());
 
@@ -273,16 +275,4 @@ public class Neo4jExportService implements AutoCloseable {
         }
     }
 
-    public static final class ExportResult {
-        public int nodesWritten        = 0;
-        public int relationshipsWritten = 0;
-        public int instanceLinksWritten = 0;
-        public int definesLinksWritten  = 0;
-        public final List<String>         errors         = new ArrayList<>();
-        public final Map<String, Integer> languageCounts = new LinkedHashMap<>();
-
-        public boolean hasErrors() {
-            return !errors.isEmpty();
-        }
-    }
 }

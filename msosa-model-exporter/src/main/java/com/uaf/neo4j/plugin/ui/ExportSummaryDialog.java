@@ -2,7 +2,7 @@ package com.uaf.neo4j.plugin.ui;
 
 import com.uaf.neo4j.plugin.ExportLog;
 import com.uaf.neo4j.plugin.UAFNeo4jPlugin;
-import com.uaf.neo4j.plugin.neo4j.Neo4jExportService.ExportResult;
+import com.uaf.neo4j.plugin.export.ExportResult;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
