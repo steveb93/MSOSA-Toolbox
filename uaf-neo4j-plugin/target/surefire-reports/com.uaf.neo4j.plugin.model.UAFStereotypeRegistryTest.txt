@@ -1,4 +1,0 @@
--------------------------------------------------------------------------------
-Test set: com.uaf.neo4j.plugin.model.UAFStereotypeRegistryTest
--------------------------------------------------------------------------------
-Tests run: 20, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.011 s -- in com.uaf.neo4j.plugin.model.UAFStereotypeRegistryTest
