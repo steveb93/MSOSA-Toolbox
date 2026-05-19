@@ -106,16 +106,16 @@ uaf-neo4j-plugin/
 
 **Option A — Plugin Manager:**
 1. In MSOSA: **Help → Resource/Plugin Manager → Install Plugin from File**
-2. Select `target/uaf-neo4j-plugin-1.0.1-Preview-plugin.zip`
+2. Select `target/uaf-neo4j-plugin-1.0.1-Preview-Preview-plugin.zip`
 3. Restart MSOSA when prompted
 
 **Option B — Manual:**
 
-Unzip `target/uaf-neo4j-plugin-1.0.1-Preview-plugin.zip` into `<MSOSA_HOME>/plugins/`:
+Unzip `target/uaf-neo4j-plugin-1.0.1-Preview-Preview-plugin.zip` into `<MSOSA_HOME>/plugins/`:
 
 ```
 <MSOSA_HOME>/plugins/uaf-neo4j-plugin/
-    uaf-neo4j-plugin-1.0.1-Preview.jar
+    uaf-neo4j-plugin-1.0.1-Preview-Preview.jar
     plugin.xml
     neo4j-connection.properties
 ```
