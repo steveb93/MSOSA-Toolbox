@@ -38,8 +38,8 @@ mvn clean package
 ```
 
 Outputs:
-- `target/msosa-model-exporter-1.3.2-Preview-Preview-Preview-Preview-Preview-Preview-Preview.jar` — fat jar (Neo4j driver bundled + relocated)
-- `target/msosa-model-exporter-1.3.2-Preview-Preview-Preview-Preview-Preview-Preview-Preview-plugin.zip` — drop into `<MSOSA_HOME>/plugins/`
+- `target/msosa-model-exporter-1.3.2-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview.jar` — fat jar (Neo4j driver bundled + relocated)
+- `target/msosa-model-exporter-1.3.2-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-plugin.zip` — drop into `<MSOSA_HOME>/plugins/`
 
 ### 3. Deploy to MSOSA
 
@@ -47,7 +47,7 @@ Either use **Help → Resource/Plugin Manager → Install Plugin from File**, or
 
 ```
 <MSOSA_HOME>/plugins/msosa-model-exporter/
-    msosa-model-exporter-1.3.2-Preview-Preview-Preview-Preview-Preview-Preview-Preview.jar
+    msosa-model-exporter-1.3.2-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview.jar
     plugin.xml
     neo4j-connection.properties
 ```
