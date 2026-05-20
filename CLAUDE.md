@@ -101,7 +101,7 @@ The `:Stereotype`, `:Domain`, and `:ArchitectureLayer` nodes are the **pre-exist
 `neo4j_mcp_driver/server.py` exposes two FastMCP tools:
 
 - **`run_cypher(query)`** — executes arbitrary Cypher over Bolt and returns records as `list[dict]`.
-- **`run_sparql(query)`** — POSTs SPARQL 1.1 SELECT/ASK to the n10s endpoint (`http://localhost:7474/rdf/neo4j/query` by default; override via `NEO4J_SPARQL_URL`) and returns one dict per binding row.
+- **`run_sparql(query)`** — POSTs SPARQL 1.1 SELECT/ASK to the Fuseki endpoint (`http://localhost:3030/uaf/sparql` by default; override via `NEO4J_SPARQL_URL`) and returns one dict per binding row.
 
 Credentials come from environment variables; defaults match the Docker setup. Claude Desktop loads the server via `Claude_Desktop_Config/claude_desktop_config.json`.
 
