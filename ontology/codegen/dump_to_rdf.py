@@ -1,7 +1,9 @@
 """Materialise the Neo4j UAF graph as RDF Turtle for Fuseki to load.
 
-Walks all :UAFElement nodes and the relationships between them, emits each as
-RDF using the namespaces declared by the MVO (ontology/uaf-mvo.ttl).
+Selects every node connected to a :Stereotype via :INSTANCE_OF — the marker the
+Java exporter writes for every emitted element — and translates each node and
+its outgoing relationships into RDF using the namespaces declared by the MVO
+(ontology/uaf-mvo.ttl).
 
 Output: ontology/dump/uaf-instance.ttl
 
@@ -21,7 +23,11 @@ STATUS (as of Stage 4, v1.3.0-Preview):
         view from scratch.
       - Keep it pinned to the same IRI conventions as
         msosa-model-exporter/src/main/java/com/uaf/neo4j/plugin/rdf/RDFTripleBuilder.java;
-        the two MUST stay byte-identical or SPARQL queries will silently miss.
+        the two MUST emit the same triple set (RDF serialisation ordering may
+        differ between rdflib and Jena — equality is at the triple-set level,
+        not byte level). The shared fixture at ontology/codegen/parity-fixture.json
+        and the matched tests in Test/test_rdf_parity.py and
+        msosa-model-exporter/.../RDFTripleBuilderParityTest.java enforce this.
 
 Output: ontology/dump/uaf-instance.ttl
 Run after each MSOSA export so the SPARQL view stays in step with Neo4j.
@@ -82,11 +88,15 @@ def tag_property_uri(tag_key: str) -> URIRef:
     return UAFTV[SAFE_ID.sub("_", key)]
 
 
-CORE_PROPS = {"id", "name", "qualifiedName", "documentation", "domain", "layer",
+CORE_PROPS = {"id", "name", "qualifiedName", "documentation", "domain",
               "language", "stereotype", "neo4jLabel", "packageName"}
 
 
 def add_node(g: Graph, record: dict) -> None:
+    # Defensive: strip the :UAFElement marker label if present. The current
+    # Neo4jCypherBuilder writes a single stereotype label per node, so this
+    # guard usually drops nothing — kept so a future dual-labelling change
+    # cannot silently re-introduce the marker as an RDF class.
     labels = [l for l in record["labels"] if l != "UAFElement"]
     if not labels:
         return
@@ -95,11 +105,23 @@ def add_node(g: Graph, record: dict) -> None:
         return
     iri = instance_uri(node_id)
     language = record.get("language") or "UAF"
-    for label in labels:
-        g.add((iri, RDF.type, class_uri(label, language)))
+    # Java's RDFTripleBuilder.addElement assigns exactly one rdf:type per node
+    # (UAFElementDTO.neo4jLabel is singular). Mirror that here: pick the first
+    # label and warn if the node carries more than one, so drift is visible.
+    if len(labels) > 1:
+        print(
+            f"[dump_to_rdf] WARN: node {node_id} has {len(labels)} non-marker "
+            f"labels {labels}; using first ({labels[0]}). Java emitter writes "
+            f"one rdf:type per node — fix the source so this never recurs.",
+            file=sys.stderr,
+        )
+    g.add((iri, RDF.type, class_uri(labels[0], language)))
     if record.get("name"):
         g.add((iri, RDFS.label, Literal(record["name"], datatype=XSD.string)))
-    for k in ("qualifiedName", "documentation", "domain", "layer", "language",
+    # `layer` deliberately omitted: Neo4jCypherBuilder does not write it, and
+    # RDFTripleBuilder.addElement does not emit it. Keep this list aligned with
+    # Java; Neo4jCypherBuilderTest enforces "Layer must not appear in Cypher".
+    for k in ("qualifiedName", "documentation", "domain", "language",
               "packageName"):
         v = record.get(k)
         if v:
@@ -147,7 +169,7 @@ def dump(uri: str, user: str, password: str, database: str) -> tuple[int, int]:
                 MATCH (n)-[:INSTANCE_OF]->(s:Stereotype)
                 RETURN labels(n) AS labels, n.id AS id, n.name AS name,
                        n.qualifiedName AS qualifiedName, n.documentation AS documentation,
-                       n.domain AS domain, n.layer AS layer,
+                       n.domain AS domain,
                        coalesce(n.language, s.language, 'UAF') AS language,
                        n.packageName AS packageName,
                        properties(n) AS props
