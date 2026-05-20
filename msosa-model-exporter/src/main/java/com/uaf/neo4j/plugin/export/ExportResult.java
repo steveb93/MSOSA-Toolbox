@@ -23,6 +23,17 @@ public final class ExportResult {
     public final List<String>         errors         = new ArrayList<>();
     public final Map<String, Integer> languageCounts = new LinkedHashMap<>();
 
+    /**
+     * Stereotype names that appeared on elements in the source model but did not
+     * resolve to any {@link com.uaf.neo4j.plugin.model.UAFStereotypeRegistry} entry
+     * — neither directly nor via their inheritance chain. Each value is the count
+     * of distinct elements that carried that stereotype name and were dropped.
+     *
+     * Populated by {@link com.uaf.neo4j.plugin.model.UAFModelTraverser#getUnmatchedStereotypes()};
+     * surfaced by the summary dialog so profile drift becomes visible (#75).
+     */
+    public final Map<String, Integer> unmatchedStereotypes = new LinkedHashMap<>();
+
     public boolean hasErrors() {
         return !errors.isEmpty();
     }

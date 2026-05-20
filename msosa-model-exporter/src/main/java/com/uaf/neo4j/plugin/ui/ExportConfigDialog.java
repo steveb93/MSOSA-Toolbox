@@ -766,6 +766,7 @@ public class ExportConfigDialog extends JDialog {
                     autoClosed.exportSystemModel(traverser.getSystemModelId(), traverser.getSystemModelName());
                     autoClosed.exportDefinesLinks(traverser.getSystemModelId(), elements);
                     autoClosed.getResult().languageCounts.putAll(langCounts);
+                    autoClosed.getResult().unmatchedStereotypes.putAll(traverser.getUnmatchedStereotypes());
                     return autoClosed.getResult();
                 }
             }
@@ -816,6 +817,8 @@ public class ExportConfigDialog extends JDialog {
             out.definesLinksWritten  = Math.max(out.definesLinksWritten,  r.definesLinksWritten);
             for (String err : r.errors) out.errors.add("[" + e.getKey() + "] " + err);
             if (out.languageCounts.isEmpty()) out.languageCounts.putAll(r.languageCounts);
+            // Unmatched stereotypes come from the traverser, identical across targets — take from first.
+            if (out.unmatchedStereotypes.isEmpty()) out.unmatchedStereotypes.putAll(r.unmatchedStereotypes);
         }
         return out;
     }
