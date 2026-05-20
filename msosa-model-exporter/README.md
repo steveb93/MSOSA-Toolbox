@@ -101,16 +101,16 @@ msosa-model-exporter/
 
 **Option A — Plugin Manager:**
 1. In MSOSA: **Help → Resource/Plugin Manager → Install Plugin from File**
-2. Select `target/msosa-model-exporter-1.3.2-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-plugin.zip`
+2. Select `target/msosa-model-exporter-1.3.2-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-plugin.zip`
 3. Restart MSOSA when prompted
 
 **Option B — Manual:**
 
-Unzip `target/msosa-model-exporter-1.3.2-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-plugin.zip` into `<MSOSA_HOME>/plugins/`:
+Unzip `target/msosa-model-exporter-1.3.2-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-plugin.zip` into `<MSOSA_HOME>/plugins/`:
 
 ```
 <MSOSA_HOME>/plugins/msosa-model-exporter/
-    msosa-model-exporter-1.3.2-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview.jar
+    msosa-model-exporter-1.3.2-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview.jar
     plugin.xml
     neo4j-connection.properties
 ```
