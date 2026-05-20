@@ -27,9 +27,13 @@
 
 services:
   graphdb:
-    # GraphDB 11.x — single image covers Free / SE / EE; Free needs no licence.
-    # Bump only after verifying the repo config schema is still accepted.
-    image: ontotext/graphdb:11.0.0
+    # Pinned to the 10.8.x line. GraphDB 11.x enforces a licence file on every
+    # SPARQL update — even for the Free tier ("No license was set", HTTP 500) —
+    # so the loader sidecar can't create or write the repo without registering
+    # at ontotext.com and mounting a licence. The 10.8.x stream still treats
+    # Free as licence-free at the image level, so the overlay works zero-touch.
+    # Bump only after verifying the Free tier still writes without a licence.
+    image: ontotext/graphdb:10.8.14
     container_name: graphdb-uaf
     restart: unless-stopped
     ports:
