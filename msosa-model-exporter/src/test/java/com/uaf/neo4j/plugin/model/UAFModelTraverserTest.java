@@ -113,4 +113,32 @@ class UAFModelTraverserTest {
         assertEquals("HAS_ATTRIBUTE", UAFRelationshipDTO.REL_HAS_ATTRIBUTE);
         assertEquals("OF_TYPE",       UAFRelationshipDTO.REL_OF_TYPE);
     }
+
+    // ── Tier-1 #75 RC #6 relationship-stereotype map additions ────────────────
+
+    @Test
+    void relationshipStereotypeMap_includesImplementsAndCapabilityMappings() {
+        // Stereotypes applied to UML relationship elements in real-world profile that pre-#75-RC6
+        // were silently dropped because the map didn't know them.
+        assertEquals(UAFRelationshipDTO.REL_IMPLEMENTS,
+                     UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP.get("Implements"));
+        assertEquals(UAFRelationshipDTO.REL_PERFORMS,
+                     UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP.get("IsCapableToPerform"));
+        assertEquals(UAFRelationshipDTO.REL_PERFORMS,
+                     UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP.get("PerformsInContext"));
+        assertEquals(UAFRelationshipDTO.REL_REALISES,
+                     UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP.get("MapsToCapability"));
+    }
+
+    @Test
+    void relationshipStereotypeMap_includesDomainAssociations() {
+        assertEquals(UAFRelationshipDTO.REL_FLOWS_TO,
+                     UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP.get("DataAssociation"));
+        assertEquals(UAFRelationshipDTO.REL_ASSOCIATED_WITH,
+                     UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP.get("ServiceAssociation"));
+        assertEquals(UAFRelationshipDTO.REL_ASSOCIATED_WITH,
+                     UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP.get("OperationalAssociation"));
+        assertEquals(UAFRelationshipDTO.REL_ASSOCIATED_WITH,
+                     UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP.get("ResourceAssociation"));
+    }
 }

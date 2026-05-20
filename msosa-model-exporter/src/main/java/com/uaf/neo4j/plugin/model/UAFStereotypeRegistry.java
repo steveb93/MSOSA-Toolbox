@@ -45,6 +45,15 @@ public class UAFStereotypeRegistry {
         reg("DesiredEffect",            "DesiredEffect",           Domain.STRATEGIC);
         reg("EnterprisePhase",          "EnterprisePhase",         Domain.STRATEGIC);
         reg("CapabilityIncrement",      "CapabilityIncrement",     Domain.STRATEGIC);
+        // Tier-1 #75 RC #6 reconciliation — added from real-world profile diff. The MSOSA UAF 1.2
+        // profile here uses EnterpriseVision / VisionStatement rather than the bare
+        // Vision; both are kept for back-compat across other UAF profile versions.
+        reg("EnterpriseVision",         "EnterpriseVision",        Domain.STRATEGIC);
+        reg("VisionStatement",          "VisionStatement",         Domain.STRATEGIC);
+        reg("CapabilityRole",           "CapabilityRole",          Domain.STRATEGIC);
+        reg("PhaseableElement",         "PhaseableElement",        Domain.STRATEGIC);
+        reg("Phases",                   "Phases",                  Domain.STRATEGIC);
+        reg("ArchitectureMetadata",     "ArchitectureMetadata",    Domain.STRATEGIC);
 
         // --- Operational View (OV) ---
         reg("OperationalPerformer",     "OperationalPerformer",    Domain.OPERATIONAL);
@@ -60,6 +69,28 @@ public class UAFStereotypeRegistry {
         reg("NeedLine",                 "NeedLine",                Domain.OPERATIONAL);
         reg("PerformerPort",            "PerformerPort",           Domain.OPERATIONAL);
         reg("OperationalRole",          "OperationalRole",         Domain.OPERATIONAL);
+        // Tier-1 #75 RC #6 reconciliation — added from real-world UAF profile diff.
+        // Stereotypes confirmed present in the MSOSA UAF 1.2 profile and applied to
+        // model elements; pre-reconciliation these were silently dropped.
+        reg("OperationalAgent",         "OperationalAgent",        Domain.OPERATIONAL);
+        reg("OperationalAsset",         "OperationalAsset",        Domain.OPERATIONAL);
+        reg("OperationalArchitecture",  "OperationalArchitecture", Domain.OPERATIONAL);
+        reg("OperationalActivityAction","OperationalActivityAction",Domain.OPERATIONAL);
+        reg("OperationalActivityEdge",  "OperationalActivityEdge", Domain.OPERATIONAL);
+        reg("OperationalControlFlow",   "OperationalControlFlow",  Domain.OPERATIONAL);
+        reg("OperationalObjectFlow",    "OperationalObjectFlow",   Domain.OPERATIONAL);
+        reg("OperationalExchangeItem",  "OperationalExchangeItem", Domain.OPERATIONAL);
+        reg("OperationalInformationRole","OperationalInformationRole",Domain.OPERATIONAL);
+        reg("OperationalInterface",     "OperationalInterface",    Domain.OPERATIONAL);
+        reg("OperationalMessage",       "OperationalMessage",      Domain.OPERATIONAL);
+        reg("OperationalMethod",        "OperationalMethod",       Domain.OPERATIONAL);
+        reg("OperationalMitigation",    "OperationalMitigation",   Domain.OPERATIONAL);
+        reg("OperationalParameter",     "OperationalParameter",    Domain.OPERATIONAL);
+        reg("OperationalPort",          "OperationalPort",         Domain.OPERATIONAL);
+        reg("OperationalSignal",        "OperationalSignal",       Domain.OPERATIONAL);
+        reg("OperationalSignalProperty","OperationalSignalProperty",Domain.OPERATIONAL);
+        reg("OperationalStateDescription","OperationalStateDescription",Domain.OPERATIONAL);
+        reg("OperationalConstraint",    "OperationalConstraint",   Domain.OPERATIONAL);
 
         // --- UAF-wrapped BPMN data elements (used in UAF operational process diagrams) ---
         // These are UAF stereotypes applied to BPMN data artefacts in an OV context,
@@ -89,6 +120,24 @@ public class UAFStereotypeRegistry {
         reg("Technology",               "Technology",              Domain.RESOURCE);
         reg("LogicalArchitecture",      "LogicalArchitecture",     Domain.RESOURCE);
         reg("PhysicalArchitecture",     "PhysicalArchitecture",    Domain.RESOURCE);
+        // Tier-1 #75 RC #6 reconciliation — added from real-world profile diff.
+        reg("Resource",                 "Resource",                Domain.RESOURCE);
+        reg("ResourceAsset",            "ResourceAsset",           Domain.RESOURCE);
+        reg("ResourceAction",           "ResourceAction",          Domain.RESOURCE);
+        reg("ResourceExchange",         "ResourceExchange",        Domain.RESOURCE);
+        reg("ResourceExchangeItem",     "ResourceExchangeItem",    Domain.RESOURCE);
+        reg("ResourceInformationRole",  "ResourceInformationRole", Domain.RESOURCE);
+        reg("ResourceInterface",        "ResourceInterface",       Domain.RESOURCE);
+        reg("ResourceMessage",          "ResourceMessage",         Domain.RESOURCE);
+        reg("ResourceMethod",           "ResourceMethod",          Domain.RESOURCE);
+        reg("ResourceMitigation",       "ResourceMitigation",      Domain.RESOURCE);
+        reg("ResourceRole",             "ResourceRole",            Domain.RESOURCE);
+        reg("ResourceService",          "ResourceService",         Domain.RESOURCE);
+        reg("ResourceServiceInterface", "ResourceServiceInterface",Domain.RESOURCE);
+        reg("ResourceSignal",           "ResourceSignal",          Domain.RESOURCE);
+        reg("ResourceSignalProperty",   "ResourceSignalProperty",  Domain.RESOURCE);
+        reg("ResourceStateDescription", "ResourceStateDescription",Domain.RESOURCE);
+        reg("ResourceConstraint",       "ResourceConstraint",      Domain.RESOURCE);
 
         // --- Service View (SvcV) ---
         reg("ServicePerformer",         "ServicePerformer",        Domain.SERVICE);
@@ -100,6 +149,10 @@ public class UAFStereotypeRegistry {
         reg("ServiceExchange",          "ServiceExchange",         Domain.SERVICE);
         reg("Service",                  "Service",                 Domain.SERVICE);
         reg("ServiceArchitecture",      "ServiceArchitecture",     Domain.SERVICE);
+        // Tier-1 #75 RC #6 reconciliation — added from real-world profile diff.
+        reg("ServiceRole",              "ServiceRole",             Domain.SERVICE);
+        reg("ServiceParameter",         "ServiceParameter",        Domain.SERVICE);
+        reg("ServiceMethod",            "ServiceMethod",           Domain.SERVICE);
 
         // --- Personnel View (PrV) ---
         reg("Organization",             "Organization",            Domain.PERSONNEL);
@@ -115,11 +168,30 @@ public class UAFStereotypeRegistry {
         reg("ProjectMilestone",         "ProjectMilestone",        Domain.ACQUISITION);
         reg("ProjectBoundary",          "ProjectBoundary",         Domain.ACQUISITION);
         reg("FundingRequest",           "FundingRequest",          Domain.ACQUISITION);
+        // Tier-1 #75 RC #6 reconciliation — added from real-world profile diff.
+        reg("ProjectActivity",          "ProjectActivity",         Domain.ACQUISITION);
+        reg("ProjectActivityAction",    "ProjectActivityAction",   Domain.ACQUISITION);
+        reg("ProjectMilestoneRole",     "ProjectMilestoneRole",    Domain.ACQUISITION);
+        reg("ProjectRole",              "ProjectRole",             Domain.ACQUISITION);
+        reg("ProjectSequence",          "ProjectSequence",         Domain.ACQUISITION);
+        reg("ProjectStatus",            "ProjectStatus",           Domain.ACQUISITION);
+        reg("ProjectTheme",             "ProjectTheme",            Domain.ACQUISITION);
+        reg("MilestoneDependency",      "MilestoneDependency",     Domain.ACQUISITION);
 
         // --- Security View (SrV) ---
         reg("SecurityDomain",           "SecurityDomain",          Domain.SECURITY);
         reg("SecurityAsset",            "SecurityAsset",           Domain.SECURITY);
         reg("SecurityPolicy",           "SecurityPolicy",          Domain.SECURITY);
+        // Tier-1 #75 RC #6 reconciliation — added from real-world profile diff. The MSOSA UAF 1.2
+        // profile in real-world profile uses SecurityEnclave/SecurityControl/etc. rather than the
+        // older SecurityDomain/Asset/Policy; both name families coexist for back-compat.
+        reg("SecurityEnclave",          "SecurityEnclave",         Domain.SECURITY);
+        reg("SecurityConstraint",       "SecurityConstraint",      Domain.SECURITY);
+        reg("SecurityControl",          "SecurityControl",         Domain.SECURITY);
+        reg("SecurityControlFamily",    "SecurityControlFamily",   Domain.SECURITY);
+        reg("SecurityProcess",          "SecurityProcess",         Domain.SECURITY);
+        reg("SecurityProcessAction",    "SecurityProcessAction",   Domain.SECURITY);
+        reg("SecurityRisk",             "SecurityRisk",            Domain.SECURITY);
 
         // --- Shared / Cross-cutting ---
         reg("Measurement",              "Measurement",             Domain.SHARED);
@@ -134,6 +206,13 @@ public class UAFStereotypeRegistry {
         // Stereotyped entries (matched by name when MSOSA reports them):
         reg("Entity",                   "Entity",                  Domain.SHARED);
         reg("EntityRelationship",       "EntityRelationship",      Domain.SHARED);
+        // Tier-1 #75 RC #6 — the MSOSA UAF profile uses EntityRelation (not the
+        // EntityRelationship name) and exposes PK/FK marker stereotypes on Properties.
+        reg("EntityRelation",           "EntityRelation",          Domain.SHARED);
+        reg("PrimaryKey",               "PrimaryKey",              Domain.SHARED);
+        reg("ForeignKey",               "ForeignKey",              Domain.SHARED);
+        reg("AlternativeKey",           "AlternativeKey",          Domain.SHARED);
+        reg("FK",                       "FK",                      Domain.SHARED);
         // Synthetic entries — the traverser emits these for first-class attribute
         // representation (#76 design A). They are NOT directly applied stereotypes
         // in any MSOSA profile; entries exist so the :Stereotype seed nodes and the
@@ -171,6 +250,18 @@ public class UAFStereotypeRegistry {
         reg("CallActivity",             "CallActivity",            "BPMN");
         reg("Lane",                     "Lane",                    "BPMN");
         reg("Pool",                     "Pool",                    "BPMN");
+        // Tier-1 #75 RC #6 reconciliation — BPMN extras found applied in real-world profile.
+        reg("BPMNProcess",              "BPMNProcess",             "BPMN");
+        reg("BPMNMessage",              "BPMNMessage",             "BPMN");
+        reg("BusinessRuleTask",         "BusinessRuleTask",        "BPMN");
+        reg("LaneSet",                  "LaneSet",                 "BPMN");
+        reg("TextAnnotation",           "TextAnnotation",          "BPMN");
+        reg("NoneStartEvent",           "NoneStartEvent",          "BPMN");
+        reg("NoneEndEvent",             "NoneEndEvent",            "BPMN");
+        reg("NoneIntermediateEvent",    "NoneIntermediateEvent",   "BPMN");
+        reg("MessageCatchIntermediateEvent","MessageCatchIntermediateEvent","BPMN");
+        reg("StandardLoopCharacteristics","StandardLoopCharacteristics","BPMN");
+        reg("FlowProperty",             "FlowProperty",            "BPMN");
 
     }
 

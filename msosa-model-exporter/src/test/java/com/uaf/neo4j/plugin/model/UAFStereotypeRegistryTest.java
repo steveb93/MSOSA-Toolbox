@@ -152,6 +152,71 @@ class UAFStereotypeRegistryTest {
         }
     }
 
+    // ── Tier-1 #75 RC #6 reconciliation entries ───────────────────────────────
+
+    @Test
+    void get_tier1OperationalAdditions_returnOperationalDomain() {
+        for (String name : new String[]{"OperationalAgent", "OperationalAsset",
+                                        "OperationalArchitecture", "OperationalActivityAction",
+                                        "OperationalInformationRole", "OperationalInterface",
+                                        "OperationalMessage", "OperationalExchangeItem"}) {
+            Optional<UAFStereotypeRegistry.StereotypeInfo> info = UAFStereotypeRegistry.get(name);
+            assertTrue(info.isPresent(), name + " should be registered");
+            assertEquals(UAFStereotypeRegistry.Domain.OPERATIONAL, info.get().domain, name);
+        }
+    }
+
+    @Test
+    void get_tier1ResourceAdditions_returnResourceDomain() {
+        for (String name : new String[]{"Resource", "ResourceExchange", "ResourceInterface",
+                                        "ResourceRole", "ResourceInformationRole",
+                                        "ResourceMessage", "ResourceAsset"}) {
+            Optional<UAFStereotypeRegistry.StereotypeInfo> info = UAFStereotypeRegistry.get(name);
+            assertTrue(info.isPresent(), name + " should be registered");
+            assertEquals(UAFStereotypeRegistry.Domain.RESOURCE, info.get().domain, name);
+        }
+    }
+
+    @Test
+    void get_tier1StrategicAdditions_returnStrategicDomain() {
+        for (String name : new String[]{"EnterpriseVision", "VisionStatement", "CapabilityRole",
+                                        "PhaseableElement", "Phases"}) {
+            Optional<UAFStereotypeRegistry.StereotypeInfo> info = UAFStereotypeRegistry.get(name);
+            assertTrue(info.isPresent(), name + " should be registered");
+            assertEquals(UAFStereotypeRegistry.Domain.STRATEGIC, info.get().domain, name);
+        }
+    }
+
+    @Test
+    void get_tier1SecurityAdditions_returnSecurityDomain() {
+        for (String name : new String[]{"SecurityEnclave", "SecurityConstraint", "SecurityControl",
+                                        "SecurityRisk", "SecurityProcess"}) {
+            Optional<UAFStereotypeRegistry.StereotypeInfo> info = UAFStereotypeRegistry.get(name);
+            assertTrue(info.isPresent(), name + " should be registered");
+            assertEquals(UAFStereotypeRegistry.Domain.SECURITY, info.get().domain, name);
+        }
+    }
+
+    @Test
+    void get_tier1ErdKeyMarkers_areRegisteredUnderShared() {
+        for (String name : new String[]{"EntityRelation", "PrimaryKey", "ForeignKey", "AlternativeKey", "FK"}) {
+            Optional<UAFStereotypeRegistry.StereotypeInfo> info = UAFStereotypeRegistry.get(name);
+            assertTrue(info.isPresent(), name + " should be registered");
+            assertEquals(UAFStereotypeRegistry.Domain.SHARED, info.get().domain, name);
+        }
+    }
+
+    @Test
+    void get_tier1BpmnExtras_areRegisteredUnderBpmnLanguage() {
+        for (String name : new String[]{"BPMNProcess", "BPMNMessage", "NoneStartEvent",
+                                        "NoneEndEvent", "TextAnnotation", "BusinessRuleTask"}) {
+            Optional<UAFStereotypeRegistry.StereotypeInfo> info = UAFStereotypeRegistry.get(name);
+            assertTrue(info.isPresent(), name + " should be registered");
+            assertEquals("BPMN", info.get().language, name);
+            assertNull(info.get().domain, name + " is a BPMN stereotype, no UAF domain");
+        }
+    }
+
     @Test
     void isKnown_knownStereotypes_returnsTrue() {
         assertTrue(UAFStereotypeRegistry.isKnown("Capability"));
