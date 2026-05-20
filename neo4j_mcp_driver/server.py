@@ -32,7 +32,7 @@ def run_cypher(query: str) -> list[dict]:
 
 @mcp.tool()
 def run_sparql(query: str) -> list[dict]:
-    """Run a SPARQL 1.1 SELECT query against the n10s endpoint.
+    """Run a SPARQL 1.1 SELECT query against the Fuseki endpoint.
 
     Returns one dict per binding row, mapping variable name to its lexical value.
     Use this for ontology-aware queries (subsumption via uaf:StrategicElement,
