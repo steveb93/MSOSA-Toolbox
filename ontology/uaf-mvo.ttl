@@ -17,7 +17,7 @@
     rdfs:label "UAF + SysML + BPMN MVO" ;
     rdfs:comment "Minimum Viable Ontology covering UAF 1.2 (all 8 domains), SysML 1.6 and BPMN 2.0 stereotypes, generated from UAFStereotypeRegistry." ;
     owl:versionInfo "0.2.0" ;
-    dcterms:created "2026-05-19"^^xsd:date .
+    dcterms:created "2026-05-20"^^xsd:date .
 
 # --- Annotation properties ---------------------------------------------------
 
@@ -95,6 +95,13 @@ bpmn:BPMNElement a owl:Class ;
 # --- UAF concrete classes ----------------------------------------------------
 
 # UAF STRATEGIC
+uaf:ArchitectureMetadata a owl:Class ;
+    rdfs:label "ArchitectureMetadata" ;
+    rdfs:subClassOf uaf:StrategicElement ;
+    uafprop:domain "STRATEGIC" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
 uaf:Capability a owl:Class ;
     rdfs:label "Capability" ;
     rdfs:subClassOf uaf:StrategicElement ;
@@ -130,6 +137,13 @@ uaf:CapabilityIncrement a owl:Class ;
     uafprop:language "UAF" ;
     rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
 
+uaf:CapabilityRole a owl:Class ;
+    rdfs:label "CapabilityRole" ;
+    rdfs:subClassOf uaf:StrategicElement ;
+    uafprop:domain "STRATEGIC" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
 uaf:CapabilitySpecialization a owl:Class ;
     rdfs:label "CapabilitySpecialization" ;
     rdfs:subClassOf uaf:StrategicElement ;
@@ -158,8 +172,36 @@ uaf:EnterprisePhase a owl:Class ;
     uafprop:language "UAF" ;
     rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
 
+uaf:EnterpriseVision a owl:Class ;
+    rdfs:label "EnterpriseVision" ;
+    rdfs:subClassOf uaf:StrategicElement ;
+    uafprop:domain "STRATEGIC" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:PhaseableElement a owl:Class ;
+    rdfs:label "PhaseableElement" ;
+    rdfs:subClassOf uaf:StrategicElement ;
+    uafprop:domain "STRATEGIC" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:Phases a owl:Class ;
+    rdfs:label "Phases" ;
+    rdfs:subClassOf uaf:StrategicElement ;
+    uafprop:domain "STRATEGIC" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
 uaf:Vision a owl:Class ;
     rdfs:label "Vision" ;
+    rdfs:subClassOf uaf:StrategicElement ;
+    uafprop:domain "STRATEGIC" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:VisionStatement a owl:Class ;
+    rdfs:label "VisionStatement" ;
     rdfs:subClassOf uaf:StrategicElement ;
     uafprop:domain "STRATEGIC" ;
     uafprop:language "UAF" ;
@@ -208,6 +250,41 @@ uaf:OperationalActivity a owl:Class ;
     uafprop:language "UAF" ;
     rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
 
+uaf:OperationalActivityAction a owl:Class ;
+    rdfs:label "OperationalActivityAction" ;
+    rdfs:subClassOf uaf:OperationalElement ;
+    uafprop:domain "OPERATIONAL" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:OperationalActivityEdge a owl:Class ;
+    rdfs:label "OperationalActivityEdge" ;
+    rdfs:subClassOf uaf:OperationalElement ;
+    uafprop:domain "OPERATIONAL" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:OperationalAgent a owl:Class ;
+    rdfs:label "OperationalAgent" ;
+    rdfs:subClassOf uaf:OperationalElement ;
+    uafprop:domain "OPERATIONAL" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:OperationalArchitecture a owl:Class ;
+    rdfs:label "OperationalArchitecture" ;
+    rdfs:subClassOf uaf:OperationalElement ;
+    uafprop:domain "OPERATIONAL" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:OperationalAsset a owl:Class ;
+    rdfs:label "OperationalAsset" ;
+    rdfs:subClassOf uaf:OperationalElement ;
+    uafprop:domain "OPERATIONAL" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
 uaf:OperationalCapability a owl:Class ;
     rdfs:label "OperationalCapability" ;
     rdfs:subClassOf uaf:OperationalElement ;
@@ -217,6 +294,20 @@ uaf:OperationalCapability a owl:Class ;
 
 uaf:OperationalConnector a owl:Class ;
     rdfs:label "OperationalConnector" ;
+    rdfs:subClassOf uaf:OperationalElement ;
+    uafprop:domain "OPERATIONAL" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:OperationalConstraint a owl:Class ;
+    rdfs:label "OperationalConstraint" ;
+    rdfs:subClassOf uaf:OperationalElement ;
+    uafprop:domain "OPERATIONAL" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:OperationalControlFlow a owl:Class ;
+    rdfs:label "OperationalControlFlow" ;
     rdfs:subClassOf uaf:OperationalElement ;
     uafprop:domain "OPERATIONAL" ;
     uafprop:language "UAF" ;
@@ -236,6 +327,13 @@ uaf:OperationalExchange a owl:Class ;
     uafprop:language "UAF" ;
     rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
 
+uaf:OperationalExchangeItem a owl:Class ;
+    rdfs:label "OperationalExchangeItem" ;
+    rdfs:subClassOf uaf:OperationalElement ;
+    uafprop:domain "OPERATIONAL" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
 uaf:OperationalFunction a owl:Class ;
     rdfs:label "OperationalFunction" ;
     rdfs:subClassOf uaf:OperationalElement ;
@@ -250,6 +348,13 @@ uaf:OperationalInformation a owl:Class ;
     uafprop:language "UAF" ;
     rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
 
+uaf:OperationalInformationRole a owl:Class ;
+    rdfs:label "OperationalInformationRole" ;
+    rdfs:subClassOf uaf:OperationalElement ;
+    uafprop:domain "OPERATIONAL" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
 uaf:OperationalInteraction a owl:Class ;
     rdfs:label "OperationalInteraction" ;
     rdfs:subClassOf uaf:OperationalElement ;
@@ -257,8 +362,57 @@ uaf:OperationalInteraction a owl:Class ;
     uafprop:language "UAF" ;
     rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
 
+uaf:OperationalInterface a owl:Class ;
+    rdfs:label "OperationalInterface" ;
+    rdfs:subClassOf uaf:OperationalElement ;
+    uafprop:domain "OPERATIONAL" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:OperationalMessage a owl:Class ;
+    rdfs:label "OperationalMessage" ;
+    rdfs:subClassOf uaf:OperationalElement ;
+    uafprop:domain "OPERATIONAL" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:OperationalMethod a owl:Class ;
+    rdfs:label "OperationalMethod" ;
+    rdfs:subClassOf uaf:OperationalElement ;
+    uafprop:domain "OPERATIONAL" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:OperationalMitigation a owl:Class ;
+    rdfs:label "OperationalMitigation" ;
+    rdfs:subClassOf uaf:OperationalElement ;
+    uafprop:domain "OPERATIONAL" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:OperationalObjectFlow a owl:Class ;
+    rdfs:label "OperationalObjectFlow" ;
+    rdfs:subClassOf uaf:OperationalElement ;
+    uafprop:domain "OPERATIONAL" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:OperationalParameter a owl:Class ;
+    rdfs:label "OperationalParameter" ;
+    rdfs:subClassOf uaf:OperationalElement ;
+    uafprop:domain "OPERATIONAL" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
 uaf:OperationalPerformer a owl:Class ;
     rdfs:label "OperationalPerformer" ;
+    rdfs:subClassOf uaf:OperationalElement ;
+    uafprop:domain "OPERATIONAL" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:OperationalPort a owl:Class ;
+    rdfs:label "OperationalPort" ;
     rdfs:subClassOf uaf:OperationalElement ;
     uafprop:domain "OPERATIONAL" ;
     uafprop:language "UAF" ;
@@ -273,6 +427,27 @@ uaf:OperationalProcess a owl:Class ;
 
 uaf:OperationalRole a owl:Class ;
     rdfs:label "OperationalRole" ;
+    rdfs:subClassOf uaf:OperationalElement ;
+    uafprop:domain "OPERATIONAL" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:OperationalSignal a owl:Class ;
+    rdfs:label "OperationalSignal" ;
+    rdfs:subClassOf uaf:OperationalElement ;
+    uafprop:domain "OPERATIONAL" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:OperationalSignalProperty a owl:Class ;
+    rdfs:label "OperationalSignalProperty" ;
+    rdfs:subClassOf uaf:OperationalElement ;
+    uafprop:domain "OPERATIONAL" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:OperationalStateDescription a owl:Class ;
+    rdfs:label "OperationalStateDescription" ;
     rdfs:subClassOf uaf:OperationalElement ;
     uafprop:domain "OPERATIONAL" ;
     uafprop:language "UAF" ;
@@ -321,6 +496,20 @@ uaf:PhysicalArchitecture a owl:Class ;
     uafprop:language "UAF" ;
     rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
 
+uaf:Resource a owl:Class ;
+    rdfs:label "Resource" ;
+    rdfs:subClassOf uaf:ResourceElement ;
+    uafprop:domain "RESOURCE" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:ResourceAction a owl:Class ;
+    rdfs:label "ResourceAction" ;
+    rdfs:subClassOf uaf:ResourceElement ;
+    uafprop:domain "RESOURCE" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
 uaf:ResourceArchitecture a owl:Class ;
     rdfs:label "ResourceArchitecture" ;
     rdfs:subClassOf uaf:ResourceElement ;
@@ -335,8 +524,36 @@ uaf:ResourceArtifact a owl:Class ;
     uafprop:language "UAF" ;
     rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
 
+uaf:ResourceAsset a owl:Class ;
+    rdfs:label "ResourceAsset" ;
+    rdfs:subClassOf uaf:ResourceElement ;
+    uafprop:domain "RESOURCE" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
 uaf:ResourceConnector a owl:Class ;
     rdfs:label "ResourceConnector" ;
+    rdfs:subClassOf uaf:ResourceElement ;
+    uafprop:domain "RESOURCE" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:ResourceConstraint a owl:Class ;
+    rdfs:label "ResourceConstraint" ;
+    rdfs:subClassOf uaf:ResourceElement ;
+    uafprop:domain "RESOURCE" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:ResourceExchange a owl:Class ;
+    rdfs:label "ResourceExchange" ;
+    rdfs:subClassOf uaf:ResourceElement ;
+    uafprop:domain "RESOURCE" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:ResourceExchangeItem a owl:Class ;
+    rdfs:label "ResourceExchangeItem" ;
     rdfs:subClassOf uaf:ResourceElement ;
     uafprop:domain "RESOURCE" ;
     uafprop:language "UAF" ;
@@ -356,8 +573,43 @@ uaf:ResourceInformation a owl:Class ;
     uafprop:language "UAF" ;
     rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
 
+uaf:ResourceInformationRole a owl:Class ;
+    rdfs:label "ResourceInformationRole" ;
+    rdfs:subClassOf uaf:ResourceElement ;
+    uafprop:domain "RESOURCE" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
 uaf:ResourceInteraction a owl:Class ;
     rdfs:label "ResourceInteraction" ;
+    rdfs:subClassOf uaf:ResourceElement ;
+    uafprop:domain "RESOURCE" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:ResourceInterface a owl:Class ;
+    rdfs:label "ResourceInterface" ;
+    rdfs:subClassOf uaf:ResourceElement ;
+    uafprop:domain "RESOURCE" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:ResourceMessage a owl:Class ;
+    rdfs:label "ResourceMessage" ;
+    rdfs:subClassOf uaf:ResourceElement ;
+    uafprop:domain "RESOURCE" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:ResourceMethod a owl:Class ;
+    rdfs:label "ResourceMethod" ;
+    rdfs:subClassOf uaf:ResourceElement ;
+    uafprop:domain "RESOURCE" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:ResourceMitigation a owl:Class ;
+    rdfs:label "ResourceMitigation" ;
     rdfs:subClassOf uaf:ResourceElement ;
     uafprop:domain "RESOURCE" ;
     uafprop:language "UAF" ;
@@ -372,6 +624,48 @@ uaf:ResourcePerformer a owl:Class ;
 
 uaf:ResourcePort a owl:Class ;
     rdfs:label "ResourcePort" ;
+    rdfs:subClassOf uaf:ResourceElement ;
+    uafprop:domain "RESOURCE" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:ResourceRole a owl:Class ;
+    rdfs:label "ResourceRole" ;
+    rdfs:subClassOf uaf:ResourceElement ;
+    uafprop:domain "RESOURCE" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:ResourceService a owl:Class ;
+    rdfs:label "ResourceService" ;
+    rdfs:subClassOf uaf:ResourceElement ;
+    uafprop:domain "RESOURCE" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:ResourceServiceInterface a owl:Class ;
+    rdfs:label "ResourceServiceInterface" ;
+    rdfs:subClassOf uaf:ResourceElement ;
+    uafprop:domain "RESOURCE" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:ResourceSignal a owl:Class ;
+    rdfs:label "ResourceSignal" ;
+    rdfs:subClassOf uaf:ResourceElement ;
+    uafprop:domain "RESOURCE" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:ResourceSignalProperty a owl:Class ;
+    rdfs:label "ResourceSignalProperty" ;
+    rdfs:subClassOf uaf:ResourceElement ;
+    uafprop:domain "RESOURCE" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:ResourceStateDescription a owl:Class ;
+    rdfs:label "ResourceStateDescription" ;
     rdfs:subClassOf uaf:ResourceElement ;
     uafprop:domain "RESOURCE" ;
     uafprop:language "UAF" ;
@@ -462,6 +756,20 @@ uaf:ServiceInterface a owl:Class ;
     uafprop:language "UAF" ;
     rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
 
+uaf:ServiceMethod a owl:Class ;
+    rdfs:label "ServiceMethod" ;
+    rdfs:subClassOf uaf:ServiceElement ;
+    uafprop:domain "SERVICE" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:ServiceParameter a owl:Class ;
+    rdfs:label "ServiceParameter" ;
+    rdfs:subClassOf uaf:ServiceElement ;
+    uafprop:domain "SERVICE" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
 uaf:ServicePerformer a owl:Class ;
     rdfs:label "ServicePerformer" ;
     rdfs:subClassOf uaf:ServiceElement ;
@@ -471,6 +779,13 @@ uaf:ServicePerformer a owl:Class ;
 
 uaf:ServicePoint a owl:Class ;
     rdfs:label "ServicePoint" ;
+    rdfs:subClassOf uaf:ServiceElement ;
+    uafprop:domain "SERVICE" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:ServiceRole a owl:Class ;
+    rdfs:label "ServiceRole" ;
     rdfs:subClassOf uaf:ServiceElement ;
     uafprop:domain "SERVICE" ;
     uafprop:language "UAF" ;
@@ -541,8 +856,29 @@ uaf:Milestone a owl:Class ;
     uafprop:language "UAF" ;
     rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
 
+uaf:MilestoneDependency a owl:Class ;
+    rdfs:label "MilestoneDependency" ;
+    rdfs:subClassOf uaf:AcquisitionElement ;
+    uafprop:domain "ACQUISITION" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
 uaf:Project a owl:Class ;
     rdfs:label "Project" ;
+    rdfs:subClassOf uaf:AcquisitionElement ;
+    uafprop:domain "ACQUISITION" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:ProjectActivity a owl:Class ;
+    rdfs:label "ProjectActivity" ;
+    rdfs:subClassOf uaf:AcquisitionElement ;
+    uafprop:domain "ACQUISITION" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:ProjectActivityAction a owl:Class ;
+    rdfs:label "ProjectActivityAction" ;
     rdfs:subClassOf uaf:AcquisitionElement ;
     uafprop:domain "ACQUISITION" ;
     uafprop:language "UAF" ;
@@ -562,9 +898,65 @@ uaf:ProjectMilestone a owl:Class ;
     uafprop:language "UAF" ;
     rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
 
+uaf:ProjectMilestoneRole a owl:Class ;
+    rdfs:label "ProjectMilestoneRole" ;
+    rdfs:subClassOf uaf:AcquisitionElement ;
+    uafprop:domain "ACQUISITION" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:ProjectRole a owl:Class ;
+    rdfs:label "ProjectRole" ;
+    rdfs:subClassOf uaf:AcquisitionElement ;
+    uafprop:domain "ACQUISITION" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:ProjectSequence a owl:Class ;
+    rdfs:label "ProjectSequence" ;
+    rdfs:subClassOf uaf:AcquisitionElement ;
+    uafprop:domain "ACQUISITION" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:ProjectStatus a owl:Class ;
+    rdfs:label "ProjectStatus" ;
+    rdfs:subClassOf uaf:AcquisitionElement ;
+    uafprop:domain "ACQUISITION" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:ProjectTheme a owl:Class ;
+    rdfs:label "ProjectTheme" ;
+    rdfs:subClassOf uaf:AcquisitionElement ;
+    uafprop:domain "ACQUISITION" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
 # UAF SECURITY
 uaf:SecurityAsset a owl:Class ;
     rdfs:label "SecurityAsset" ;
+    rdfs:subClassOf uaf:SecurityElement ;
+    uafprop:domain "SECURITY" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:SecurityConstraint a owl:Class ;
+    rdfs:label "SecurityConstraint" ;
+    rdfs:subClassOf uaf:SecurityElement ;
+    uafprop:domain "SECURITY" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:SecurityControl a owl:Class ;
+    rdfs:label "SecurityControl" ;
+    rdfs:subClassOf uaf:SecurityElement ;
+    uafprop:domain "SECURITY" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:SecurityControlFamily a owl:Class ;
+    rdfs:label "SecurityControlFamily" ;
     rdfs:subClassOf uaf:SecurityElement ;
     uafprop:domain "SECURITY" ;
     uafprop:language "UAF" ;
@@ -577,8 +969,36 @@ uaf:SecurityDomain a owl:Class ;
     uafprop:language "UAF" ;
     rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
 
+uaf:SecurityEnclave a owl:Class ;
+    rdfs:label "SecurityEnclave" ;
+    rdfs:subClassOf uaf:SecurityElement ;
+    uafprop:domain "SECURITY" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
 uaf:SecurityPolicy a owl:Class ;
     rdfs:label "SecurityPolicy" ;
+    rdfs:subClassOf uaf:SecurityElement ;
+    uafprop:domain "SECURITY" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:SecurityProcess a owl:Class ;
+    rdfs:label "SecurityProcess" ;
+    rdfs:subClassOf uaf:SecurityElement ;
+    uafprop:domain "SECURITY" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:SecurityProcessAction a owl:Class ;
+    rdfs:label "SecurityProcessAction" ;
+    rdfs:subClassOf uaf:SecurityElement ;
+    uafprop:domain "SECURITY" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:SecurityRisk a owl:Class ;
+    rdfs:label "SecurityRisk" ;
     rdfs:subClassOf uaf:SecurityElement ;
     uafprop:domain "SECURITY" ;
     uafprop:language "UAF" ;
@@ -587,6 +1007,20 @@ uaf:SecurityPolicy a owl:Class ;
 # UAF SHARED
 uaf:ActualLocation a owl:Class ;
     rdfs:label "ActualLocation" ;
+    rdfs:subClassOf uaf:SharedElement ;
+    uafprop:domain "SHARED" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:AlternativeKey a owl:Class ;
+    rdfs:label "AlternativeKey" ;
+    rdfs:subClassOf uaf:SharedElement ;
+    uafprop:domain "SHARED" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:Attribute a owl:Class ;
+    rdfs:label "Attribute" ;
     rdfs:subClassOf uaf:SharedElement ;
     uafprop:domain "SHARED" ;
     uafprop:language "UAF" ;
@@ -601,6 +1035,48 @@ uaf:Condition a owl:Class ;
 
 uaf:ConfigurationItem a owl:Class ;
     rdfs:label "ConfigurationItem" ;
+    rdfs:subClassOf uaf:SharedElement ;
+    uafprop:domain "SHARED" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:DataType a owl:Class ;
+    rdfs:label "DataType" ;
+    rdfs:subClassOf uaf:SharedElement ;
+    uafprop:domain "SHARED" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:Entity a owl:Class ;
+    rdfs:label "Entity" ;
+    rdfs:subClassOf uaf:SharedElement ;
+    uafprop:domain "SHARED" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:EntityRelation a owl:Class ;
+    rdfs:label "EntityRelation" ;
+    rdfs:subClassOf uaf:SharedElement ;
+    uafprop:domain "SHARED" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:EntityRelationship a owl:Class ;
+    rdfs:label "EntityRelationship" ;
+    rdfs:subClassOf uaf:SharedElement ;
+    uafprop:domain "SHARED" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:FK a owl:Class ;
+    rdfs:label "FK" ;
+    rdfs:subClassOf uaf:SharedElement ;
+    uafprop:domain "SHARED" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:ForeignKey a owl:Class ;
+    rdfs:label "ForeignKey" ;
     rdfs:subClassOf uaf:SharedElement ;
     uafprop:domain "SHARED" ;
     uafprop:language "UAF" ;
@@ -622,6 +1098,13 @@ uaf:Location a owl:Class ;
 
 uaf:Measurement a owl:Class ;
     rdfs:label "Measurement" ;
+    rdfs:subClassOf uaf:SharedElement ;
+    uafprop:domain "SHARED" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:PrimaryKey a owl:Class ;
+    rdfs:label "PrimaryKey" ;
     rdfs:subClassOf uaf:SharedElement ;
     uafprop:domain "SHARED" ;
     uafprop:language "UAF" ;
@@ -698,6 +1181,24 @@ sysml:ValueType a owl:Class ;
 
 # --- BPMN concrete classes -------------------------------------------------
 
+bpmn:BPMNMessage a owl:Class ;
+    rdfs:label "BPMNMessage" ;
+    rdfs:subClassOf bpmn:BPMNElement ;
+    uafprop:language "BPMN" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+bpmn:BPMNProcess a owl:Class ;
+    rdfs:label "BPMNProcess" ;
+    rdfs:subClassOf bpmn:BPMNElement ;
+    uafprop:language "BPMN" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+bpmn:BusinessRuleTask a owl:Class ;
+    rdfs:label "BusinessRuleTask" ;
+    rdfs:subClassOf bpmn:BPMNElement ;
+    uafprop:language "BPMN" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
 bpmn:CallActivity a owl:Class ;
     rdfs:label "CallActivity" ;
     rdfs:subClassOf bpmn:BPMNElement ;
@@ -722,6 +1223,12 @@ bpmn:ExclusiveGateway a owl:Class ;
     uafprop:language "BPMN" ;
     rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
 
+bpmn:FlowProperty a owl:Class ;
+    rdfs:label "FlowProperty" ;
+    rdfs:subClassOf bpmn:BPMNElement ;
+    uafprop:language "BPMN" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
 bpmn:InclusiveGateway a owl:Class ;
     rdfs:label "InclusiveGateway" ;
     rdfs:subClassOf bpmn:BPMNElement ;
@@ -742,6 +1249,36 @@ bpmn:IntermediateThrowEvent a owl:Class ;
 
 bpmn:Lane a owl:Class ;
     rdfs:label "Lane" ;
+    rdfs:subClassOf bpmn:BPMNElement ;
+    uafprop:language "BPMN" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+bpmn:LaneSet a owl:Class ;
+    rdfs:label "LaneSet" ;
+    rdfs:subClassOf bpmn:BPMNElement ;
+    uafprop:language "BPMN" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+bpmn:MessageCatchIntermediateEvent a owl:Class ;
+    rdfs:label "MessageCatchIntermediateEvent" ;
+    rdfs:subClassOf bpmn:BPMNElement ;
+    uafprop:language "BPMN" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+bpmn:NoneEndEvent a owl:Class ;
+    rdfs:label "NoneEndEvent" ;
+    rdfs:subClassOf bpmn:BPMNElement ;
+    uafprop:language "BPMN" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+bpmn:NoneIntermediateEvent a owl:Class ;
+    rdfs:label "NoneIntermediateEvent" ;
+    rdfs:subClassOf bpmn:BPMNElement ;
+    uafprop:language "BPMN" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+bpmn:NoneStartEvent a owl:Class ;
+    rdfs:label "NoneStartEvent" ;
     rdfs:subClassOf bpmn:BPMNElement ;
     uafprop:language "BPMN" ;
     rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
@@ -776,6 +1313,12 @@ bpmn:ServiceTask a owl:Class ;
     uafprop:language "BPMN" ;
     rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
 
+bpmn:StandardLoopCharacteristics a owl:Class ;
+    rdfs:label "StandardLoopCharacteristics" ;
+    rdfs:subClassOf bpmn:BPMNElement ;
+    uafprop:language "BPMN" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
 bpmn:StartEvent a owl:Class ;
     rdfs:label "StartEvent" ;
     rdfs:subClassOf bpmn:BPMNElement ;
@@ -790,6 +1333,12 @@ bpmn:SubProcess a owl:Class ;
 
 bpmn:Task a owl:Class ;
     rdfs:label "Task" ;
+    rdfs:subClassOf bpmn:BPMNElement ;
+    uafprop:language "BPMN" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+bpmn:TextAnnotation a owl:Class ;
+    rdfs:label "TextAnnotation" ;
     rdfs:subClassOf bpmn:BPMNElement ;
     uafprop:language "BPMN" ;
     rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
@@ -955,4 +1504,24 @@ uaf:sequenceFlow a owl:ObjectProperty ;
 uaf:messageFlow a owl:ObjectProperty ;
     rdfs:label "MESSAGE_FLOW" ;
     uafprop:neo4jType "MESSAGE_FLOW" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:dataInput a owl:ObjectProperty ;
+    rdfs:label "DATA_INPUT" ;
+    uafprop:neo4jType "DATA_INPUT" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:dataOutput a owl:ObjectProperty ;
+    rdfs:label "DATA_OUTPUT" ;
+    uafprop:neo4jType "DATA_OUTPUT" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:hasAttribute a owl:ObjectProperty ;
+    rdfs:label "HAS_ATTRIBUTE" ;
+    uafprop:neo4jType "HAS_ATTRIBUTE" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:ofType a owl:ObjectProperty ;
+    rdfs:label "OF_TYPE" ;
+    uafprop:neo4jType "OF_TYPE" ;
     rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
