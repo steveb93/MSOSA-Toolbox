@@ -38,13 +38,13 @@ def _post(query: str) -> httpx.Response:
 
 
 def test_sparql_endpoint_reachable():
-    """The n10s SPARQL endpoint must respond to a trivial query."""
+    """The Fuseki SPARQL endpoint must respond to a trivial query."""
     bindings = _post("SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 1").json()["results"]["bindings"]
     assert isinstance(bindings, list)
 
 
 def test_uaf_capability_class_exists_in_tbox():
-    """uaf-mvo.ttl must have been imported — uaf:Capability should be an owl:Class."""
+    """uaf-mvo.ttl must have been loaded into Fuseki — uaf:Capability should be an owl:Class."""
     query = (
         "PREFIX uaf: <http://msosa-toolbox.local/uaf#>\n"
         "PREFIX owl: <http://www.w3.org/2002/07/owl#>\n"
@@ -52,7 +52,9 @@ def test_uaf_capability_class_exists_in_tbox():
     )
     assert _post(query).json().get("boolean") is True, (
         "uaf:Capability not declared as owl:Class. "
-        'Did you run: CALL n10s.onto.import.fetch("file:///import/uaf-mvo.ttl","Turtle")?'
+        "Did Fuseki load ontology/uaf-mvo.ttl? Regenerate via "
+        "`python ontology/codegen/generate_mvo.py` then restart the fuseki container "
+        "(or PUT the TTL via the plugin's Graph Store Protocol option)."
     )
 
 
