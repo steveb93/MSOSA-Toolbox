@@ -23,3 +23,7 @@ msosa-model-exporter/target/
 # Atomic-write tempfiles from editor tools
 **/*.java.tmp.*
 **/*.py.tmp.*
+
+# Local credentials / licence files — must never be committed
+secrets/
+*.license
