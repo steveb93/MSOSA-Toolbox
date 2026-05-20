@@ -33,7 +33,7 @@ Neo4j (Docker :7687)
 
 ## Architecture
 
-<img src="https://github.com/steveb93/MSOSA-Toolbox/blob/main/msosa_toolbox_architecture.svg" >
+Coming Soon
 
 ---
 
