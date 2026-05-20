@@ -284,8 +284,7 @@ public class UAFModelTraverser {
         StereotypeMatch matched = selectStereotype(element);
 
         if (matched != null) {
-            String name     = element instanceof NamedElement
-                                ? ((NamedElement) element).getName() : "";
+            String name     = resolveElementName(element);
             String qname    = qualifiedName(element, parentQName);
             String diagId   = diagramIdIndex.getOrDefault(id, "");
             String diagName = "";
@@ -296,7 +295,7 @@ public class UAFModelTraverser {
 
             String docs = ModelHelper.getComment(element);
 
-            UAFElementDTO.Builder eb = UAFElementDTO.builder(id, name != null ? name : "", matched.stereotype.getName())
+            UAFElementDTO.Builder eb = UAFElementDTO.builder(id, name, matched.stereotype.getName())
                 .qualifiedName(qname)
                 .neo4jLabel(matched.info.neo4jLabel)
                 .domain(matched.info.domain != null ? matched.info.domain.name() : "NONE")
@@ -646,9 +645,38 @@ public class UAFModelTraverser {
     }
 
     private static String qualifiedName(Element e, String parentQName) {
-        String name = e instanceof NamedElement ? ((NamedElement) e).getName() : "";
-        if (name == null) name = "";
+        String name = resolveElementName(e);
         return parentQName.isEmpty() ? name : parentQName + "::" + name;
+    }
+
+    /**
+     * Resolves the display name for an element. UML {@code Property} parts carrying
+     * UAF Role stereotypes (OperationalRole, ResourceRole, CapabilityRole, ServiceRole,
+     * ProjectRole, etc.) are frequently left unnamed by modellers — MSOSA renders them
+     * as {@code :TypeName}, but {@code getName()} returns an empty string. Without a
+     * fallback these nodes ship to Neo4j with {@code name=""} and to Fuseki without
+     * an {@code rdfs:label}, so they appear unlabelled in Cypher results and Protégé.
+     *
+     * Fallback rule: if the element is a {@link com.nomagic.uml2.ext.magicdraw.classes.mdkernel.TypedElement}
+     * with no name of its own but a non-empty type name, use the type name. Otherwise
+     * return the original (possibly empty) name.
+     */
+    static String resolveElementName(Element element) {
+        String own = element instanceof NamedElement
+            ? ((NamedElement) element).getName() : null;
+        String typeName = null;
+        if (element instanceof com.nomagic.uml2.ext.magicdraw.classes.mdkernel.TypedElement) {
+            com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Type t =
+                ((com.nomagic.uml2.ext.magicdraw.classes.mdkernel.TypedElement) element).getType();
+            if (t != null) typeName = t.getName();
+        }
+        return resolveName(own, typeName);
+    }
+
+    /** Testable core of {@link #resolveElementName(Element)} — pure string logic, no SDK types. */
+    static String resolveName(String ownName, String typeName) {
+        if (ownName != null && !ownName.isEmpty()) return ownName;
+        return (typeName != null) ? typeName : "";
     }
 
     /** Bundle of stereotype + its registry info — used to pick the best match for an element. */
