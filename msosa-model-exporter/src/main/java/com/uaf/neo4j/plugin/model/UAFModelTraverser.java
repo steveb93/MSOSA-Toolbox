@@ -193,7 +193,21 @@ public class UAFModelTraverser {
     private void ensureTraversed() {
         if (!traversed) {
             buildDiagramIndex();
-            processElement(project.getPrimaryModel(), "");
+            // Walk the primary model's children directly with an empty parent path,
+            // rather than calling processElement on the model itself. The model's
+            // own name must not appear in element packageName values — top-level
+            // package qnames need to be plain names (e.g. "Strategic"), not
+            // "<modelName>::Strategic", to match how ExportConfigDialog keys
+            // its package checkboxes via getPrimaryModel().getOwnedElement(). The
+            // pre-#75 RC #2 traversePackage(...) entry had this behaviour; the
+            // consolidation into processElement(model, "") accidentally pulled the
+            // model's name into the prefix and zeroed out both the package counts
+            // and the package filter in runExport. See issue #84.
+            Element root = project.getPrimaryModel();
+            visitedIds.add(safeId(root));
+            for (Element owned : root.getOwnedElement()) {
+                processElement(owned, "");
+            }
             if (traverseAttachedModules) {
                 traverseAttachedProjects();
             }
