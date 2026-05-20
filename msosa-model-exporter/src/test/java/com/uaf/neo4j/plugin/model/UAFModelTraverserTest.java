@@ -167,6 +167,47 @@ class UAFModelTraverserTest {
         assertTrue(foundTwoArg,    "Two-arg (Project, boolean) constructor must be present for opt-out");
     }
 
+    // ── Unnamed-typed-part name fallback (Role stereotypes on UML Properties) ─
+
+    @Test
+    void resolveName_emptyOwnName_fallsBackToType_forAnyTypeName() {
+        // Role stereotypes (OperationalRole / ResourceRole / CapabilityRole /
+        // ServiceRole / ProjectRole / ...) applied to a UML Property with no
+        // name display as ":<Type>" in MSOSA but getName() returns "". The
+        // fallback is purely a name-or-type passthrough — it must not be
+        // anchored to any specific type name. Exercise several to make that
+        // contract explicit.
+        for (String typeName : new String[] {
+                "Time", "OperationalPerformer", "ResourceArtifact",
+                "Capability", "Service", "Person", "Vehicle",
+                "Some Type With Spaces", "Type-With-Hyphens", "T"}) {
+            assertEquals(typeName, UAFModelTraverser.resolveName("",   typeName),
+                "Empty own-name must fall back to the type name (was: " + typeName + ")");
+            assertEquals(typeName, UAFModelTraverser.resolveName(null, typeName),
+                "Null own-name must fall back to the type name (was: " + typeName + ")");
+        }
+    }
+
+    @Test
+    void resolveName_keepsOwnNameWhenPresent_forAnyTypeName() {
+        // Named typed parts (e.g. "Month:Time") keep their own name regardless
+        // of what the type happens to be — the type is already preserved via
+        // the OF_TYPE edge / Neo4j typeName tagged value.
+        assertEquals("Month",   UAFModelTraverser.resolveName("Month",   "Time"));
+        assertEquals("HQ",      UAFModelTraverser.resolveName("HQ",      "Organisation"));
+        assertEquals("driver",  UAFModelTraverser.resolveName("driver",  "Person"));
+        assertEquals("payload", UAFModelTraverser.resolveName("payload", "ResourceArtifact"));
+    }
+
+    @Test
+    void resolveName_bothBlankReturnsEmptyString() {
+        // Never returns null — downstream Cypher/RDF emitters branch on isEmpty().
+        assertEquals("", UAFModelTraverser.resolveName(null, null));
+        assertEquals("", UAFModelTraverser.resolveName("",   ""));
+        assertEquals("", UAFModelTraverser.resolveName(null, ""));
+        assertEquals("", UAFModelTraverser.resolveName("",   null));
+    }
+
     @Test
     void traverseAttachedModulesField_isFinalAndBoolean() {
         // The flag stores once at construction time and is consulted by ensureTraversed.
