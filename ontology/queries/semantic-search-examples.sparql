@@ -1,8 +1,8 @@
 # Semantic-search anchor queries for the Claude-fronted UAF use case.
 # Each query is independent; copy one into run_sparql via the MCP tool.
 #
-# Prefixes are registered by ontology/n10s-init.cypher and are implicit in
-# n10s SPARQL execution (n10s prepends them at parse time):
+# Each query declares its own PREFIX lines because Fuseki does not inject
+# prefixes server-side. The namespaces in use:
 #   uaf:      http://msosa-toolbox.local/uaf#
 #   uafprop:  http://msosa-toolbox.local/uaf/prop#
 #   sysml:    http://msosa-toolbox.local/sysml#
