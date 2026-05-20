@@ -1,6 +1,8 @@
 package com.uaf.neo4j.plugin.model;
 
+import com.nomagic.ci.persistence.IAttachedProject;
 import com.nomagic.magicdraw.core.Project;
+import com.nomagic.magicdraw.core.ProjectUtilities;
 import com.nomagic.magicdraw.uml.symbols.DiagramPresentationElement;
 import com.nomagic.uml2.ext.jmi.helpers.ModelHelper;
 import com.nomagic.uml2.ext.jmi.helpers.StereotypesHelper;
@@ -9,6 +11,10 @@ import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Element;
 import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.NamedElement;
 import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Package;
 import com.nomagic.uml2.ext.magicdraw.mdprofiles.Stereotype;
+
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.resource.ResourceSet;
 
 import java.util.*;
 import java.util.logging.Logger;
@@ -123,6 +129,7 @@ public class UAFModelTraverser {
 
     private final Project project;
     private final String modelFileName;
+    private final boolean traverseAttachedModules;
 
     // diagram membership: elementId → list of diagram names
     private final Map<String, List<String>> diagramIndex = new HashMap<>();
@@ -134,9 +141,26 @@ public class UAFModelTraverser {
     private final Map<String, Integer>     unmatchedStereos  = new LinkedHashMap<>();
     private boolean traversed = false;
 
+    /**
+     * Construct a traverser. Module/attached-project traversal defaults to ON
+     * (per #75 RC #4) so UAF library modules and reference architectures are
+     * included. Pass {@code false} via the two-arg constructor to disable.
+     */
     public UAFModelTraverser(Project project) {
-        this.project       = project;
-        this.modelFileName = project.getName();
+        this(project, true);
+    }
+
+    /**
+     * @param traverseAttachedModules when true (default), additionally walks the root
+     *        packages of every project attached as a module via
+     *        {@link ProjectUtilities#getAllAttachedProjects(Project)}. The visited-id
+     *        guard prevents double-processing when attached-project roots are also
+     *        reachable through the primary model's owned-element tree.
+     */
+    public UAFModelTraverser(Project project, boolean traverseAttachedModules) {
+        this.project                 = project;
+        this.modelFileName           = project.getName();
+        this.traverseAttachedModules = traverseAttachedModules;
     }
 
     public String getSystemModelId()   { return modelFileName; }
@@ -170,9 +194,60 @@ public class UAFModelTraverser {
         if (!traversed) {
             buildDiagramIndex();
             processElement(project.getPrimaryModel(), "");
+            if (traverseAttachedModules) {
+                traverseAttachedProjects();
+            }
             traversed = true;
             LOG.info(String.format("UAFModelTraverser: %d elements, %d relationships, %d unmatched stereotypes",
                 elements.size(), relationships.size(), unmatchedStereos.size()));
+        }
+    }
+
+    /**
+     * Walk the root Package(s) of every attached project (UAF library modules,
+     * reference architectures, etc.). Idempotent — visited-id guard prevents
+     * double processing when an attached-project root is also reachable through
+     * the primary model's owned-element tree.
+     *
+     * Failures (missing class, EMF resource issues, etc.) are logged and the
+     * primary-model traversal is preserved.
+     */
+    private void traverseAttachedProjects() {
+        Collection<IAttachedProject> attached;
+        try {
+            attached = ProjectUtilities.getAllAttachedProjects(project);
+        } catch (Throwable t) {
+            LOG.warning("Module traversal unavailable: " + t.getClass().getSimpleName()
+                + " — " + t.getMessage());
+            return;
+        }
+        if (attached == null || attached.isEmpty()) return;
+
+        LOG.info("Traversing " + attached.size() + " attached project module(s).");
+        for (IAttachedProject ap : attached) {
+            int before = elements.size();
+            traverseAttachedProject(ap);
+            LOG.info(String.format("  module '%s' contributed %d new elements",
+                ap.getName(), elements.size() - before));
+        }
+    }
+
+    private void traverseAttachedProject(IAttachedProject ap) {
+        String label = "[module:" + (ap.getName() != null ? ap.getName() : "?") + "]";
+        try {
+            ResourceSet rs = ap.getResourceSet();
+            if (rs == null) return;
+            // Copy to a new list so concurrent loads during traversal don't blow up.
+            for (Resource res : new ArrayList<>(rs.getResources())) {
+                for (EObject obj : new ArrayList<>(res.getContents())) {
+                    if (obj instanceof Element && obj instanceof Package) {
+                        processElement((Element) obj, label);
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            LOG.warning("Failed to traverse attached module '" + ap.getName() + "': "
+                + t.getClass().getSimpleName() + " — " + t.getMessage());
         }
     }
 
