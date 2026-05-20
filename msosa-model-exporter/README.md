@@ -196,6 +196,21 @@ See `../ontology/queries/semantic-search-examples.sparql` for anchor queries and
 
 Fuseki gives you SPARQL but no interactive graph view. **GraphDB Free** can run alongside Fuseki as a read-only visual browser, loading the same T-Box and A-Box so the two stay aligned. Its Workbench renders instance triples, `rdf:type` links, and the `rdfs:subClassOf` class hierarchy as one connected, clickable graph.
 
+GraphDB 11.x requires a (free) licence file even for the Free tier. One-off setup:
+
+1. Register at <https://www.ontotext.com/products/graphdb/download/> → choose **GraphDB Free** → you'll receive a licence by email.
+2. If the email contains a base64 block (rather than an attached binary file), decode it once:
+
+   ```powershell
+   # PowerShell — paste the base64 block into base64.txt first, then:
+   [IO.File]::WriteAllBytes(
+       "secrets/graphdb.license",
+       [Convert]::FromBase64String((Get-Content base64.txt -Raw) -replace '\s',''))
+   ```
+
+   The container needs the decoded binary at `secrets/graphdb.license`; GraphDB rejects the base64-armored form with "Failed to read license". The `secrets/` directory is already in `.gitignore`.
+3. Bring the stack up — the compose file mounts `secrets/graphdb.license` read-only and passes its path to GraphDB via `GDB_JAVA_OPTS=-Dgraphdb.license.file=...`:
+
 ```powershell
 # Make sure the A-Box dump exists first (the loader expects it).
 python ontology/codegen/dump_to_rdf.py
