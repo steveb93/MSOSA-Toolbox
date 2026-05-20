@@ -11,7 +11,8 @@ import java.util.Objects;
  */
 public final class UAFRelationshipDTO {
 
-    // Covers the 31 relationship types (UAF 1.2, SysML 1.6, BPMN 2.0); stored as the Neo4j type string.
+    // Covers 35 relationship types (UAF 1.2, SysML 1.6, BPMN 2.0, plus ERD/data-flow);
+    // stored as the Neo4j type string.
     public static final String REL_REALISES          = "REALISES";
     public static final String REL_TRACES_TO         = "TRACES_TO";
     public static final String REL_ASSIGNED_TO       = "ASSIGNED_TO";
@@ -44,6 +45,16 @@ public final class UAFRelationshipDTO {
     public static final String REL_SEQUENCE_FLOW     = "SEQUENCE_FLOW";
     public static final String REL_MESSAGE_FLOW      = "MESSAGE_FLOW";
 
+    // --- ERD / data-flow (#76) -----------------------------------------------
+    /** BPMN DataInputAssociation — wires a Task to a DataInput it consumes. */
+    public static final String REL_DATA_INPUT        = "DATA_INPUT";
+    /** BPMN DataOutputAssociation — wires a Task to a DataOutput it produces. */
+    public static final String REL_DATA_OUTPUT       = "DATA_OUTPUT";
+    /** Entity → Attribute. First-class ERD attribute representation (#76 design A). */
+    public static final String REL_HAS_ATTRIBUTE     = "HAS_ATTRIBUTE";
+    /** Attribute → DataType (PrimitiveType / Enumeration / DataType). */
+    public static final String REL_OF_TYPE           = "OF_TYPE";
+
     public final String id;
     public final String uafType;         // UML/UAF metaclass name
     public final String neo4jType;       // Resolved Neo4j relationship type constant above
@@ -52,6 +63,14 @@ public final class UAFRelationshipDTO {
     public final String name;
     public final String domain;
     public final String language;
+    /** Source association-end multiplicity ("1", "0..1", "1..*", "0..*"). Empty when unset. */
+    public final String srcMult;
+    /** Target association-end multiplicity. Empty when unset. */
+    public final String tgtMult;
+    /** Source association-end role name. Empty when unset. */
+    public final String srcRole;
+    /** Target association-end role name. Empty when unset. */
+    public final String tgtRole;
     public final Map<String, Object> taggedValues;
 
     private UAFRelationshipDTO(Builder b) {
@@ -63,6 +82,10 @@ public final class UAFRelationshipDTO {
         this.name         = b.name;
         this.domain       = b.domain;
         this.language     = b.language;
+        this.srcMult      = b.srcMult;
+        this.tgtMult      = b.tgtMult;
+        this.srcRole      = b.srcRole;
+        this.tgtRole      = b.tgtRole;
         this.taggedValues = Collections.unmodifiableMap(new LinkedHashMap<>(b.taggedValues));
     }
 
@@ -80,6 +103,10 @@ public final class UAFRelationshipDTO {
         private String name      = "";
         private String domain    = "UNKNOWN";
         private String language  = "UAF";
+        private String srcMult   = "";
+        private String tgtMult   = "";
+        private String srcRole   = "";
+        private String tgtRole   = "";
         private final Map<String, Object> taggedValues = new LinkedHashMap<>();
 
         private Builder(String id, String sourceId, String targetId, String neo4jType) {
@@ -93,6 +120,10 @@ public final class UAFRelationshipDTO {
         public Builder name(String v)      { this.name      = v; return this; }
         public Builder domain(String v)    { this.domain    = v; return this; }
         public Builder language(String v)  { this.language  = v; return this; }
+        public Builder srcMult(String v)   { this.srcMult   = v != null ? v : ""; return this; }
+        public Builder tgtMult(String v)   { this.tgtMult   = v != null ? v : ""; return this; }
+        public Builder srcRole(String v)   { this.srcRole   = v != null ? v : ""; return this; }
+        public Builder tgtRole(String v)   { this.tgtRole   = v != null ? v : ""; return this; }
 
         public Builder taggedValue(String key, Object value) {
             if (value != null) taggedValues.put(key, value);

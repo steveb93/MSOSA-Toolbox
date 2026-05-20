@@ -222,6 +222,50 @@ class Neo4jCypherBuilderTest {
         assertEquals("UAF", p.get("language"));
     }
 
+    @Test
+    void relationshipMergeCypher_setsMultiplicityAndRoleProperties() {
+        // #76: Cypher edges carry srcMult/tgtMult/srcRole/tgtRole so ERD multiplicity
+        // is queryable. RDF side stays plain triples for now (separate follow-up).
+        UAFRelationshipDTO dto = UAFRelationshipDTO
+            .builder("r-002", "src-002", "tgt-002", UAFRelationshipDTO.REL_ASSOCIATED_WITH)
+            .build();
+        String cypher = Neo4jCypherBuilder.relationshipMergeCypher(dto);
+
+        assertTrue(cypher.contains("$srcMult"), "Cypher should SET $srcMult");
+        assertTrue(cypher.contains("$tgtMult"), "Cypher should SET $tgtMult");
+        assertTrue(cypher.contains("$srcRole"), "Cypher should SET $srcRole");
+        assertTrue(cypher.contains("$tgtRole"), "Cypher should SET $tgtRole");
+    }
+
+    @Test
+    void relationshipParams_containsMultiplicityAndRole() {
+        UAFRelationshipDTO dto = UAFRelationshipDTO
+            .builder("r-003", "src-003", "tgt-003", UAFRelationshipDTO.REL_ASSOCIATED_WITH)
+            .srcMult("1")
+            .tgtMult("0..*")
+            .srcRole("owner")
+            .tgtRole("members")
+            .build();
+        Map<String, Object> p = Neo4jCypherBuilder.relationshipParams(dto);
+
+        assertEquals("1",       p.get("srcMult"));
+        assertEquals("0..*",    p.get("tgtMult"));
+        assertEquals("owner",   p.get("srcRole"));
+        assertEquals("members", p.get("tgtRole"));
+    }
+
+    @Test
+    void relationshipParams_defaultsMultiplicityAndRoleToEmptyString() {
+        UAFRelationshipDTO dto = UAFRelationshipDTO
+            .builder("r-004", "src-004", "tgt-004", UAFRelationshipDTO.REL_REALISES).build();
+        Map<String, Object> p = Neo4jCypherBuilder.relationshipParams(dto);
+
+        assertEquals("", p.get("srcMult"));
+        assertEquals("", p.get("tgtMult"));
+        assertEquals("", p.get("srcRole"));
+        assertEquals("", p.get("tgtRole"));
+    }
+
     // -------------------------------------------------------------------------
     // SystemModel + DEFINES
 
