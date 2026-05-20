@@ -144,7 +144,7 @@ git checkout <branch>
 git pull origin <branch>
 
 cd msosa-model-exporter
-mvn versions:set-property -Dproperty=revision -DnewVersion=1.3.2-Preview   # or 1.3.2 for main
+mvn versions:set-property "-Dproperty=revision" "-DnewVersion=1.3.2-Preview"   # or 1.3.2 for main; quote each -D… on PowerShell
 cd ..
 ```
 

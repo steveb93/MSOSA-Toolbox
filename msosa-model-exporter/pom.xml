@@ -72,6 +72,12 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
+            <groupId>com.nomagic.ci</groupId>
+            <artifactId>persistence</artifactId>
+            <version>${msosa.sdk.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
             <groupId>com.nomagic.magicdraw</groupId>
             <artifactId>md-api</artifactId>
             <version>${msosa.sdk.version}</version>
