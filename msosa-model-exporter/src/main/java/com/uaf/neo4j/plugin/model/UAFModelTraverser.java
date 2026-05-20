@@ -4,6 +4,7 @@ import com.nomagic.magicdraw.core.Project;
 import com.nomagic.magicdraw.uml.symbols.DiagramPresentationElement;
 import com.nomagic.uml2.ext.jmi.helpers.ModelHelper;
 import com.nomagic.uml2.ext.jmi.helpers.StereotypesHelper;
+import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Classifier;
 import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Element;
 import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.NamedElement;
 import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Package;
@@ -19,6 +20,30 @@ import java.util.logging.Logger;
  *
  * Language origin is resolved from UAFStereotypeRegistry and written to every
  * element and relationship DTO so hybrid models remain queryable by language.
+ *
+ * Selection rules (see issue #75 for the bug history these address):
+ * <ul>
+ *   <li>Stereotype priority is UAF → BPMN → SysML (in {@link #LANGUAGE_RANK}).
+ *       Without this, an element stereotyped as both {@code OperationalPerformer}
+ *       and SysML {@code Block} can resolve to {@code Block} depending on the
+ *       order MSOSA returns stereotypes, dropping the UAF domain context.</li>
+ *   <li>Among same-language matches, the most specific stereotype wins (the one
+ *       that is not in another candidate's general chain). This handles profiles
+ *       where users apply both a parent and a derived stereotype.</li>
+ *   <li>Inherited stereotypes are honoured: if a directly-applied stereotype is
+ *       not in the registry, the general chain is walked to find a registered
+ *       ancestor (e.g., a custom {@code MyOperationalPerformer} that inherits
+ *       from {@code OperationalPerformer} resolves to OPERATIONAL).</li>
+ *   <li>Recursion descends into any element with {@code getOwnedElement()}, not
+ *       just {@code Package}. This is essential for Resource/Operational
+ *       internal-block-diagram content (parts, ports, nested classifiers) and
+ *       activity-owned actions.</li>
+ * </ul>
+ *
+ * Stereotype names that appear in the model but resolve to nothing — even via
+ * inheritance — are recorded in {@link #getUnmatchedStereotypes()} so future
+ * profile drift is visible in the export summary rather than buried in WARNING
+ * logs.
  */
 public class UAFModelTraverser {
 
@@ -31,7 +56,17 @@ public class UAFModelTraverser {
     // Kept separate from UAFStereotypeRegistry so that relationship stereotypes
     // (applied to UML relationship elements, not to blocks/classes/tasks)
     // are never mistaken for element stereotypes and never create nodes.
-    private static final Map<String, String> RELATIONSHIP_STEREOTYPE_MAP = new LinkedHashMap<>();
+    // Package-private so unit tests can verify membership.
+    static final Map<String, String> RELATIONSHIP_STEREOTYPE_MAP = new LinkedHashMap<>();
+
+    // Language priority for stereotype selection — lower = preferred.
+    // Package-private for unit testing.
+    static final Map<String, Integer> LANGUAGE_RANK = new LinkedHashMap<>();
+    static {
+        LANGUAGE_RANK.put("UAF",   0);
+        LANGUAGE_RANK.put("BPMN",  1);
+        LANGUAGE_RANK.put("SysML", 2);
+    }
 
     static {
         RELATION_TYPE_MAP.put("Realization",          UAFRelationshipDTO.REL_REALISES);
@@ -56,6 +91,13 @@ public class UAFModelTraverser {
         RELATIONSHIP_STEREOTYPE_MAP.put("Satisfies",     UAFRelationshipDTO.REL_SATISFIES);
         RELATIONSHIP_STEREOTYPE_MAP.put("Exposes",       UAFRelationshipDTO.REL_EXPOSES);
         RELATIONSHIP_STEREOTYPE_MAP.put("Provides",      UAFRelationshipDTO.REL_PROVIDES);
+        // UAF relationship-bearing stereotypes (#75 RC #3). These names also live in the
+        // element registry for the rare case they're applied to a Class, but when MSOSA
+        // applies them to a UML InformationFlow / Association / Connector the element
+        // registry would silently drop the edge — they must appear here too.
+        RELATIONSHIP_STEREOTYPE_MAP.put("OperationalExchange", UAFRelationshipDTO.REL_INFORMATION_FLOW);
+        RELATIONSHIP_STEREOTYPE_MAP.put("ResourceInteraction", UAFRelationshipDTO.REL_CONNECTED_TO);
+        RELATIONSHIP_STEREOTYPE_MAP.put("NeedLine",            UAFRelationshipDTO.REL_INFORMATION_FLOW);
         // SysML relationship stereotypes
         RELATIONSHIP_STEREOTYPE_MAP.put("Allocate",      UAFRelationshipDTO.REL_ALLOCATED_TO);
         RELATIONSHIP_STEREOTYPE_MAP.put("DeriveReqt",    UAFRelationshipDTO.REL_INFLUENCES);
@@ -72,8 +114,10 @@ public class UAFModelTraverser {
     private final Map<String, List<String>> diagramIndex = new HashMap<>();
     private final Map<String, String> diagramIdIndex = new HashMap<>();
 
-    private final List<UAFElementDTO>      elements      = new ArrayList<>();
-    private final List<UAFRelationshipDTO> relationships = new ArrayList<>();
+    private final List<UAFElementDTO>      elements          = new ArrayList<>();
+    private final List<UAFRelationshipDTO> relationships     = new ArrayList<>();
+    private final Set<String>              visitedIds        = new HashSet<>();
+    private final Map<String, Integer>     unmatchedStereos  = new LinkedHashMap<>();
     private boolean traversed = false;
 
     public UAFModelTraverser(Project project) {
@@ -94,15 +138,27 @@ public class UAFModelTraverser {
         return Collections.unmodifiableList(relationships);
     }
 
+    /**
+     * Stereotype names that appeared on elements in the model but did not resolve
+     * to any {@link UAFStereotypeRegistry} entry — neither directly nor via their
+     * general chain. Used by the export summary dialog to surface profile drift.
+     *
+     * Key: stereotype name. Value: how many distinct elements carried it.
+     */
+    public Map<String, Integer> getUnmatchedStereotypes() {
+        ensureTraversed();
+        return Collections.unmodifiableMap(unmatchedStereos);
+    }
+
     // -------------------------------------------------------------------------
 
     private void ensureTraversed() {
         if (!traversed) {
             buildDiagramIndex();
-            traversePackage(project.getPrimaryModel(), "");
+            processElement(project.getPrimaryModel(), "");
             traversed = true;
-            LOG.info(String.format("UAFModelTraverser: %d elements, %d relationships",
-                elements.size(), relationships.size()));
+            LOG.info(String.format("UAFModelTraverser: %d elements, %d relationships, %d unmatched stereotypes",
+                elements.size(), relationships.size(), unmatchedStereos.size()));
         }
     }
 
@@ -118,86 +174,172 @@ public class UAFModelTraverser {
         }
     }
 
-    private void traversePackage(Package pkg, String parentQName) {
-        for (Element owned : pkg.getOwnedElement()) {
-            processElement(owned, parentQName);
-        }
-    }
-
     private void processElement(Element element, String parentQName) {
-        List<Stereotype> applied = StereotypesHelper.getStereotypes(element);
-        if (applied.isEmpty()) {
-            // Still recurse into packages/blocks even if not stereotyped
-            if (element instanceof Package) {
-                String qname = qualifiedName(element, parentQName);
-                traversePackage((Package) element, qname);
+        String id = safeId(element);
+        if (!visitedIds.add(id)) return;  // cycle / multi-owner guard
+
+        StereotypeMatch matched = selectStereotype(element);
+
+        if (matched != null) {
+            String name     = element instanceof NamedElement
+                                ? ((NamedElement) element).getName() : "";
+            String qname    = qualifiedName(element, parentQName);
+            String diagId   = diagramIdIndex.getOrDefault(id, "");
+            String diagName = "";
+            List<String> diagNames = diagramIndex.get(id);
+            if (diagNames != null && !diagNames.isEmpty()) {
+                diagName = String.join("; ", diagNames);
             }
-            return;
+
+            String docs = ModelHelper.getComment(element);
+
+            UAFElementDTO.Builder eb = UAFElementDTO.builder(id, name != null ? name : "", matched.stereotype.getName())
+                .qualifiedName(qname)
+                .neo4jLabel(matched.info.neo4jLabel)
+                .domain(matched.info.domain != null ? matched.info.domain.name() : "NONE")
+                .language(matched.info.language)
+                .packageName(parentQName)
+                .diagramId(diagId)
+                .diagramName(diagName)
+                .documentation(docs != null ? docs : "")
+                .modelFileName(modelFileName);
+
+            extractTaggedValues(element, matched.stereotype, eb);
+            extractOwnedAttributes(element, eb);
+
+            elements.add(eb.build());
+
+            extractRelationships(element, matched.info);
         }
 
-        // Pick the first known stereotype (UAF, SysML, or BPMN)
-        Stereotype matchedStereo = null;
-        UAFStereotypeRegistry.StereotypeInfo info = null;
-        for (Stereotype s : applied) {
-            String sName = s.getName();
-            Optional<UAFStereotypeRegistry.StereotypeInfo> found = UAFStereotypeRegistry.get(sName);
-            if (found.isPresent()) {
-                matchedStereo = s;
-                info          = found.get();
-                break;
+        // Descend into containers — Packages always, Classifiers (Block, Class, Activity,
+        // StructuredClassifier, etc.) so internal block diagram content and activity actions
+        // get visited. Per #75 RC #2, restricting descent to Package was the largest source
+        // of missing operational/resource instances.
+        if (shouldDescend(element)) {
+            String qname = qualifiedName(element, parentQName);
+            for (Element owned : element.getOwnedElement()) {
+                processElement(owned, qname);
             }
-        }
-
-        if (matchedStereo == null) {
-            // No recognised stereotype — still recurse into packages
-            if (element instanceof Package) {
-                traversePackage((Package) element, qualifiedName(element, parentQName));
-            }
-            return;
-        }
-
-        String id       = safeId(element);
-        String name     = element instanceof NamedElement
-                            ? ((NamedElement) element).getName() : "";
-        String qname    = qualifiedName(element, parentQName);
-        String pkgName  = parentQName;
-        String diagId   = diagramIdIndex.getOrDefault(id, "");
-        String diagName = "";
-        List<String> diagNames = diagramIndex.get(id);
-        if (diagNames != null && !diagNames.isEmpty()) {
-            diagName = String.join("; ", diagNames);
-        }
-
-        String docs = ModelHelper.getComment(element);
-
-        UAFElementDTO.Builder eb = UAFElementDTO.builder(id, name != null ? name : "", matchedStereo.getName())
-            .qualifiedName(qname)
-            .neo4jLabel(info.neo4jLabel)
-            .domain(info.domain != null ? info.domain.name() : "NONE")
-            .language(info.language)
-            .packageName(pkgName)
-            .diagramId(diagId)
-            .diagramName(diagName)
-            .documentation(docs != null ? docs : "")
-            .modelFileName(modelFileName);
-
-        // Extract all tagged values for this stereotype
-        extractTaggedValues(element, matchedStereo, eb);
-
-        // Extract owned UML class attributes (covers ResourceInformation / OperationalInformation
-        // data properties and attributes inherited via ERD entity mappings)
-        extractOwnedAttributes(element, eb);
-
-        elements.add(eb.build());
-
-        // Process relationships owned by this element
-        extractRelationships(element, info);
-
-        // Recurse
-        if (element instanceof Package) {
-            traversePackage((Package) element, qname);
         }
     }
+
+    // ── Stereotype selection ──────────────────────────────────────────────────
+
+    /**
+     * Pick the best-matching registry entry for {@code element}, or {@code null} if
+     * nothing matches. Per #75 RC #1/#5, this:
+     *   1. Walks each directly-applied stereotype to find the closest registered
+     *      ancestor (handles custom stereotypes that inherit from registered ones).
+     *   2. Ranks candidates by language (UAF > BPMN > SysML).
+     *   3. Breaks ties within a language by preferring the most specific
+     *      (not-an-ancestor-of-another) candidate.
+     *   4. Records direct stereotypes that produced no candidate at all in
+     *      {@link #unmatchedStereos} for the export summary.
+     */
+    private StereotypeMatch selectStereotype(Element element) {
+        List<Stereotype> applied = StereotypesHelper.getStereotypes(element);
+        if (applied.isEmpty()) return null;
+
+        List<StereotypeMatch> candidates = new ArrayList<>();
+        for (Stereotype s : applied) {
+            StereotypeMatch m = findRegisteredAncestor(s);
+            if (m != null) {
+                candidates.add(m);
+            } else if (s.getName() != null && !s.getName().isEmpty()) {
+                unmatchedStereos.merge(s.getName(), 1, Integer::sum);
+            }
+        }
+        if (candidates.isEmpty()) return null;
+
+        // Best language rank wins
+        int bestRank = Integer.MAX_VALUE;
+        for (StereotypeMatch c : candidates) {
+            int r = languageRank(c.info.language);
+            if (r < bestRank) bestRank = r;
+        }
+        List<StereotypeMatch> sameLang = new ArrayList<>();
+        for (StereotypeMatch c : candidates) {
+            if (languageRank(c.info.language) == bestRank) sameLang.add(c);
+        }
+        if (sameLang.size() == 1) return sameLang.get(0);
+
+        // Tie-break: prefer the one that is not an ancestor of any other candidate
+        for (StereotypeMatch c : sameLang) {
+            boolean isAncestorOfAnother = false;
+            for (StereotypeMatch other : sameLang) {
+                if (other == c) continue;
+                if (isAncestor(c.stereotype, other.stereotype)) {
+                    isAncestorOfAnother = true;
+                    break;
+                }
+            }
+            if (!isAncestorOfAnother) return c;
+        }
+        // Cycle in the stereotype hierarchy or pure tie — fall back to the first
+        return sameLang.get(0);
+    }
+
+    /**
+     * Walk {@code s} and its general chain (BFS); return the first match in the
+     * UAF stereotype registry, or {@code null} if none exists. Direct match wins
+     * over ancestor match because BFS visits {@code s} first.
+     */
+    private static StereotypeMatch findRegisteredAncestor(Stereotype s) {
+        Deque<Stereotype> queue = new ArrayDeque<>();
+        Set<String> seen = new HashSet<>();
+        queue.add(s);
+        while (!queue.isEmpty()) {
+            Stereotype cur = queue.poll();
+            String curName = cur.getName();
+            if (curName == null || !seen.add(curName)) continue;
+            Optional<UAFStereotypeRegistry.StereotypeInfo> info =
+                UAFStereotypeRegistry.get(curName);
+            if (info.isPresent()) {
+                return new StereotypeMatch(cur, info.get());
+            }
+            for (Classifier general : cur.getGeneral()) {
+                if (general instanceof Stereotype) {
+                    queue.add((Stereotype) general);
+                }
+            }
+        }
+        return null;
+    }
+
+    /** True if {@code maybeAncestor} appears in {@code s}'s general chain. */
+    private static boolean isAncestor(Stereotype maybeAncestor, Stereotype s) {
+        if (maybeAncestor == s) return false;
+        String ancestorName = maybeAncestor.getName();
+        if (ancestorName == null) return false;
+        Deque<Stereotype> queue = new ArrayDeque<>();
+        Set<String> seen = new HashSet<>();
+        for (Classifier general : s.getGeneral()) {
+            if (general instanceof Stereotype) queue.add((Stereotype) general);
+        }
+        while (!queue.isEmpty()) {
+            Stereotype cur = queue.poll();
+            String n = cur.getName();
+            if (n == null || !seen.add(n)) continue;
+            if (ancestorName.equals(n)) return true;
+            for (Classifier general : cur.getGeneral()) {
+                if (general instanceof Stereotype) queue.add((Stereotype) general);
+            }
+        }
+        return false;
+    }
+
+    static int languageRank(String language) {
+        Integer r = LANGUAGE_RANK.get(language);
+        return r != null ? r : Integer.MAX_VALUE;
+    }
+
+    /** True if descending into {@code e}'s {@code getOwnedElement()} is worthwhile. */
+    private static boolean shouldDescend(Element e) {
+        return e instanceof Package || e instanceof Classifier;
+    }
+
+    // ── Attribute / tag-value extraction ──────────────────────────────────────
 
     private void extractTaggedValues(Element element, Stereotype stereo,
                                      UAFElementDTO.Builder builder) {
@@ -207,7 +349,6 @@ public class UAFModelTraverser {
                 String tag = prop.getName();
                 Object val = StereotypesHelper.getTaggedValue(element, stereo, tag);
                 if (val instanceof Collection) {
-                    // Convert list values to comma-separated string
                     StringJoiner sj = new StringJoiner(", ");
                     for (Object v : (Collection<?>) val) {
                         if (v instanceof NamedElement) sj.add(((NamedElement) v).getName());
@@ -224,10 +365,9 @@ public class UAFModelTraverser {
     }
 
     private void extractOwnedAttributes(Element element, UAFElementDTO.Builder builder) {
-        if (!(element instanceof com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Classifier)) return;
+        if (!(element instanceof Classifier)) return;
         try {
-            com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Classifier cls =
-                (com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Classifier) element;
+            Classifier cls = (Classifier) element;
             for (com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Property attr : cls.getAttribute()) {
                 String attrName = attr.getName();
                 if (attrName == null || attrName.isEmpty()) continue;
@@ -252,7 +392,6 @@ public class UAFModelTraverser {
     private void extractRelationships(Element element, UAFStereotypeRegistry.StereotypeInfo srcInfo) {
         String srcId = safeId(element);
 
-        // Directed relationships where this element is the source (2022x API)
         for (com.nomagic.uml2.ext.magicdraw.classes.mdkernel.DirectedRelationship rel
                 : element.get_directedRelationshipOfSource()) {
 
@@ -304,5 +443,15 @@ public class UAFModelTraverser {
         String name = e instanceof NamedElement ? ((NamedElement) e).getName() : "";
         if (name == null) name = "";
         return parentQName.isEmpty() ? name : parentQName + "::" + name;
+    }
+
+    /** Bundle of stereotype + its registry info — used to pick the best match for an element. */
+    private static final class StereotypeMatch {
+        final Stereotype stereotype;
+        final UAFStereotypeRegistry.StereotypeInfo info;
+        StereotypeMatch(Stereotype s, UAFStereotypeRegistry.StereotypeInfo i) {
+            this.stereotype = s;
+            this.info       = i;
+        }
     }
 }
