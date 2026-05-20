@@ -94,4 +94,51 @@ class UAFModelTraverserTest {
                 + " is not a recognised REL_* constant");
         }
     }
+
+    // ── Data-flow REL_* constants (#76) ───────────────────────────────────────
+
+    @Test
+    void relConstants_includeDataInputAndDataOutput() {
+        // BPMN DataInputAssociation / DataOutputAssociation must map to dedicated
+        // Cypher relationship types so data artefacts are connected to the Tasks
+        // that consume / produce them.
+        assertEquals("DATA_INPUT",  UAFRelationshipDTO.REL_DATA_INPUT);
+        assertEquals("DATA_OUTPUT", UAFRelationshipDTO.REL_DATA_OUTPUT);
+    }
+
+    @Test
+    void relConstants_includeHasAttributeAndOfType() {
+        // First-class ERD attribute representation (#76 design A) — the entity →
+        // attribute and attribute → datatype edges live here.
+        assertEquals("HAS_ATTRIBUTE", UAFRelationshipDTO.REL_HAS_ATTRIBUTE);
+        assertEquals("OF_TYPE",       UAFRelationshipDTO.REL_OF_TYPE);
+    }
+
+    // ── Tier-1 #75 RC #6 relationship-stereotype map additions ────────────────
+
+    @Test
+    void relationshipStereotypeMap_includesImplementsAndCapabilityMappings() {
+        // Stereotypes applied to UML relationship elements in real-world profile that pre-#75-RC6
+        // were silently dropped because the map didn't know them.
+        assertEquals(UAFRelationshipDTO.REL_IMPLEMENTS,
+                     UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP.get("Implements"));
+        assertEquals(UAFRelationshipDTO.REL_PERFORMS,
+                     UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP.get("IsCapableToPerform"));
+        assertEquals(UAFRelationshipDTO.REL_PERFORMS,
+                     UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP.get("PerformsInContext"));
+        assertEquals(UAFRelationshipDTO.REL_REALISES,
+                     UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP.get("MapsToCapability"));
+    }
+
+    @Test
+    void relationshipStereotypeMap_includesDomainAssociations() {
+        assertEquals(UAFRelationshipDTO.REL_FLOWS_TO,
+                     UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP.get("DataAssociation"));
+        assertEquals(UAFRelationshipDTO.REL_ASSOCIATED_WITH,
+                     UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP.get("ServiceAssociation"));
+        assertEquals(UAFRelationshipDTO.REL_ASSOCIATED_WITH,
+                     UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP.get("OperationalAssociation"));
+        assertEquals(UAFRelationshipDTO.REL_ASSOCIATED_WITH,
+                     UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP.get("ResourceAssociation"));
+    }
 }
