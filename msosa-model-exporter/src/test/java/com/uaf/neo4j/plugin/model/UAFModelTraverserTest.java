@@ -94,4 +94,23 @@ class UAFModelTraverserTest {
                 + " is not a recognised REL_* constant");
         }
     }
+
+    // ── Data-flow REL_* constants (#76) ───────────────────────────────────────
+
+    @Test
+    void relConstants_includeDataInputAndDataOutput() {
+        // BPMN DataInputAssociation / DataOutputAssociation must map to dedicated
+        // Cypher relationship types so data artefacts are connected to the Tasks
+        // that consume / produce them.
+        assertEquals("DATA_INPUT",  UAFRelationshipDTO.REL_DATA_INPUT);
+        assertEquals("DATA_OUTPUT", UAFRelationshipDTO.REL_DATA_OUTPUT);
+    }
+
+    @Test
+    void relConstants_includeHasAttributeAndOfType() {
+        // First-class ERD attribute representation (#76 design A) — the entity →
+        // attribute and attribute → datatype edges live here.
+        assertEquals("HAS_ATTRIBUTE", UAFRelationshipDTO.REL_HAS_ATTRIBUTE);
+        assertEquals("OF_TYPE",       UAFRelationshipDTO.REL_OF_TYPE);
+    }
 }

@@ -151,6 +151,15 @@ MERGE (:Stereotype {name: 'ImplementationConstraint', domain: 'SHARED'});
 MERGE (:Stereotype {name: 'Location',                 domain: 'SHARED'});
 MERGE (:Stereotype {name: 'ActualLocation',           domain: 'SHARED'});
 
+// ERD / Information modelling (#76).
+// Entity / EntityRelationship may be applied by users to UML Class / Association
+// for explicit ERD modelling. Attribute and DataType are synthetic — emitted by
+// the traverser for first-class attribute representation (Option A in #76).
+MERGE (:Stereotype {name: 'Entity',                   domain: 'SHARED'});
+MERGE (:Stereotype {name: 'EntityRelationship',       domain: 'SHARED'});
+MERGE (:Stereotype {name: 'Attribute',                domain: 'SHARED'});
+MERGE (:Stereotype {name: 'DataType',                 domain: 'SHARED'});
+
 // --- SysML 1.6 Stereotype nodes ----------------------------------------------
 
 MERGE (:Stereotype {name: 'Block',                  language: 'SysML'});

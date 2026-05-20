@@ -130,6 +130,17 @@ public class UAFStereotypeRegistry {
         reg("Location",                 "Location",                Domain.SHARED);
         reg("ActualLocation",           "ActualLocation",          Domain.SHARED);
 
+        // --- ERD / Information modelling (#76) ---
+        // Stereotyped entries (matched by name when MSOSA reports them):
+        reg("Entity",                   "Entity",                  Domain.SHARED);
+        reg("EntityRelationship",       "EntityRelationship",      Domain.SHARED);
+        // Synthetic entries — the traverser emits these for first-class attribute
+        // representation (#76 design A). They are NOT directly applied stereotypes
+        // in any MSOSA profile; entries exist so the :Stereotype seed nodes and the
+        // MVO codegen pick them up uniformly with the rest of the registry.
+        reg("Attribute",                "Attribute",               Domain.SHARED);
+        reg("DataType",                 "DataType",                Domain.SHARED);
+
         // --- SysML 1.6 ---
         reg("Block",                    "Block",                   "SysML");
         reg("Requirement",              "Requirement",             "SysML");

@@ -85,6 +85,11 @@ public class UAFModelTraverser {
         RELATION_TYPE_MAP.put("Satisfy",              UAFRelationshipDTO.REL_SATISFIES);
         RELATION_TYPE_MAP.put("Derive",               UAFRelationshipDTO.REL_INFLUENCES);
         RELATION_TYPE_MAP.put("ComponentRealization", UAFRelationshipDTO.REL_REALISES);
+        // BPMN data-flow edges (#76). When MSOSA models a Task consuming a DataInput
+        // or producing a DataOutput, it emits one of these as the connector. Without
+        // mapping them here the data nodes would be present but disconnected.
+        RELATION_TYPE_MAP.put("DataInputAssociation",  UAFRelationshipDTO.REL_DATA_INPUT);
+        RELATION_TYPE_MAP.put("DataOutputAssociation", UAFRelationshipDTO.REL_DATA_OUTPUT);
 
         RELATIONSHIP_STEREOTYPE_MAP.put("Exhibits",      UAFRelationshipDTO.REL_EXHIBITS);
         RELATIONSHIP_STEREOTYPE_MAP.put("Refines",       UAFRelationshipDTO.REL_REFINES);
@@ -205,9 +210,12 @@ public class UAFModelTraverser {
                 .modelFileName(modelFileName);
 
             extractTaggedValues(element, matched.stereotype, eb);
-            extractOwnedAttributes(element, eb);
 
             elements.add(eb.build());
+
+            // Emit first-class :Attribute nodes (and :DataType nodes for primitive
+            // types) per #76 design A. Replaces the prior tv_attr_* flattening.
+            extractAttributes(element, id, qname, matched.info.language);
 
             extractRelationships(element, matched.info);
         }
@@ -364,29 +372,106 @@ public class UAFModelTraverser {
         }
     }
 
-    private void extractOwnedAttributes(Element element, UAFElementDTO.Builder builder) {
+    /**
+     * Emit a first-class {@code :Attribute} node per UML {@code Property} on the
+     * given classifier, plus a {@code HAS_ATTRIBUTE} edge from the entity to each
+     * attribute. When an attribute's type is a UML {@code PrimitiveType},
+     * {@code Enumeration}, or {@code DataType}, also emit a synthetic
+     * {@code :DataType} node (deduplicated by id) and an {@code OF_TYPE} edge.
+     *
+     * Replaces the pre-#76 {@code tv_attr_*} property flattening — Option A in
+     * the design discussion. Existing queries that grep for {@code tv_attr_<name>}
+     * properties need updating to traverse {@code (:Entity)-[:HAS_ATTRIBUTE]->(:Attribute)}.
+     *
+     * Properties that are association member ends are skipped — they're modelled
+     * by {@link #extractRelationships(Element, UAFStereotypeRegistry.StereotypeInfo)}
+     * as multiplicity/role on the relationship edge, not as standalone attributes.
+     */
+    private void extractAttributes(Element element, String entityId, String entityQname, String entityLanguage) {
         if (!(element instanceof Classifier)) return;
         try {
             Classifier cls = (Classifier) element;
             for (com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Property attr : cls.getAttribute()) {
                 String attrName = attr.getName();
                 if (attrName == null || attrName.isEmpty()) continue;
+                // Skip association member ends — they belong to a relationship.
+                if (attr.getAssociation() != null) continue;
+
+                String attrId = safeId(attr);
+                if (!visitedIds.add(attrId)) continue;
+
+                String attrQname = entityQname.isEmpty() ? attrName : entityQname + "::" + attrName;
+                int lower = attr.getLower();
+                int upper = attr.getUpper();
+                String mult = multString(lower, upper);
+
+                UAFElementDTO.Builder ab = UAFElementDTO.builder(attrId, attrName, "Attribute")
+                    .qualifiedName(attrQname)
+                    .neo4jLabel("Attribute")
+                    .domain("SHARED")
+                    .language(entityLanguage)
+                    .packageName(entityQname)
+                    .modelFileName(modelFileName)
+                    .taggedValue("multiplicity", mult);
+                if (attr.isReadOnly()) ab.taggedValue("isReadOnly", "true");
+                if (attr.isDerived())  ab.taggedValue("isDerived",  "true");
+
                 com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Type attrType = attr.getType();
                 String typeName = (attrType != null && attrType.getName() != null)
                                   ? attrType.getName() : "";
-                builder.taggedValue("attr_" + attrName, typeName);
-                int lower = attr.getLower();
-                int upper = attr.getUpper();
-                String mult = (upper == -1)
-                    ? lower + "..*"
-                    : (lower == upper ? String.valueOf(lower) : lower + ".." + upper);
-                if (!"1".equals(mult)) {
-                    builder.taggedValue("attr_" + attrName + "_mult", mult);
+                if (!typeName.isEmpty()) ab.taggedValue("typeName", typeName);
+
+                elements.add(ab.build());
+
+                // Entity -> Attribute
+                relationships.add(UAFRelationshipDTO.builder(
+                        "has_attr::" + entityId + "::" + attrId,
+                        entityId, attrId, UAFRelationshipDTO.REL_HAS_ATTRIBUTE)
+                    .uafType("HasAttribute")
+                    .name(attrName)
+                    .domain("SHARED")
+                    .language(entityLanguage)
+                    .tgtMult(mult)
+                    .build());
+
+                if (attrType != null) {
+                    String typeId = safeId(attrType);
+                    // Synthetic :DataType node only for UML primitive / data / enumeration types.
+                    // Attributes typed by another Classifier (Entity, Block, etc.) get only the
+                    // OF_TYPE edge — the target node will be emitted via its own stereotype path.
+                    if (isPrimitiveOrDatatype(attrType) && visitedIds.add(typeId)) {
+                        UAFElementDTO.Builder tb = UAFElementDTO.builder(typeId, typeName, "DataType")
+                            .qualifiedName(typeName)
+                            .neo4jLabel("DataType")
+                            .domain("SHARED")
+                            .language(entityLanguage)
+                            .modelFileName(modelFileName);
+                        elements.add(tb.build());
+                    }
+                    relationships.add(UAFRelationshipDTO.builder(
+                            "of_type::" + attrId + "::" + typeId,
+                            attrId, typeId, UAFRelationshipDTO.REL_OF_TYPE)
+                        .uafType("OfType")
+                        .domain("SHARED")
+                        .language(entityLanguage)
+                        .build());
                 }
             }
         } catch (Exception e) {
-            LOG.warning("Failed to extract owned attributes for " + safeId(element) + ": " + e.getMessage());
+            LOG.warning("Failed to extract attributes for " + safeId(element) + ": " + e.getMessage());
         }
+    }
+
+    private static boolean isPrimitiveOrDatatype(com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Type t) {
+        return t instanceof com.nomagic.uml2.ext.magicdraw.classes.mdkernel.PrimitiveType
+            || t instanceof com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Enumeration
+            || t instanceof com.nomagic.uml2.ext.magicdraw.classes.mdkernel.DataType;
+    }
+
+    private static String multString(int lower, int upper) {
+        if (upper == -1) return lower + "..*";
+        if (lower == upper) return String.valueOf(lower);
+        return lower + ".." + upper;
     }
 
     private void extractRelationships(Element element, UAFStereotypeRegistry.StereotypeInfo srcInfo) {
@@ -415,6 +500,25 @@ public class UAFModelTraverser {
                 }
             }
 
+            // Pull association-end multiplicity / role names if this relationship is an
+            // Association (ER cardinality lives there, not on the DirectedRelationship —
+            // #76 RC #6). Endpoint order is best-effort: UML Associations have no inherent
+            // source/target; we treat memberEnd[0] as source-end and memberEnd[1] as target-end.
+            String srcMult = "", tgtMult = "", srcRole = "", tgtRole = "";
+            if (rel instanceof com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Association) {
+                com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Association assoc =
+                    (com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Association) rel;
+                java.util.List<com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Property> ends = assoc.getMemberEnd();
+                if (ends.size() >= 2) {
+                    com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Property sEnd = ends.get(0);
+                    com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Property tEnd = ends.get(1);
+                    srcMult = multString(sEnd.getLower(), sEnd.getUpper());
+                    tgtMult = multString(tEnd.getLower(), tEnd.getUpper());
+                    srcRole = sEnd.getName() != null ? sEnd.getName() : "";
+                    tgtRole = tEnd.getName() != null ? tEnd.getName() : "";
+                }
+            }
+
             for (Element target : rel.getTarget()) {
                 String targetId = safeId(target);
                 String relName  = rel instanceof NamedElement
@@ -426,6 +530,10 @@ public class UAFModelTraverser {
                         .name(relName != null ? relName : "")
                         .domain(srcInfo.domain != null ? srcInfo.domain.name() : "NONE")
                         .language(srcInfo.language)
+                        .srcMult(srcMult)
+                        .tgtMult(tgtMult)
+                        .srcRole(srcRole)
+                        .tgtRole(tgtRole)
                         .build()
                 );
             }
