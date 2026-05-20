@@ -8,6 +8,7 @@ $version  = "2022x-hf2"
 $group    = "com.nomagic.magicdraw"
 
 mvn install:install-file "-Dfile=$jarsDir\md.jar" "-DgroupId=$group" "-DartifactId=md" "-Dversion=$version" "-Dpackaging=jar" "-DgeneratePom=true"
+mvn install:install-file "-Dfile=$jarsDir\com.nomagic.ci.persistence-2022.2.0-105-acd52bbc.jar" "-DgroupId=com.nomagic.ci" "-DartifactId=persistence" "-Dversion=$version" "-Dpackaging=jar" "-DgeneratePom=true"
 mvn install:install-file "-Dfile=$jarsDir\md_api.jar" "-DgroupId=$group" "-DartifactId=md-api" "-Dversion=$version" "-Dpackaging=jar" "-DgeneratePom=true"
 mvn install:install-file "-Dfile=$jarsDir\com.nomagic.magicdraw.uml2-2022.2.0-105-acd52bbc.jar" "-DgroupId=$group" "-DartifactId=uml2" "-Dversion=$version" "-Dpackaging=jar" "-DgeneratePom=true"
 mvn install:install-file "-Dfile=$jarsDir\com.nomagic.magicdraw.foundation-2022.2.0-105-acd52bbc.jar" "-DgroupId=$group" "-DartifactId=magicdraw-foundation" "-Dversion=$version" "-Dpackaging=jar" "-DgeneratePom=true"
