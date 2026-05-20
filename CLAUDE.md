@@ -25,7 +25,7 @@ cd msosa-model-exporter
 mvn package                # produces fat jar + deployable zip in target/
 ```
 
-The zip (`target/msosa-model-exporter-1.3.2-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-plugin.zip`) extracts to a folder you drop into `<MSOSA_HOME>/plugins/`.
+The zip (`target/msosa-model-exporter-1.3.2-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-plugin.zip`) extracts to a folder you drop into `<MSOSA_HOME>/plugins/`.
 
 ### Python MCP Server
 
@@ -152,7 +152,7 @@ The strategic rationale, MVO/MVG cadence, and migration roadmap (Stages 1–4) a
 To deploy the plugin to MSOSA:
 
 1. Run `mvn package` in `msosa-model-exporter/`
-2. Unzip `target/msosa-model-exporter-1.3.2-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-plugin.zip` into `<MSOSA_HOME>/plugins/`
+2. Unzip `target/msosa-model-exporter-1.3.2-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-Preview-plugin.zip` into `<MSOSA_HOME>/plugins/`
 3. Restart MSOSA
 4. Plugin appears under **Tools → UAF Neo4j Export**
 
