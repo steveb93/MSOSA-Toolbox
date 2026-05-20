@@ -192,6 +192,33 @@ See `../ontology/queries/semantic-search-examples.sparql` for anchor queries and
 
 ---
 
+### Step 6 — Browse the RDF Graph Visually (optional)
+
+Fuseki gives you SPARQL but no interactive graph view. **GraphDB Free** can run alongside Fuseki as a read-only visual browser, loading the same T-Box and A-Box so the two stay aligned. Its Workbench renders instance triples, `rdf:type` links, and the `rdfs:subClassOf` class hierarchy as one connected, clickable graph.
+
+```powershell
+# Make sure the A-Box dump exists first (the loader expects it).
+python ontology/codegen/dump_to_rdf.py
+
+# Bring up Neo4j + GraphDB together (add to the Fuseki stack if you want both).
+docker compose -f docker-compose/docker-compose.yml `
+               -f docker-compose/docker-compose.graphdb.yml up -d
+```
+
+After ~30s the `graphdb-loader` sidecar creates the `uaf` repository and loads both TTLs. Open <http://localhost:7200>, select the `uaf` repository, then **Explore → Visual graph** and start from any element name.
+
+Refresh after a new MSOSA export:
+
+```powershell
+python ontology/codegen/dump_to_rdf.py
+docker compose -f docker-compose/docker-compose.yml `
+               -f docker-compose/docker-compose.graphdb.yml restart graphdb-loader
+```
+
+The loader clears and reloads the repo on each restart, so this single command resyncs the visual graph with Neo4j. Fuseki remains the SPARQL endpoint the MCP server queries; GraphDB is purely a browser.
+
+---
+
 ## Connection Configuration
 
 Connection settings are stored in:
