@@ -91,7 +91,11 @@ public class Neo4jCypherBuilder {
             "SET r.uafType  = $uafType\n" +
             "SET r.name     = $name\n" +
             "SET r.domain   = $domain\n" +
-            "SET r.language = $language",
+            "SET r.language = $language\n" +
+            "SET r.srcMult  = $srcMult\n" +
+            "SET r.tgtMult  = $tgtMult\n" +
+            "SET r.srcRole  = $srcRole\n" +
+            "SET r.tgtRole  = $tgtRole",
             type);
     }
 
@@ -104,6 +108,10 @@ public class Neo4jCypherBuilder {
         p.put("name",     dto.name);
         p.put("domain",   dto.domain);
         p.put("language", dto.language);
+        p.put("srcMult",  dto.srcMult);
+        p.put("tgtMult",  dto.tgtMult);
+        p.put("srcRole",  dto.srcRole);
+        p.put("tgtRole",  dto.tgtRole);
         return p;
     }
 

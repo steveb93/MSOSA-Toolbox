@@ -140,6 +140,19 @@ class UAFStereotypeRegistryTest {
     }
 
     @Test
+    void get_erdStereotypes_areRegisteredUnderShared() {
+        // #76 design A — first-class ERD modelling
+        for (String name : new String[]{"Entity", "EntityRelationship", "Attribute", "DataType"}) {
+            Optional<UAFStereotypeRegistry.StereotypeInfo> info = UAFStereotypeRegistry.get(name);
+            assertTrue(info.isPresent(), name + " should be registered");
+            assertEquals(UAFStereotypeRegistry.Domain.SHARED, info.get().domain,
+                name + " should live in the SHARED domain");
+            assertEquals("UAF", info.get().language,
+                name + " should carry the UAF language tag");
+        }
+    }
+
+    @Test
     void isKnown_knownStereotypes_returnsTrue() {
         assertTrue(UAFStereotypeRegistry.isKnown("Capability"));
         assertTrue(UAFStereotypeRegistry.isKnown("Vision"));
