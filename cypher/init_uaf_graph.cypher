@@ -68,6 +68,13 @@ MERGE (:Stereotype {name: 'EndState',                 domain: 'STRATEGIC'});
 MERGE (:Stereotype {name: 'DesiredEffect',            domain: 'STRATEGIC'});
 MERGE (:Stereotype {name: 'EnterprisePhase',          domain: 'STRATEGIC'});
 MERGE (:Stereotype {name: 'CapabilityIncrement',      domain: 'STRATEGIC'});
+// Tier-1 #75 RC #6 reconciliation
+MERGE (:Stereotype {name: 'EnterpriseVision',         domain: 'STRATEGIC'});
+MERGE (:Stereotype {name: 'VisionStatement',          domain: 'STRATEGIC'});
+MERGE (:Stereotype {name: 'CapabilityRole',           domain: 'STRATEGIC'});
+MERGE (:Stereotype {name: 'PhaseableElement',         domain: 'STRATEGIC'});
+MERGE (:Stereotype {name: 'Phases',                   domain: 'STRATEGIC'});
+MERGE (:Stereotype {name: 'ArchitectureMetadata',     domain: 'STRATEGIC'});
 
 // Operational
 MERGE (:Stereotype {name: 'OperationalPerformer',     domain: 'OPERATIONAL'});
@@ -83,6 +90,26 @@ MERGE (:Stereotype {name: 'OperationalInformation',   domain: 'OPERATIONAL'});
 MERGE (:Stereotype {name: 'NeedLine',                 domain: 'OPERATIONAL'});
 MERGE (:Stereotype {name: 'PerformerPort',            domain: 'OPERATIONAL'});
 MERGE (:Stereotype {name: 'OperationalRole',          domain: 'OPERATIONAL'});
+// Tier-1 #75 RC #6 reconciliation
+MERGE (:Stereotype {name: 'OperationalAgent',           domain: 'OPERATIONAL'});
+MERGE (:Stereotype {name: 'OperationalAsset',           domain: 'OPERATIONAL'});
+MERGE (:Stereotype {name: 'OperationalArchitecture',    domain: 'OPERATIONAL'});
+MERGE (:Stereotype {name: 'OperationalActivityAction',  domain: 'OPERATIONAL'});
+MERGE (:Stereotype {name: 'OperationalActivityEdge',    domain: 'OPERATIONAL'});
+MERGE (:Stereotype {name: 'OperationalControlFlow',     domain: 'OPERATIONAL'});
+MERGE (:Stereotype {name: 'OperationalObjectFlow',      domain: 'OPERATIONAL'});
+MERGE (:Stereotype {name: 'OperationalExchangeItem',    domain: 'OPERATIONAL'});
+MERGE (:Stereotype {name: 'OperationalInformationRole', domain: 'OPERATIONAL'});
+MERGE (:Stereotype {name: 'OperationalInterface',       domain: 'OPERATIONAL'});
+MERGE (:Stereotype {name: 'OperationalMessage',         domain: 'OPERATIONAL'});
+MERGE (:Stereotype {name: 'OperationalMethod',          domain: 'OPERATIONAL'});
+MERGE (:Stereotype {name: 'OperationalMitigation',      domain: 'OPERATIONAL'});
+MERGE (:Stereotype {name: 'OperationalParameter',       domain: 'OPERATIONAL'});
+MERGE (:Stereotype {name: 'OperationalPort',            domain: 'OPERATIONAL'});
+MERGE (:Stereotype {name: 'OperationalSignal',          domain: 'OPERATIONAL'});
+MERGE (:Stereotype {name: 'OperationalSignalProperty',  domain: 'OPERATIONAL'});
+MERGE (:Stereotype {name: 'OperationalStateDescription',domain: 'OPERATIONAL'});
+MERGE (:Stereotype {name: 'OperationalConstraint',      domain: 'OPERATIONAL'});
 
 // BPMN data elements (operational information artifacts used in process diagrams)
 MERGE (:Stereotype {name: 'DataObject',               domain: 'OPERATIONAL'});
@@ -110,6 +137,24 @@ MERGE (:Stereotype {name: 'ActualSystem',             domain: 'RESOURCE'});
 MERGE (:Stereotype {name: 'Technology',               domain: 'RESOURCE'});
 MERGE (:Stereotype {name: 'LogicalArchitecture',      domain: 'RESOURCE'});
 MERGE (:Stereotype {name: 'PhysicalArchitecture',     domain: 'RESOURCE'});
+// Tier-1 #75 RC #6 reconciliation
+MERGE (:Stereotype {name: 'Resource',                 domain: 'RESOURCE'});
+MERGE (:Stereotype {name: 'ResourceAsset',            domain: 'RESOURCE'});
+MERGE (:Stereotype {name: 'ResourceAction',           domain: 'RESOURCE'});
+MERGE (:Stereotype {name: 'ResourceExchange',         domain: 'RESOURCE'});
+MERGE (:Stereotype {name: 'ResourceExchangeItem',     domain: 'RESOURCE'});
+MERGE (:Stereotype {name: 'ResourceInformationRole',  domain: 'RESOURCE'});
+MERGE (:Stereotype {name: 'ResourceInterface',        domain: 'RESOURCE'});
+MERGE (:Stereotype {name: 'ResourceMessage',          domain: 'RESOURCE'});
+MERGE (:Stereotype {name: 'ResourceMethod',           domain: 'RESOURCE'});
+MERGE (:Stereotype {name: 'ResourceMitigation',       domain: 'RESOURCE'});
+MERGE (:Stereotype {name: 'ResourceRole',             domain: 'RESOURCE'});
+MERGE (:Stereotype {name: 'ResourceService',          domain: 'RESOURCE'});
+MERGE (:Stereotype {name: 'ResourceServiceInterface', domain: 'RESOURCE'});
+MERGE (:Stereotype {name: 'ResourceSignal',           domain: 'RESOURCE'});
+MERGE (:Stereotype {name: 'ResourceSignalProperty',   domain: 'RESOURCE'});
+MERGE (:Stereotype {name: 'ResourceStateDescription', domain: 'RESOURCE'});
+MERGE (:Stereotype {name: 'ResourceConstraint',       domain: 'RESOURCE'});
 
 // Service
 MERGE (:Stereotype {name: 'ServicePerformer',         domain: 'SERVICE'});
@@ -121,6 +166,10 @@ MERGE (:Stereotype {name: 'ServiceConnector',         domain: 'SERVICE'});
 MERGE (:Stereotype {name: 'ServiceExchange',          domain: 'SERVICE'});
 MERGE (:Stereotype {name: 'Service',                  domain: 'SERVICE'});
 MERGE (:Stereotype {name: 'ServiceArchitecture',      domain: 'SERVICE'});
+// Tier-1 #75 RC #6 reconciliation
+MERGE (:Stereotype {name: 'ServiceRole',              domain: 'SERVICE'});
+MERGE (:Stereotype {name: 'ServiceParameter',         domain: 'SERVICE'});
+MERGE (:Stereotype {name: 'ServiceMethod',            domain: 'SERVICE'});
 
 // Personnel
 MERGE (:Stereotype {name: 'Organization',             domain: 'PERSONNEL'});
@@ -136,11 +185,28 @@ MERGE (:Stereotype {name: 'Milestone',                domain: 'ACQUISITION'});
 MERGE (:Stereotype {name: 'ProjectMilestone',         domain: 'ACQUISITION'});
 MERGE (:Stereotype {name: 'ProjectBoundary',          domain: 'ACQUISITION'});
 MERGE (:Stereotype {name: 'FundingRequest',           domain: 'ACQUISITION'});
+// Tier-1 #75 RC #6 reconciliation
+MERGE (:Stereotype {name: 'ProjectActivity',          domain: 'ACQUISITION'});
+MERGE (:Stereotype {name: 'ProjectActivityAction',    domain: 'ACQUISITION'});
+MERGE (:Stereotype {name: 'ProjectMilestoneRole',     domain: 'ACQUISITION'});
+MERGE (:Stereotype {name: 'ProjectRole',              domain: 'ACQUISITION'});
+MERGE (:Stereotype {name: 'ProjectSequence',          domain: 'ACQUISITION'});
+MERGE (:Stereotype {name: 'ProjectStatus',            domain: 'ACQUISITION'});
+MERGE (:Stereotype {name: 'ProjectTheme',             domain: 'ACQUISITION'});
+MERGE (:Stereotype {name: 'MilestoneDependency',      domain: 'ACQUISITION'});
 
 // Security
 MERGE (:Stereotype {name: 'SecurityDomain',           domain: 'SECURITY'});
 MERGE (:Stereotype {name: 'SecurityAsset',            domain: 'SECURITY'});
 MERGE (:Stereotype {name: 'SecurityPolicy',           domain: 'SECURITY'});
+// Tier-1 #75 RC #6 reconciliation
+MERGE (:Stereotype {name: 'SecurityEnclave',          domain: 'SECURITY'});
+MERGE (:Stereotype {name: 'SecurityConstraint',       domain: 'SECURITY'});
+MERGE (:Stereotype {name: 'SecurityControl',          domain: 'SECURITY'});
+MERGE (:Stereotype {name: 'SecurityControlFamily',    domain: 'SECURITY'});
+MERGE (:Stereotype {name: 'SecurityProcess',          domain: 'SECURITY'});
+MERGE (:Stereotype {name: 'SecurityProcessAction',    domain: 'SECURITY'});
+MERGE (:Stereotype {name: 'SecurityRisk',             domain: 'SECURITY'});
 
 // Shared
 MERGE (:Stereotype {name: 'Measurement',              domain: 'SHARED'});
@@ -157,6 +223,12 @@ MERGE (:Stereotype {name: 'ActualLocation',           domain: 'SHARED'});
 // the traverser for first-class attribute representation (Option A in #76).
 MERGE (:Stereotype {name: 'Entity',                   domain: 'SHARED'});
 MERGE (:Stereotype {name: 'EntityRelationship',       domain: 'SHARED'});
+// Tier-1 #75 RC #6 reconciliation — names actually used by the MSOSA UAF profile
+MERGE (:Stereotype {name: 'EntityRelation',           domain: 'SHARED'});
+MERGE (:Stereotype {name: 'PrimaryKey',               domain: 'SHARED'});
+MERGE (:Stereotype {name: 'ForeignKey',               domain: 'SHARED'});
+MERGE (:Stereotype {name: 'AlternativeKey',           domain: 'SHARED'});
+MERGE (:Stereotype {name: 'FK',                       domain: 'SHARED'});
 MERGE (:Stereotype {name: 'Attribute',                domain: 'SHARED'});
 MERGE (:Stereotype {name: 'DataType',                 domain: 'SHARED'});
 
@@ -192,6 +264,18 @@ MERGE (:Stereotype {name: 'SubProcess',              language: 'BPMN'});
 MERGE (:Stereotype {name: 'CallActivity',            language: 'BPMN'});
 MERGE (:Stereotype {name: 'Lane',                    language: 'BPMN'});
 MERGE (:Stereotype {name: 'Pool',                    language: 'BPMN'});
+// Tier-1 #75 RC #6 reconciliation — BPMN extras
+MERGE (:Stereotype {name: 'BPMNProcess',                    language: 'BPMN'});
+MERGE (:Stereotype {name: 'BPMNMessage',                    language: 'BPMN'});
+MERGE (:Stereotype {name: 'BusinessRuleTask',               language: 'BPMN'});
+MERGE (:Stereotype {name: 'LaneSet',                        language: 'BPMN'});
+MERGE (:Stereotype {name: 'TextAnnotation',                 language: 'BPMN'});
+MERGE (:Stereotype {name: 'NoneStartEvent',                 language: 'BPMN'});
+MERGE (:Stereotype {name: 'NoneEndEvent',                   language: 'BPMN'});
+MERGE (:Stereotype {name: 'NoneIntermediateEvent',          language: 'BPMN'});
+MERGE (:Stereotype {name: 'MessageCatchIntermediateEvent',  language: 'BPMN'});
+MERGE (:Stereotype {name: 'StandardLoopCharacteristics',    language: 'BPMN'});
+MERGE (:Stereotype {name: 'FlowProperty',                   language: 'BPMN'});
 
 // --- Wire Stereotype nodes to their Domain -----------------------------------
 

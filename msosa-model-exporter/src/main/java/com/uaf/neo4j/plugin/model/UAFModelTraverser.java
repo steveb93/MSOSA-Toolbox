@@ -103,6 +103,15 @@ public class UAFModelTraverser {
         RELATIONSHIP_STEREOTYPE_MAP.put("OperationalExchange", UAFRelationshipDTO.REL_INFORMATION_FLOW);
         RELATIONSHIP_STEREOTYPE_MAP.put("ResourceInteraction", UAFRelationshipDTO.REL_CONNECTED_TO);
         RELATIONSHIP_STEREOTYPE_MAP.put("NeedLine",            UAFRelationshipDTO.REL_INFORMATION_FLOW);
+        // Tier-1 #75 RC #6 — found applied to UML relationship elements in iSCP.
+        RELATIONSHIP_STEREOTYPE_MAP.put("Implements",             UAFRelationshipDTO.REL_IMPLEMENTS);
+        RELATIONSHIP_STEREOTYPE_MAP.put("IsCapableToPerform",     UAFRelationshipDTO.REL_PERFORMS);
+        RELATIONSHIP_STEREOTYPE_MAP.put("PerformsInContext",      UAFRelationshipDTO.REL_PERFORMS);
+        RELATIONSHIP_STEREOTYPE_MAP.put("MapsToCapability",       UAFRelationshipDTO.REL_REALISES);
+        RELATIONSHIP_STEREOTYPE_MAP.put("DataAssociation",        UAFRelationshipDTO.REL_FLOWS_TO);
+        RELATIONSHIP_STEREOTYPE_MAP.put("ServiceAssociation",     UAFRelationshipDTO.REL_ASSOCIATED_WITH);
+        RELATIONSHIP_STEREOTYPE_MAP.put("OperationalAssociation", UAFRelationshipDTO.REL_ASSOCIATED_WITH);
+        RELATIONSHIP_STEREOTYPE_MAP.put("ResourceAssociation",    UAFRelationshipDTO.REL_ASSOCIATED_WITH);
         // SysML relationship stereotypes
         RELATIONSHIP_STEREOTYPE_MAP.put("Allocate",      UAFRelationshipDTO.REL_ALLOCATED_TO);
         RELATIONSHIP_STEREOTYPE_MAP.put("DeriveReqt",    UAFRelationshipDTO.REL_INFLUENCES);
