@@ -31,6 +31,10 @@ public class ExportSummaryDialog extends JDialog {
         JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("Summary", buildSummaryPanel(result));
         tabs.addTab("Log",     buildLogPanel(log));
+        if (!result.unmatchedStereotypes.isEmpty()) {
+            tabs.addTab("Unmatched Stereotypes (" + result.unmatchedStereotypes.size() + ")",
+                        buildUnmatchedPanel(result));
+        }
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         buttons.setBorder(new EmptyBorder(4, 12, 12, 12));
@@ -126,6 +130,48 @@ public class ExportSummaryDialog extends JDialog {
             panel.add(hint, BorderLayout.CENTER);
         }
 
+        return panel;
+    }
+
+    /**
+     * Render the stereotype-drift diagnostic. Each row is a stereotype name that
+     * appeared in the model but is not in {@code UAFStereotypeRegistry} — these
+     * elements were dropped from the export. Surfacing them here means future
+     * profile changes are visible without grepping the export log.
+     */
+    private JPanel buildUnmatchedPanel(ExportResult result) {
+        List<String[]> rowList = new ArrayList<>();
+        result.unmatchedStereotypes.entrySet().stream()
+            .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+            .forEach(e -> rowList.add(new String[]{e.getKey(), String.valueOf(e.getValue())}));
+        String[][] rows = rowList.toArray(new String[0][]);
+
+        JTable table = new JTable(new DefaultTableModel(rows, new String[]{"Stereotype", "Elements dropped"}) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        });
+        table.setPreferredScrollableViewportSize(new Dimension(420, 160));
+
+        JLabel hint = new JLabel(
+            "<html>These stereotype names appeared on model elements but are not in " +
+            "<code>UAFStereotypeRegistry</code>. Each affected element was skipped. " +
+            "If any of these should be exported, add them to the registry " +
+            "(or verify the profile name matches what the MSOSA scripting console reports).</html>");
+        hint.setBorder(new EmptyBorder(0, 0, 8, 0));
+
+        JButton copyBtn = new JButton("Copy Names");
+        copyBtn.addActionListener(e -> {
+            List<String> lines = new ArrayList<>(result.unmatchedStereotypes.size());
+            result.unmatchedStereotypes.forEach((k, v) -> lines.add(k + "\t" + v));
+            copyToClipboard(lines);
+        });
+        JPanel buttonRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        buttonRow.add(copyBtn);
+
+        JPanel panel = new JPanel(new BorderLayout(0, 8));
+        panel.setBorder(new EmptyBorder(12, 12, 12, 12));
+        panel.add(hint,                       BorderLayout.NORTH);
+        panel.add(new JScrollPane(table),     BorderLayout.CENTER);
+        panel.add(buttonRow,                  BorderLayout.SOUTH);
         return panel;
     }
 
