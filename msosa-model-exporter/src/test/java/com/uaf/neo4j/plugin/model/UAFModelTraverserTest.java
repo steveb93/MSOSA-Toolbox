@@ -2,6 +2,11 @@ package com.uaf.neo4j.plugin.model;
 
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -140,5 +145,39 @@ class UAFModelTraverserTest {
                      UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP.get("OperationalAssociation"));
         assertEquals(UAFRelationshipDTO.REL_ASSOCIATED_WITH,
                      UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP.get("ResourceAssociation"));
+    }
+
+    // ── Module / attached-project traversal (#75 RC #4) ───────────────────────
+
+    @Test
+    void constructor_exposesAttachedModuleFlag() {
+        // The two-arg constructor signature exists; a default-true single-arg
+        // overload also exists. We can't instantiate without a MSOSA Project,
+        // but reflection confirms the API surface so callers (ExportConfigDialog)
+        // can opt out via the second arg.
+        Constructor<?>[] ctors = UAFModelTraverser.class.getDeclaredConstructors();
+        boolean foundSingleArg = Arrays.stream(ctors).anyMatch(c ->
+            c.getParameterCount() == 1
+            && c.getParameterTypes()[0].getName().equals("com.nomagic.magicdraw.core.Project"));
+        boolean foundTwoArg = Arrays.stream(ctors).anyMatch(c ->
+            c.getParameterCount() == 2
+            && c.getParameterTypes()[0].getName().equals("com.nomagic.magicdraw.core.Project")
+            && c.getParameterTypes()[1] == boolean.class);
+        assertTrue(foundSingleArg, "Single-arg Project constructor must remain for back-compat");
+        assertTrue(foundTwoArg,    "Two-arg (Project, boolean) constructor must be present for opt-out");
+    }
+
+    @Test
+    void traverseAttachedModulesField_isFinalAndBoolean() {
+        // The flag stores once at construction time and is consulted by ensureTraversed.
+        // Final + boolean keeps the contract simple — no toggle mid-traversal.
+        Field field;
+        try {
+            field = UAFModelTraverser.class.getDeclaredField("traverseAttachedModules");
+        } catch (NoSuchFieldException e) {
+            throw new AssertionError("Expected field traverseAttachedModules to exist", e);
+        }
+        assertEquals(boolean.class, field.getType(), "Field must be a primitive boolean");
+        assertTrue(Modifier.isFinal(field.getModifiers()), "Field must be final");
     }
 }
