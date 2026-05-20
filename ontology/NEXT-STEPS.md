@@ -1,6 +1,6 @@
 # Ontology roadmap — where to go next
 
-Stage 2 is operationally live: Apache Jena Fuseki provides a real SPARQL 1.1 endpoint with RDFS reasoning over a Minimum Viable Ontology covering all UAF 1.2 domains plus SysML 1.6 and BPMN 2.0. The Java plugin keeps writing Cypher to Neo4j (system of record); the dump script materialises an RDF view that Fuseki loads on startup.
+Stage 2 is operationally live and Stage 4's emitter-side work has landed early: the Java plugin can already write Cypher and RDF in the same export, and Apache Jena Fuseki provides a real SPARQL 1.1 endpoint with RDFS reasoning over a Minimum Viable Ontology covering all UAF 1.2 domains plus SysML 1.6 and BPMN 2.0. Neo4j remains the system of record; the plugin's RDF emitter is the preferred refresh path, with `dump_to_rdf.py` retained as the recovery path. The Python ↔ Java emitters are now held to triple-set parity by a shared fixture and matched tests on both sides.
 
 This document describes what comes next, in the order the staging in `Ontology-Approach-to-Knowledge.md` §12 prescribes — and explicitly what each stage is **not** for, so the migration does not over-shoot.
 
@@ -15,7 +15,10 @@ This document describes what comes next, in the order the staging in `Ontology-A
 | **T-Box** | `ontology/uaf-mvo.ttl` — 103 classes (UAF 76, SysML 10, BPMN 17), 31 ObjectProperties |
 | **A-Box** | `ontology/dump/uaf-instance.ttl` — refreshed by `ontology/codegen/dump_to_rdf.py` after each MSOSA export |
 | **MCP tool** | `run_sparql(query)` alongside `run_cypher(query)` |
-| **Refresh cadence** | Manual after each export (matches MSOSA's export cadence) |
+| **Refresh cadence** | Manual after each export (matches MSOSA's export cadence). Plugin RDF emitter optionally PUTs to Fuseki Graph Store Protocol — no docker restart required. |
+| **Emitter parity** | `parity-fixture.json` consumed by `Test/test_rdf_parity.py` (Python) and `RDFTripleBuilderParityTest.java` (Java) — namespaces, instance/class/predicate/tag-property IRIs all checked. (#73, #74) |
+| **Traverser coverage** | Full UAF 1.2 + SysML 1.6 + BPMN 2.0; UAF>BPMN>SysML stereotype ranking; inherited-stereotype lookup; classifier-owned content (parts, ports, actions); attached project modules. Unmatched stereotypes surface in the post-export dialog. (#75) |
+| **Data/ERD coverage** | DataObject/Input/Output/Store + Entity/EntityRelationship/EntityRelation registered. Attributes are first-class `:Attribute` nodes via `HAS_ATTRIBUTE`; primitive/enum/datatype targets emit `:DataType` via `OF_TYPE`. Association edges carry srcMult/tgtMult/srcRole/tgtRole. (#76) |
 
 **What Stage 2 does well.** Subsumption queries (`?x a/rdfs:subClassOf* uaf:StrategicElement`), cross-language traceability (UAF Capability → SysML Requirement), orphan/gap detection via `FILTER NOT EXISTS`, semantic search backed by AI via the Claude MCP server.
 
@@ -62,8 +65,9 @@ This document describes what comes next, in the order the staging in `Ontology-A
 - [x] Implement `RDFTripleBuilder` mirroring `Neo4jCypherBuilder`. IRI conventions kept byte-identical to `dump_to_rdf.py` so SPARQL queries written against the Python dump still match. Shipped in `v1.2.0-Preview`.
 - [x] Implement `RDFExportService` — buffers triples in an in-memory Jena model; on close, writes Turtle to disk and optionally PUTs to Fuseki's Graph Store Protocol endpoint. Shipped in `v1.2.0-Preview`.
 - [x] Extend `ExportConfigDialog` with a target-type chooser: "Neo4j (LPG via Cypher)" and "RDF Turtle file (and optionally PUT to Fuseki)" with multi-target loop and merged summary. Shipped in `v1.3.0-Preview`.
+- [x] **Enforce dump_to_rdf.py ↔ RDFTripleBuilder triple-set parity** with a shared JSON fixture (`ontology/codegen/parity-fixture.json`) and matched tests on both sides — `Test/test_rdf_parity.py` and `RDFTripleBuilderParityTest.java`. Closes #73 and the dump-script cleanup in #74. Shipped via PR #77 (`v1.3.1-Preview`).
 - [ ] Migrate the MCP server to SPARQL-only or keep both tools depending on operational needs.
-- [ ] Decommission the dump script — no longer needed for routine refreshes (the plugin writes RDF directly) but `ontology/codegen/dump_to_rdf.py` remains as the recovery path for rebuilding Fuseki from the Neo4j system of record. Decommission only when the plugin RDF emitter has been live and unchanged for ≥1 quarter.
+- [ ] Decommission the dump script — no longer needed for routine refreshes (the plugin writes RDF directly) but `ontology/codegen/dump_to_rdf.py` remains as the recovery path for rebuilding Fuseki from the Neo4j system of record. The clean-up of vestigial layer/multi-label/`:UAFElement` code (#74) has landed; decommission only when the plugin RDF emitter has been live and unchanged for ≥1 quarter.
 
 **Gating criteria** (per `Ontology-Approach-to-Knowledge.md` §10).
 
@@ -94,6 +98,19 @@ This document describes what comes next, in the order the staging in `Ontology-A
 ## Cross-cutting backlog (do at any stage)
 
 These are independent of stage progression. Pick up whichever pays off soonest in your context.
+
+### Traverser & registry coverage
+
+- [x] **Stereotype selection ranks UAF > BPMN > SysML** and walks the general chain to find a registered ancestor. Closes the bulk of #75 — multi-stereotyped Operational/Resource elements no longer collapse to generic SysML `Block`. Shipped via PR #78.
+- [x] **Descend into Classifiers, not just Packages.** Internal block diagram parts/ports and activity-owned actions now reach the export. PR #78.
+- [x] **Relationship-stereotype map** for `OperationalExchange`, `ResourceInteraction`, `NeedLine` (and Tier-1 iSCP additions: `Implements`, `IsCapableToPerform`, `PerformsInContext`, `MapsToCapability`, `DataAssociation`, the four `*Association` family stereotypes, `Allocate`, `DeriveReqt`, `Copy`, `SequenceFlow`, `MessageFlow`). PRs #78 + #82.
+- [x] **Walk attached project modules** by default (opt-out via the `UAFModelTraverser(Project, boolean)` constructor). PR #83 plus the `com.nomagic.ci.persistence` build dependency.
+- [x] **Unmatched-stereotype diagnostic** surfaced in `ExportSummaryDialog` as a dedicated tab with copy-to-clipboard. PR #78.
+- [x] **Registry reconciliation tooling** — `scripts/registry-diff.groovy` runs in the MSOSA scripting console and diffs the live profile against the registry. PR #81.
+- [x] **Data artefact + ERD coverage (#76):** `DataObject` / `DataInput` / `DataOutput` / `DataStore` registered; BPMN `DataInputAssociation` / `DataOutputAssociation` connect data to consuming/producing Tasks; `Entity` / `EntityRelationship` / `EntityRelation` registered; attributes promoted to first-class `:Attribute` nodes via `HAS_ATTRIBUTE` (Option A); `:DataType` synthesised for primitive/enum/datatype targets via `OF_TYPE`; `Association` edges carry `srcMult` / `tgtMult` / `srcRole` / `tgtRole`. Shipped via the #78/#79 cascade.
+- [ ] **AssociationClass handling** (last open #76 sub-item). Currently UML `AssociationClass` instances are not specially handled — they emit only the relationship side. Decide: emit both a node and an edge, or document the omission. Low frequency in current UAF profiles, so it can wait.
+- [ ] **Live-model regression test.** Acceptance criterion on #75/#76 calls for non-zero counts against a real MSOSA project. Cannot run on the CI box (no MSOSA install). Suggest a manual export-and-check script that runs against a known-good `.mdzip` once a release cut is being prepared, with the counts captured in the PR description.
+- [ ] **Further iSCP registry tiers.** PR #82 reconciled Tier-1. Tiers 2–N (less common stereotypes flagged by `registry-diff.groovy`) remain as the profile expands.
 
 ### Ontology hygiene
 
@@ -127,3 +144,7 @@ These are independent of stage progression. Pick up whichever pays off soonest i
 | **Fuseki adopted** | 2026-05-19 | Real SPARQL 1.1, real reasoning, stock image, no Java compat hell. Trade-off: data freshness gated by dump refresh cadence — acceptable because MSOSA exports are themselves manual. |
 | **MVO scope expanded** | 2026-05-19 | Initial Stage 2 plan covered Strategic + Operational + Resource only. Extended to all 8 UAF domains + SysML + BPMN because the codegen was already query-driven and the marginal cost of including everything was zero. |
 | **Plugin UI: light-touch SPARQL config** | 2026-05-19 | Added Fuseki URL/auth to `ConnectionDialog` plus an `Open SPARQL Endpoint` menu item and a `Copy SPARQL Refresh Cmd` button on `ExportSummaryDialog`. Did **not** wire the dump script into the plugin — keeps Python and Java loosely coupled for now. |
+| **Triple-set parity, not byte parity** | 2026-05-20 | `rdflib` and Jena differ on serialisation ordering. Fixture-based assertions compare expected IRIs, not bytes — docstrings on both emitters say so explicitly. (#73 / PR #77) |
+| **ERD attributes as first-class nodes (Option A)** | 2026-05-20 | UML `Property` on entities becomes a `:Attribute` node with a `HAS_ATTRIBUTE` edge; `:DataType` synthesised for primitive/enum targets via `OF_TYPE`. The pre-#76 `tv_attr_*` flattening would have erased multiplicity, role, and read-only/derived flags — Option B was cheaper but lost the semantics that make ERD queries useful. Breaking change versus v1.2.x: callers that grep for `tv_attr_<name>` must traverse the new edges. (#76 / PR #79 → #78) |
+| **Stereotype ranking UAF > BPMN > SysML** | 2026-05-20 | Multi-stereotyped Operational elements (UAF + SysML `Block`) were resolving to `Block` depending on iteration order, dropping the UAF domain context. Language rank + most-specific-within-rank tie-break is deterministic and matches user intent. (#75 / PR #78) |
+| **Attached modules walked by default** | 2026-05-20 | UAF reference architectures and library modules normally live in attached projects. Defaulting off would have left them silently missing from every export. Opt-out kept via the two-arg constructor for cases where modules are intentionally excluded. (#75 RC #4 / PR #83) |
