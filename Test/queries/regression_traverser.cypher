@@ -13,15 +13,15 @@
 //   cypher-shell -u neo4j -p Password123 -f Test/queries/regression_traverser.cypher
 
 // --- Operational domain ------------------------------------------------------
-MATCH (n:UAFElement {stereotype: 'OperationalPerformer'}) RETURN 'OperationalPerformer' AS stereotype, count(n) AS instances;
-MATCH (n:UAFElement {stereotype: 'OperationalActivity'})  RETURN 'OperationalActivity'  AS stereotype, count(n) AS instances;
-MATCH (n:UAFElement {stereotype: 'OperationalProcess'})   RETURN 'OperationalProcess'   AS stereotype, count(n) AS instances;
-MATCH (n:UAFElement {stereotype: 'OperationalFunction'})  RETURN 'OperationalFunction'  AS stereotype, count(n) AS instances;
+MATCH (n {stereotype: 'OperationalPerformer'}) RETURN 'OperationalPerformer' AS stereotype, count(n) AS instances;
+MATCH (n {stereotype: 'OperationalActivity'})  RETURN 'OperationalActivity'  AS stereotype, count(n) AS instances;
+MATCH (n {stereotype: 'OperationalProcess'})   RETURN 'OperationalProcess'   AS stereotype, count(n) AS instances;
+MATCH (n {stereotype: 'OperationalFunction'})  RETURN 'OperationalFunction'  AS stereotype, count(n) AS instances;
 
 // --- Resource domain ---------------------------------------------------------
-MATCH (n:UAFElement {stereotype: 'ResourcePerformer'})    RETURN 'ResourcePerformer'    AS stereotype, count(n) AS instances;
-MATCH (n:UAFElement {stereotype: 'ResourceFunction'})     RETURN 'ResourceFunction'     AS stereotype, count(n) AS instances;
-MATCH (n:UAFElement {stereotype: 'ResourceArtifact'})     RETURN 'ResourceArtifact'     AS stereotype, count(n) AS instances;
+MATCH (n {stereotype: 'ResourcePerformer'})    RETURN 'ResourcePerformer'    AS stereotype, count(n) AS instances;
+MATCH (n {stereotype: 'ResourceFunction'})     RETURN 'ResourceFunction'     AS stereotype, count(n) AS instances;
+MATCH (n {stereotype: 'ResourceArtifact'})     RETURN 'ResourceArtifact'     AS stereotype, count(n) AS instances;
 
 // --- Relationship-stereotype additions (#75 RC #3) ---------------------------
 // Edges typed via the stereotype map; raw count is enough to confirm wiring.
@@ -32,11 +32,12 @@ MATCH ()-[r:CONNECTED_TO]->()     RETURN 'CONNECTED_TO edges'     AS stereotype,
 // Pre-fix: OPERATIONAL and RESOURCE counts were significantly lower than the
 // containment tree showed because of the first-match-wins / classifier-recursion
 // gaps. Post-fix these should align with the model's actual containment tree.
-MATCH (n:UAFElement) RETURN n.domain AS domain, count(n) AS instances ORDER BY domain;
+MATCH (n)-[:INSTANCE_OF]->(:Stereotype) RETURN n.domain AS domain, count(n) AS instances ORDER BY domain;
 
 // --- Unmatched-stereotype diagnostic (#75 acceptance) ------------------------
 // The summary dialog surfaces this same data, but a Cypher-level check helps
 // when verifying CI / scripted exports. If any non-empty unmatched_stereotype
 // node appears, the registry is missing entries.
-MATCH (n:UAFElement) WHERE n.stereotype IS NULL OR n.stereotype = ''
+MATCH (n)-[:INSTANCE_OF]->(:Stereotype)
+WHERE n.stereotype IS NULL OR n.stereotype = ''
 RETURN 'Elements with empty stereotype' AS issue, count(n) AS instances;

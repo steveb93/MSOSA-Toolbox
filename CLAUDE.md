@@ -78,17 +78,16 @@ UAFElementDTO list + UAFRelationshipDTO list
 
 ### Neo4j Graph Model
 
-Every exported element gets **dual labels**: `:UAFElement` + its stereotype label (e.g. `:Capability`). This lets queries target all UAF elements generically or a specific type efficiently.
+Every exported element carries **one label** — its stereotype (e.g. `:Capability`) — plus a `stereotype` property with the same name. There is no generic `:UAFElement` marker label; the documented universal filter for all exported elements is `WHERE n.stereotype IS NOT NULL` (see `cypher/query-cookbook.cypher`).
 
 ```
-(:UAFElement:Capability {id, name, domain:'STRATEGIC', layer:'CONCEPTUAL', ...})
+(:Capability {id, name, stereotype:'Capability', domain:'STRATEGIC', ...})
     -[:INSTANCE_OF]->
-(:Stereotype {name:'Capability', domain:'STRATEGIC', layer:'CONCEPTUAL'})
+(:Stereotype {name:'Capability', domain:'STRATEGIC'})
     -[:BELONGS_TO]->  (:Domain {name:'STRATEGIC'})
-    -[:IN_LAYER]->    (:ArchitectureLayer {name:'CONCEPTUAL'})
 ```
 
-The `:Stereotype`, `:Domain`, and `:ArchitectureLayer` nodes are the **pre-existing metamodel** — created by `init_uaf_graph.cypher`. The plugin merges instance nodes on top and wires them with `:INSTANCE_OF`.
+The `:Stereotype` and `:Domain` nodes are the **pre-existing metamodel** — created by `init_uaf_graph.cypher`. The plugin merges instance nodes on top and wires them with `:INSTANCE_OF`.
 
 ### Key Architectural Decisions
 

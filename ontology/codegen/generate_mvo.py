@@ -5,11 +5,6 @@ cypher/init_uaf_graph.cypher (which mirror UAFStereotypeRegistry)
 and the REL_* constants in UAFRelationshipDTO.java. Emits ontology/uaf-mvo.ttl
 covering all three modelling languages (no domain filter).
 
-The companion ontology/n10s-mappings.cypher file was dropped along with the
-n10s integration (see ontology/NEXT-STEPS.md decision log 2026-05-19). If n10s
-is ever reintroduced as a third RDF surface, regenerate from the same
-:Stereotype data via a separate codegen path.
-
 Per-language conventions:
 - UAF stereotypes  -> uaf:    namespace, subClassOf the abstract UAF domain superclass
 - SysML stereotypes -> sysml: namespace, subClassOf sysml:SysMLElement
