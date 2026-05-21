@@ -82,7 +82,7 @@ com.uaf.neo4j.plugin
     ExportAction / ConfigureAction / AboutAction
 
 com.uaf.neo4j.plugin.model
-    UAFStereotypeRegistry             single source of truth: stereotype → {label, domain, layer}
+    UAFStereotypeRegistry             single source of truth: stereotype → {label, domain, language}
     UAFModelTraverser                 walks MSOSA project tree, extracts DTOs
     UAFElementDTO                     immutable node DTO (builder pattern)
     UAFRelationshipDTO                immutable edge DTO (28 type constants)
@@ -109,7 +109,7 @@ com.uaf.neo4j.plugin.ui
 
 ## Neo4j Node Model
 
-Every exported UAF element gets **dual labels**: `:UAFElement` + its stereotype label (e.g. `:Capability`), so queries can target all UAF elements generically or a specific type efficiently.
+Every exported UAF element carries **one label** — its stereotype (e.g. `:Capability`) — plus a `stereotype` property holding the same name. There is no generic `:UAFElement` marker label; the documented universal filter for "any exported element" is `WHERE n.stereotype IS NOT NULL` (see `cypher/query-cookbook.cypher`).
 
 ### Core properties
 
@@ -120,7 +120,7 @@ Every exported UAF element gets **dual labels**: `:UAFElement` + its stereotype 
 | `qualifiedName` | Fully qualified model path |
 | `stereotype` | Applied UAF stereotype name |
 | `domain` | UAF domain (`STRATEGIC` / `OPERATIONAL` / `RESOURCE` / `SERVICE` / `PERSONNEL` / `ACQUISITION` / `SECURITY`) |
-| `layer` | Architecture layer (`CONCEPTUAL` / `LOGICAL` / `PHYSICAL`) |
+| `language` | Source modelling language (`UAF` / `SysML` / `BPMN`) |
 | `packageName` | Package hierarchy |
 | `diagramId` / `diagramName` | Diagrams that include this element |
 | `documentation` | Model comments / notes |
@@ -133,8 +133,7 @@ All UAF tagged values are flattened as `tv_<tagName>` properties (special charac
 ### Metamodel link
 
 ```cypher
-(:UAFElement)-[:INSTANCE_OF]->(:Stereotype)-[:BELONGS_TO]->(:Domain)
-                                           -[:IN_LAYER]->(:ArchitectureLayer)
+(:Capability)-[:INSTANCE_OF]->(:Stereotype)-[:BELONGS_TO]->(:Domain)
 ```
 
 ---
