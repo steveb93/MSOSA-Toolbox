@@ -12,7 +12,7 @@ services:
       - "7687:7687" # Bolt protocol
       - "7473:7473" # Bloom HTTP
     environment:
-      - NEO4J_AUTH=neo4j/Password123
+      - NEO4J_AUTH=neo4j/${NEO4J_PASSWORD:?NEO4J_PASSWORD must be set in .env}
       - NEO4J_PLUGINS=["apoc","apoc-extended", "bloom", "graph-data-science", "genai"]
       - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
       # neosemantics (n10s) — drop neosemantics-<version>.jar into F:/neo4j-docker/plugins manually;
@@ -23,7 +23,10 @@ services:
       - NEO4J_dbms_security_procedures_unrestricted=n10s.*,apoc.*,gds.*
       - NEO4J_dbms_security_procedures_allowlist=n10s.*,apoc.*,gds.*
     volumes:
-      - F:/neo4j-docker/data:/data
-      - F:/neo4j-docker/logs:/logs
-      - F:/neo4j-docker/import:/import
-      - F:/neo4j-docker/plugins:/plugins
+      # Neo4j data lives outside the repo (large + machine-specific). Set
+      # NEO4J_DATA_DIR in .env to an absolute host path; the four subdirs are
+      # created on first run.
+      - ${NEO4J_DATA_DIR:?NEO4J_DATA_DIR must be set in .env}/data:/data
+      - ${NEO4J_DATA_DIR}/logs:/logs
+      - ${NEO4J_DATA_DIR}/import:/import
+      - ${NEO4J_DATA_DIR}/plugins:/plugins

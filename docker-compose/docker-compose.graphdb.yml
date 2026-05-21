@@ -49,7 +49,10 @@ services:
       - GDB_JAVA_OPTS=-Dgraphdb.license.file=/opt/graphdb/license/graphdb.license
     volumes:
       - graphdb-data:/opt/graphdb/home
-      - F:/OneDrive/_VSCode/MSOSA-Toolbox/secrets/graphdb.license:/opt/graphdb/license/graphdb.license:ro
+      # Relative path resolves against the compose project directory (docker-compose/).
+      # The secrets/ dir is gitignored — drop your Free-tier licence file at
+      # secrets/graphdb.license at the repo root.
+      - ../secrets/graphdb.license:/opt/graphdb/license/graphdb.license:ro
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:7200/rest/repositories || exit 1"]
       interval: 5s
@@ -65,7 +68,7 @@ services:
       graphdb:
         condition: service_healthy
     volumes:
-      - F:/OneDrive/_VSCode/MSOSA-Toolbox/ontology:/staging:ro
+      - ../ontology:/staging:ro
     # $$ escapes compose's variable interpolation so the shell sees a literal $.
     entrypoint:
       - sh
