@@ -14,8 +14,11 @@ __pycache__/
 # Logs
 *.log
 
-# Generated A-Box (large, refreshed after every MSOSA export — re-run dump_to_rdf.py)
-ontology/dump/
+# Generated A-Box (large, refreshed after every MSOSA export — re-run dump_to_rdf.py).
+# Track only the placeholder uaf-instance.ttl so a fresh clone can boot Fuseki
+# without needing a Neo4j export first; ignore every other artefact in here.
+ontology/dump/*
+!ontology/dump/uaf-instance.ttl
 
 # Maven build output
 msosa-model-exporter/target/
