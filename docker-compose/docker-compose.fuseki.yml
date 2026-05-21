@@ -22,11 +22,13 @@ services:
     ports:
       - "3030:3030"
     environment:
-      - ADMIN_PASSWORD=Password123
+      - ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:?FUSEKI_ADMIN_PASSWORD must be set in .env}
       - JVM_ARGS=-Xmx1g
     volumes:
-      - F:/OneDrive/_VSCode/MSOSA-Toolbox/ontology:/staging:ro
+      # Relative paths resolve against the compose project directory (docker-compose/).
+      # Invoke from docker-compose/ or pass --project-directory docker-compose.
+      - ../ontology:/staging:ro
       # Fuseki needs to write back into /fuseki/configuration on startup, so this
       # mount is read-write. Edit ontology/fuseki/configuration/uaf.ttl on the host
       # and restart the container to apply changes.
-      - F:/OneDrive/_VSCode/MSOSA-Toolbox/ontology/fuseki/configuration:/fuseki/configuration
+      - ../ontology/fuseki/configuration:/fuseki/configuration

@@ -29,7 +29,7 @@ References:
 | [msosa-model-exporter](msosa-model-exporter/) | MSOSA plugin — exports UAF 1.2 / SysML 1.6 / BPMN 2.0 elements and relationships to a Neo4j knowledge graph over Bolt | [![Build](https://github.com/steveb93/UAF-Repo/actions/workflows/msosa-model-exporter-build.yml/badge.svg)](https://github.com/steveb93/UAF-Repo/actions/workflows/msosa-model-exporter-build.yml) |
 | [neo4j_mcp_driver](neo4j_mcp_driver/) | Python MCP server — exposes `run_cypher` and `run_sparql` tools to Claude Desktop | — |
 | [ontology](ontology/) | Generated OWL T-Box, Fuseki configuration, dump script, anchor SPARQL queries | — |
-| [docker-compose](docker-compose/) | Neo4j stack + optional overlays — `docker-compose.fuseki.yml` (SPARQL endpoint) and `docker-compose.graphdb.yml` (visual graph browser, requires a free Ontotext licence) | — |
+| [docker-compose](docker-compose/) | Neo4j stack + optional overlays — `docker-compose.fuseki.yml` (SPARQL endpoint) and `docker-compose.graphdb.yml` (visual graph browser, requires a free Ontotext licence). Copy `docker-compose/.env.example` to `docker-compose/.env` and set passwords + `NEO4J_DATA_DIR` before first run. | — |
 
 > New plugins can be added as subdirectories following the conventions in [Contributing](#contributing).
 
@@ -56,7 +56,9 @@ The Stage 4 dual-emitter rollout (`v1.3.0-Preview` onwards) gives the plugin two
 **Fallback / recovery path** (rebuild Fuseki from Neo4j when the plugin RDF emitter is off or has misbehaved):
 
 ```powershell
-# Re-dump Neo4j → ontology/dump/uaf-instance.ttl and reload Fuseki
+# Re-dump Neo4j → ontology/dump/uaf-instance.ttl and reload Fuseki.
+# Compose reads docker-compose/.env automatically because the first -f file
+# is in docker-compose/ — see docker-compose/.env.example for required vars.
 python ontology/codegen/dump_to_rdf.py
 docker compose -f docker-compose/docker-compose.yml `
                -f docker-compose/docker-compose.fuseki.yml restart fuseki
