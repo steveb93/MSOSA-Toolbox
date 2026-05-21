@@ -13,7 +13,7 @@
     <description>MSOSA 2022x Hotfix 2 plugin that exports UAF 1.2 / SysML 1.6 / BPMN 2.0 models to Neo4j (LPG via Cypher). RDF emitter planned per ontology/NEXT-STEPS.md Stage 4.</description>
  
     <properties>
-        <revision>1.4.2</revision>
+        <revision>1.5.0-Preview</revision>
         <java.version>11</java.version>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
