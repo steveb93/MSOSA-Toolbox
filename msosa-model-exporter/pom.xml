@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+ 
+    <groupId>com.uaf.neo4j</groupId>
+    <artifactId>msosa-model-exporter</artifactId>
+    <version>${revision}</version>
+    <packaging>jar</packaging>
+    <name>MSOSA Model Exporter</name>
+    <description>MSOSA 2022x Hotfix 2 plugin that exports UAF 1.2 / SysML 1.6 / BPMN 2.0 models to Neo4j (LPG via Cypher). RDF emitter planned per ontology/NEXT-STEPS.md Stage 4.</description>
+ 
+    <properties>
+        <revision>1.4.2</revision>
+        <java.version>11</java.version>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <neo4j.driver.version>4.4.15</neo4j.driver.version>
+        <!-- Apache Jena 4.10.0 — last Jena release on Java 11. Jena 5.x requires Java 17, which
+             MSOSA 2022x HF2 does not ship. Pulls jena-core transitively. -->
+        <jena.version>4.10.0</jena.version>
+        <!-- MSOSA SDK jars live in /msosa-sdk/ at the repo root (shared across plugins) -->
+        <msosa.sdk.dir>${project.basedir}/../msosa-sdk</msosa.sdk.dir>
+        <msosa.sdk.version>2022x-hf2</msosa.sdk.version>
+    </properties>
+
+    <dependencies>
+        <!-- Neo4j Java Driver (bundled into fat jar) -->
+        <dependency>
+            <groupId>org.neo4j.driver</groupId>
+            <artifactId>neo4j-java-driver</artifactId>
+            <version>${neo4j.driver.version}</version>
+        </dependency>
+
+        <!-- JUnit 5 -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.10.2</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- JGraphX — graph visualisation (bundled + shaded) -->
+        <dependency>
+            <groupId>com.github.vlsi.mxgraph</groupId>
+            <artifactId>jgraphx</artifactId>
+            <version>4.2.2</version>
+        </dependency>
+
+        <!-- Apache Jena ARQ — RDF model + Turtle writer + (unused here) SPARQL. Bundled + shaded
+             into com.uaf.shaded.jena.* so the runtime classpath cannot collide with anything
+             MagicDraw might bundle. Pulls jena-core, jena-iri, etc. transitively. -->
+        <dependency>
+            <groupId>org.apache.jena</groupId>
+            <artifactId>jena-arq</artifactId>
+            <version>${jena.version}</version>
+        </dependency>
+
+        <!--
+            MSOSA SDK jars — PROVIDED (on MSOSA classpath at runtime; not bundled).
+            Jars are checked into /msosa-sdk/ at the repo root. Install once with:
+
+            .\install-msosa-jars.ps1
+        -->
+        <dependency>
+            <groupId>com.nomagic.magicdraw</groupId>
+            <artifactId>md</artifactId>
+            <version>${msosa.sdk.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.nomagic.ci</groupId>
+            <artifactId>persistence</artifactId>
+            <version>${msosa.sdk.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.nomagic.magicdraw</groupId>
+            <artifactId>md-api</artifactId>
+            <version>${msosa.sdk.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.nomagic.magicdraw</groupId>
+            <artifactId>uml2</artifactId>
+            <version>${msosa.sdk.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.nomagic.magicdraw</groupId>
+            <artifactId>magicdraw-foundation</artifactId>
+            <version>${msosa.sdk.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.nomagic.magicdraw</groupId>
+            <artifactId>magicdraw-core-diagram</artifactId>
+            <version>${msosa.sdk.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.dassault_systemes</groupId>
+            <artifactId>modeler-foundation</artifactId>
+            <version>${msosa.sdk.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.nomagic</groupId>
+            <artifactId>cmof</artifactId>
+            <version>1.4</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.nomagic.magicdraw</groupId>
+            <artifactId>magicdraw-modeling</artifactId>
+            <version>${msosa.sdk.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>javax.jmi</groupId>
+            <artifactId>jmi</artifactId>
+            <version>1.0</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.emf</groupId>
+            <artifactId>ecore</artifactId>
+            <version>2.33.0</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.nomagic</groupId>
+            <artifactId>nomagic-utils</artifactId>
+            <version>${msosa.sdk.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.emf</groupId>
+            <artifactId>emf-common</artifactId>
+            <version>2.28.0</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.nomagic.magicdraw</groupId>
+            <artifactId>magicdraw-common</artifactId>
+            <version>${msosa.sdk.version}</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Compiler -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+            </plugin>
+
+            <!-- Surefire 3.x: supports JUnit Platform (JUnit 5) natively -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+            </plugin>
+
+            <!-- Fat jar: bundles Neo4j driver into single deployable jar -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.3</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals><goal>shade</goal></goals>
+                        <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                            <relocations>
+                                <!-- Relocate Neo4j driver and all transitive deps to avoid
+                                     classpath conflicts with MagicDraw's bundled libraries -->
+                                <relocation>
+                                    <pattern>org.neo4j.driver</pattern>
+                                    <shadedPattern>com.uaf.shaded.neo4j.driver</shadedPattern>
+                                </relocation>
+                                <!-- Relocate JGraphX to avoid any classpath conflicts -->
+                                <relocation>
+                                    <pattern>com.mxgraph</pattern>
+                                    <shadedPattern>com.uaf.shaded.mxgraph</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>org.reactivestreams</pattern>
+                                    <shadedPattern>com.uaf.shaded.reactivestreams</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>reactor</pattern>
+                                    <shadedPattern>com.uaf.shaded.reactor</shadedPattern>
+                                </relocation>
+                                <!-- Apache Jena and its transitive deps -->
+                                <relocation>
+                                    <pattern>org.apache.jena</pattern>
+                                    <shadedPattern>com.uaf.shaded.jena</shadedPattern>
+                                </relocation>
+                            </relocations>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"/>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Assembly plugin: produces a deployable zip for MSOSA plugins directory -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.7.1</version>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals><goal>single</goal></goals>
+                        <configuration>
+                            <descriptors>
+                                <descriptor>src/assembly/plugin-zip.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

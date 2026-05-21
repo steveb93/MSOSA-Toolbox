@@ -2,24 +2,73 @@
 
 ![MSOSA](https://img.shields.io/badge/MSOSA-2022x%20HF2-0076A8)
 ![UAF](https://img.shields.io/badge/UAF-1.2-orange)
+![SysML](https://img.shields.io/badge/SysML-1.6-blueviolet)
+![BPMN](https://img.shields.io/badge/BPMN-2.0-yellow)
 ![Java](https://img.shields.io/badge/Java-11-yellowgreen?logo=openjdk&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
-![Neo4j](https://img.shields.io/badge/Neo4j-5.x-008CC1?logo=neo4j&logoColor=white)
+![Neo4j](https://img.shields.io/badge/Neo4j-5.26-008CC1?logo=neo4j&logoColor=white)
+![Fuseki](https://img.shields.io/badge/Fuseki-SPARQL%201.1-d22128)
+![Ontology](https://img.shields.io/badge/Ontology-MVO%20v0.2-5b8fb9)
 
 > [!IMPORTANT]
 > All plugins in this toolbox target **No Magic MSOSA 2022x Hotfix 2** (MagicDraw). They are not tested against earlier or later MSOSA releases.
 
-A curated collection of open-source plugins and tooling that extend **MSOSA 2022x HF2** for teams working with the [UAF 1.2](https://www.omg.org/spec/UAF/) profile defined by the Object Management Group (OMG).
+A curated collection of open-source plugins and tooling that extend **MSOSA 2022x HF2** for teams working with **UAF 1.2**, **SysML 1.6**, and **BPMN 2.0** in MSOSA. The toolbox builds a **hybrid knowledge graph** — Neo4j is the system of record (labelled property graph + Cypher), and Apache Jena Fuseki adds a SPARQL 1.1 endpoint with RDFS reasoning over a UAF Minimum Viable Ontology. The two stores are kept in step by a Python dump script that runs after each MSOSA export.
+
+References:
+- [UAF 1.2 specification](https://www.omg.org/spec/UAF/) — OMG
+- [`Ontology-Approach-to-Knowledge.md`](Ontology-Approach-to-Knowledge.md) — strategic rationale for the LPG-plus-RDF approach (Gartner-anchored, ISO/IEC/IEEE 15288 aligned)
+- [`ontology/NEXT-STEPS.md`](ontology/NEXT-STEPS.md) — Stage 3+ migration roadmap
 
 ---
 
-## Plugins
+## Components
 
-| Plugin | Description | Status |
-|--------|-------------|--------|
-| [uaf-neo4j-plugin](uaf-neo4j-plugin/) | Exports UAF 1.2 model elements and relationships to a Neo4j knowledge graph over Bolt | [![Build](https://github.com/steveb93/UAF-Repo/actions/workflows/uaf-neo4j-build.yml/badge.svg)](https://github.com/steveb93/UAF-Repo/actions/workflows/packaging.yml) |
+| Component | Description | Status |
+|---|---|---|
+| [msosa-model-exporter](msosa-model-exporter/) | MSOSA plugin — exports UAF 1.2 / SysML 1.6 / BPMN 2.0 elements and relationships to a Neo4j knowledge graph over Bolt | [![Build](https://github.com/steveb93/UAF-Repo/actions/workflows/msosa-model-exporter-build.yml/badge.svg)](https://github.com/steveb93/UAF-Repo/actions/workflows/msosa-model-exporter-build.yml) |
+| [neo4j_mcp_driver](neo4j_mcp_driver/) | Python MCP server — exposes `run_cypher` and `run_sparql` tools to Claude Desktop | — |
+| [ontology](ontology/) | Generated OWL T-Box, Fuseki configuration, dump script, anchor SPARQL queries | — |
+| [docker-compose](docker-compose/) | Neo4j stack + optional overlays — `docker-compose.fuseki.yml` (SPARQL endpoint) and `docker-compose.graphdb.yml` (visual graph browser, requires a free Ontotext licence). Copy `docker-compose/.env.example` to `docker-compose/.env` and set passwords + `NEO4J_DATA_DIR` before first run. | — |
 
 > New plugins can be added as subdirectories following the conventions in [Contributing](#contributing).
+
+## Stage 2 ontology overlay (SPARQL) — and Stage 4 in-plugin RDF emitter
+
+Stage 2 of the migration described in `Ontology-Approach-to-Knowledge.md` is live: Apache Jena Fuseki provides a real SPARQL 1.1 endpoint with RDFS reasoning over a UAF Minimum Viable Ontology (MVO) covering **all 8 UAF domains plus SysML and BPMN** — 103 OWL classes, 31 ObjectProperties, code-generated from the seeded `:Stereotype` metamodel in Neo4j.
+
+**Endpoints**:
+- Bolt (system of record): `bolt://localhost:7687`
+- SPARQL (overlay): `http://localhost:3030/uaf/sparql`
+- Fuseki web UI: `http://localhost:3030/`
+
+**Refresh cadence after each MSOSA export**:
+
+The Stage 4 dual-emitter rollout (`v1.3.0-Preview` onwards) gives the plugin two write targets: the existing **Neo4j (LPG)** target and a new **RDF** target that writes Turtle to disk and optionally PUTs it to Fuseki via SPARQL 1.1 Graph Store Protocol — refreshing the SPARQL view in a single click with no docker restart.
+
+**Preferred path** (`v1.3.0-Preview` onwards):
+
+1. **Tools → MSOSA Model Exporter** in MagicDraw.
+2. Tick both **Neo4j (LPG via Cypher)** and **RDF Turtle file (and optionally PUT to Fuseki)** under *Export Targets*.
+3. Tick the **Also PUT to Fuseki /data endpoint** sub-option to push directly.
+4. Click **Export**. Both stores refresh in one operation.
+
+**Fallback / recovery path** (rebuild Fuseki from Neo4j when the plugin RDF emitter is off or has misbehaved):
+
+```powershell
+# Re-dump Neo4j → ontology/dump/uaf-instance.ttl and reload Fuseki.
+# Compose reads docker-compose/.env automatically because the first -f file
+# is in docker-compose/ — see docker-compose/.env.example for required vars.
+python ontology/codegen/dump_to_rdf.py
+docker compose -f docker-compose/docker-compose.yml `
+               -f docker-compose/docker-compose.fuseki.yml restart fuseki
+```
+
+The post-export summary dialog has a **Copy SPARQL Refresh Cmd** button that copies the fallback two-line sequence to the clipboard. The Java plugin's **Tools → MSOSA Model Exporter → Open SPARQL Endpoint** menu item opens the Fuseki UI directly.
+
+See [`ontology/NEXT-STEPS.md`](ontology/NEXT-STEPS.md) for Stage 3 (native triplestore, OWL 2 RL reasoning, SHACL validation) and Stage 5 (composite AI / decision intelligence) gating criteria.
+
+**Optional — visual graph browser**: Fuseki only exposes SPARQL; for clickable graph exploration there's a parallel **GraphDB Free** overlay (`docker-compose/docker-compose.graphdb.yml`) that loads the same T-Box and A-Box into a separate store with its own Workbench UI at <http://localhost:7200>. GraphDB 11.x needs a (free) Ontotext licence file mounted from `secrets/graphdb.license` — `msosa-model-exporter/README.md` Step 6 has the registration + base64-decode walkthrough. A pre-built **UAF Overview** graph config that opens directly on the 8 UAF domain anchors is in [`ontology/graphdb/graph-configs/uaf-overview.md`](ontology/graphdb/graph-configs/uaf-overview.md).
 
 ---
 
@@ -27,13 +76,31 @@ A curated collection of open-source plugins and tooling that extend **MSOSA 2022
 
 ```
 MSOSA-Toolbox/
-├── uaf-neo4j-plugin/       # MSOSA plugin — exports UAF model to Neo4j
+├── msosa-model-exporter/            # MSOSA plugin — exports UAF/SysML/BPMN model to Neo4j (LPG)
 │   ├── src/
-│   ├── cypher/             # Graph initialisation scripts
 │   └── pom.xml
-├── neo4j_mcp_driver/       # Python MCP server — exposes Neo4j to Claude Desktop
-├── docker-compose/         # Neo4j container setup
-└── Test/                   # Connection and smoke tests
+├── cypher/                          # Graph schema + metamodel seed (init_uaf_graph.cypher) + query cookbook
+├── msosa-sdk/                       # MSOSA 2022x SDK jars (shared build classpath for any plugin)
+├── neo4j_mcp_driver/                # Python MCP server — run_cypher + run_sparql tools
+├── docker-compose/
+│   ├── docker-compose.yml           # Neo4j 5.26 + n10s + APOC + GDS
+│   ├── docker-compose.fuseki.yml    # Fuseki SPARQL overlay (Stage 2)
+│   └── docker-compose.graphdb.yml   # GraphDB Free overlay — Visual Graph browser (optional)
+├── ontology/
+│   ├── uaf-mvo.ttl                  # AUTO-GENERATED T-Box (UAF + SysML + BPMN)
+│   ├── codegen/
+│   │   ├── generate_mvo.py          # T-Box codegen from the seeded :Stereotype metamodel
+│   │   └── dump_to_rdf.py           # Neo4j → Turtle A-Box dump (rdflib)
+│   ├── fuseki/configuration/uaf.ttl # Fuseki assembler config (in-mem dataset + RDFS reasoner)
+│   ├── graphdb/
+│   │   ├── repository-config.ttl    # GraphDB repository definition (RDFS-Plus ruleset)
+│   │   └── graph-configs/           # Saved Visual Graph configs (uaf-overview.md = 8 anchors hub)
+│   ├── queries/                     # Anchor SPARQL queries grounding semantic-search use case
+│   ├── dump/                        # (gitignored) latest A-Box dump
+│   └── NEXT-STEPS.md                # Stage 3+ roadmap (decision log records n10s/Ontop rejection)
+├── Test/                            # Python tests (connection, MCP tools, SPARQL endpoint)
+├── Ontology-Approach-to-Knowledge.md # Strategy doc — Gartner-anchored, ISO 15288 aligned
+└── CLAUDE.md                        # End-to-end stand-up + architectural decisions
 ```
 
 ---
@@ -42,12 +109,14 @@ MSOSA-Toolbox/
 
 | Requirement | Version | Notes |
 |-------------|---------|-------|
-| MSOSA (MagicDraw) | **2022x HF2** | UAF 1.2 profile must be installed |
+| MSOSA (MagicDraw) | **2022x HF2** | UAF 1.2 + SysML 1.6 + BPMN 2.0 profiles |
 | Java JDK | 11 | Required to build the Maven plugin |
 | Apache Maven | 3.8+ | |
-| Python | 3.12 | For the MCP server |
-| Docker Desktop | Latest | Runs the Neo4j container |
-| Neo4j | 5.x | Provided via Docker Compose |
+| Python | 3.12 | MCP server, codegen, dump script |
+| Python deps | `mcp`, `neo4j`, `httpx`, `rdflib` | Install via `pip install -e .[dev]` |
+| Docker Desktop | Latest | Neo4j + Fuseki containers |
+| Neo4j | **5.26** (pinned) | n10s pins us to 5.x for now; see decision log in `ontology/NEXT-STEPS.md` for n10s/Ontop rejection rationale |
+| Apache Jena Fuseki | latest stable (`stain/jena-fuseki:latest`) | SPARQL 1.1 + RDFS reasoner |
 
 ---
 
@@ -69,70 +138,82 @@ MSOSA-Toolbox/
 
 ### Releasing a new version
 
-The CI pipeline handles building and publishing. Contributors own the version number and the git tag — CI does the rest.
+The CI pipeline handles building and publishing. Contributors own the version number and the git tag — CI does the rest. Two channels:
 
-#### Step 1 — Bump the version
+- **Full releases** ship from `main` with tags like `v1.3.2`.
+- **Preview releases** ship from `preview` with tags like `v1.3.2-Preview`. Use these for incremental work that hasn't been promoted to `main` yet.
 
-Use the Maven Versions Plugin to update the `revision` property in `pom.xml`:
+#### Step 1 — Bump the version on the target branch
 
-```powershell
-cd uaf-neo4j-plugin
-mvn versions:set-property -Dproperty=revision -DnewVersion=0.4.1
-```
-
-Commit and push to `main`:
+`<branch>` is `main` for a full release or `preview` for a preview. Make sure you're on the right one:
 
 ```powershell
-git add uaf-neo4j-plugin/pom.xml
-git commit -m "chore: bump version to 0.4.1"
-git push origin main
+git checkout <branch>
+git pull origin <branch>
+
+cd msosa-model-exporter
+mvn versions:set-property "-Dproperty=revision" "-DnewVersion=1.3.2-Preview"   # or 1.3.2 for main; quote each -D… on PowerShell
+cd ..
 ```
 
-CI will automatically update any hardcoded version strings in the docs to match.
+Commit and push:
+
+```powershell
+git add msosa-model-exporter/pom.xml
+git commit -m "chore: bump version to 1.3.2-Preview"
+git push origin <branch>
+```
+
+The push triggers the build workflow. As part of that run, the `sync-version-refs` job rewrites hardcoded `msosa-model-exporter-X.Y.Z` strings in `*.md` files to match the new revision, then pushes that as a follow-up commit (commit author: `github-actions[bot]`). The bot's commit does **not** re-trigger the workflow — the build and sync jobs filter on `github.event.head_commit.author.name` to break the loop.
 
 #### Step 2 — Tag the release
 
-Tags drive the release pipeline. The tag name **must** match the `revision` in `pom.xml` (with a `v` prefix).
+Tags drive the release pipeline. The tag name **must** match the `revision` in `pom.xml` (with a `v` prefix). Pull first so your local branch includes the bot's sync commit, then tag the tip:
 
 ```powershell
-# Full release from main
-git tag v0.4.1
-git push origin v0.4.1
+git pull origin <branch>
 
-# Preview release from preview branch
-git tag v0.4.1-Preview
-git push origin v0.4.1-Preview
+# Full release from main
+git tag v1.3.2
+git push origin v1.3.2
+
+# Preview release from preview
+git tag v1.3.2-Preview
+git push origin v1.3.2-Preview
 ```
+
+The tag may legitimately land on the bot's `chore: sync version references…` commit — that's fine. The release workflow fires regardless of whether the tagged commit was bot- or human-authored (the author filter only applies to branch pushes, not tag pushes).
 
 Pushing the tag triggers:
 
-1. Build and test
-2. Branch verification (release tags must come from `main`; `-Preview` tags from `preview`)
-3. Version string sync committed back to the base branch
-4. A **draft** GitHub Release created with the plugin zip attached and auto-generated release notes
+1. Build and test (against the tagged commit's source tree).
+2. Branch verification — `v*-Preview` tags must originate from `preview`; non-`-Preview` tags from `main`.
+3. A **draft** GitHub Release with the plugin zip attached and auto-generated release notes.
 
-#### Step 3 — Publish the draft release
+#### Step 3 — Publish the draft
 
 Open the draft at **GitHub → Releases**, review the notes, then click **Publish release**.
 
 > The release type (major / minor / patch) is auto-detected from the version number:
-> `v1.0.0` → major, `v0.5.0` → minor, `v0.4.1` → patch.
+> `v2.0.0` → major, `v1.4.0` → minor, `v1.3.2` → patch.
 
 ---
 
-#### Alternative: trigger via workflow_dispatch
+#### Alternative: trigger via `workflow_dispatch`
 
-Use this when you need to create a release without pushing a tag manually (e.g. from a CI environment or to control the draft flag explicitly).
+Use this when you need to cut a release without pushing a tag — e.g. re-running a release that failed mid-stream, or producing a non-draft release directly.
 
-Go to **Actions → Build & Release → Run workflow** and fill in:
+Go to **Actions → MSOSA Model Exporter — Build & Release → Run workflow** (the workflow file is `.github/workflows/msosa-model-exporter-build.yml`; GitHub's sidebar may cache the previous workflow display name `Build & Release` — same workflow either way) and fill in:
 
 | Input | Example | Notes |
 |---|---|---|
-| `version` | `v0.4.1` | Must match `revision` in `pom.xml` exactly |
-| `release_type` | `minor` | Informational — appears in the release title |
+| `version` | `v1.3.2-Preview` | Must match `revision` in `pom.xml` exactly |
+| `release_type` | `patch` | Informational — appears in the release title |
 | `draft` | `true` | Uncheck to publish immediately |
 
-The workflow verifies the version matches `pom.xml` before building and will fail fast if they differ.
+The workflow verifies the version matches `pom.xml` before building and fails fast if they differ.
+
+`workflow_dispatch` is only available when the workflow file exists on the **default branch** (`main`). If you've renamed the workflow on `preview` but not promoted to `main`, the dispatch UI won't surface the new file — use a tag push instead, or promote `preview → main` first.
 
 ---
 

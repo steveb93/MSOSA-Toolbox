@@ -1,6 +1,10 @@
 services:
   neo4j:
-    image: neo4j:latest
+    # Pinned to the 5.26 LTS line. The SPARQL surface is provided by the Fuseki
+    # overlay (docker-compose.fuseki.yml), not by an in-Neo4j extension —
+    # neosemantics was evaluated and rejected on 2026-05-19 (no SPARQL endpoint;
+    # see ontology/NEXT-STEPS.md decision log).
+    image: neo4j:5.26
     container_name: neo4j-docker
     restart: unless-stopped
     ports:
@@ -8,11 +12,14 @@ services:
       - "7687:7687" # Bolt protocol
       - "7473:7473" # Bloom HTTP
     environment:
-      - NEO4J_AUTH=neo4j/Password123
+      - NEO4J_AUTH=neo4j/${NEO4J_PASSWORD:?NEO4J_PASSWORD must be set in .env}
       - NEO4J_PLUGINS=["apoc","apoc-extended", "bloom", "graph-data-science", "genai"]
       - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
     volumes:
-      - F:/neo4j-docker/data:/data
-      - F:/neo4j-docker/logs:/logs
-      - F:/neo4j-docker/import:/import
-      - F:/neo4j-docker/plugins:/plugins
+      # Neo4j data lives outside the repo (large + machine-specific). Set
+      # NEO4J_DATA_DIR in .env to an absolute host path; the four subdirs are
+      # created on first run.
+      - ${NEO4J_DATA_DIR:?NEO4J_DATA_DIR must be set in .env}/data:/data
+      - ${NEO4J_DATA_DIR}/logs:/logs
+      - ${NEO4J_DATA_DIR}/import:/import
+      - ${NEO4J_DATA_DIR}/plugins:/plugins

@@ -1,0 +1,34 @@
+# Overlay: adds Apache Jena Fuseki sidecar as the SPARQL endpoint for the UAF MVO.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.fuseki.yml up -d
+#
+# Endpoints:
+#   SPARQL query : http://localhost:3030/uaf/sparql
+#   SPARQL update: http://localhost:3030/uaf/update
+#   Web UI       : http://localhost:3030/
+#
+# Refresh data after a Neo4j export:
+#   python ontology/codegen/dump_to_rdf.py
+#   docker exec fuseki-uaf /jena-fuseki/bin/s-post http://localhost:3030/uaf/data \
+#       default /staging/dump/uaf-instance.ttl
+# (Or restart the container; the dataset reloads from /staging on startup.)
+
+services:
+  fuseki:
+    image: stain/jena-fuseki:latest
+    container_name: fuseki-uaf
+    restart: unless-stopped
+    ports:
+      - "3030:3030"
+    environment:
+      - ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:?FUSEKI_ADMIN_PASSWORD must be set in .env}
+      - JVM_ARGS=-Xmx1g
+    volumes:
+      # Relative paths resolve against the compose project directory (docker-compose/).
+      # Invoke from docker-compose/ or pass --project-directory docker-compose.
+      - ../ontology:/staging:ro
+      # Fuseki needs to write back into /fuseki/configuration on startup, so this
+      # mount is read-write. Edit ontology/fuseki/configuration/uaf.ttl on the host
+      # and restart the container to apply changes.
+      - ../ontology/fuseki/configuration:/fuseki/configuration

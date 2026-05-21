@@ -1,0 +1,102 @@
+# Overlay: adds GraphDB Free as a visual browser for the UAF MVO, loading the
+# same T-Box (uaf-mvo.ttl) and A-Box (dump/uaf-instance.ttl) that the Fuseki
+# overlay serves so the SPARQL endpoint and the visual graph stay aligned.
+#
+# Why this exists: Fuseki's web UI is text/SPARQL-only. GraphDB's Workbench
+# ships with an interactive Visual Graph (click a node, expand outward through
+# any predicate) that renders T-Box and A-Box as one connected graph —
+# the easiest way to see Capability instances, their classes, and the
+# rdfs:subClassOf hierarchy together. GraphDB sits alongside Fuseki, not
+# instead of it: Fuseki remains the query overlay wired to the Python MCP
+# server; GraphDB is read-only browsing.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.graphdb.yml up -d
+#
+# Endpoints:
+#   Workbench        : http://localhost:7200/
+#   Visual Graph     : http://localhost:7200/graphs-visualizations  (after load)
+#   SPARQL query     : http://localhost:7200/repositories/uaf
+#
+# Refresh data after a Neo4j export:
+#   python ontology/codegen/dump_to_rdf.py
+#   docker compose -f docker-compose.yml -f docker-compose.graphdb.yml \
+#       restart graphdb-loader
+# (The loader clears the repo and reloads both TTLs on every restart, so this
+# is the single command to refresh.)
+
+services:
+  graphdb:
+    # GraphDB 11.x requires a (free) licence file even for the Free tier — the
+    # licence is obtained by registering at ontotext.com/products/graphdb/download
+    # and is mounted read-only at /opt/graphdb/license/graphdb.license. Without
+    # the file, the first SPARQL write returns HTTP 500 "No license was set".
+    # The licence path is gitignored (secrets/) so it never reaches the remote.
+    # If you don't have a licence, you can downgrade to ontotext/graphdb:10.8.14
+    # which treats Free as licence-free, but stays on a frozen release line.
+    image: ontotext/graphdb:11.3.3
+    container_name: graphdb-uaf
+    restart: unless-stopped
+    ports:
+      - "7200:7200"
+    environment:
+      - GDB_HEAP_SIZE=1G
+      # GraphDB 11.x reads the licence via the JVM system property
+      # graphdb.license.file — the legacy GDB_LICENSE_FILE / GRAPHDB_LICENSE_FILE
+      # env vars are not honoured by the 11.x entrypoint (verified: the licence
+      # is silently ignored and the SailConnection fails with "No license was
+      # set" on the first write). Pass it through GDB_JAVA_OPTS instead.
+      - GDB_JAVA_OPTS=-Dgraphdb.license.file=/opt/graphdb/license/graphdb.license
+    volumes:
+      - graphdb-data:/opt/graphdb/home
+      # Relative path resolves against the compose project directory (docker-compose/).
+      # The secrets/ dir is gitignored — drop your Free-tier licence file at
+      # secrets/graphdb.license at the repo root.
+      - ../secrets/graphdb.license:/opt/graphdb/license/graphdb.license:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:7200/rest/repositories || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  # Sidecar that creates the 'uaf' repo (if absent) and (re)loads both TTLs.
+  # Exits 0 when done; restart it to refresh after a new Neo4j dump.
+  graphdb-loader:
+    image: curlimages/curl:latest
+    container_name: graphdb-uaf-loader
+    depends_on:
+      graphdb:
+        condition: service_healthy
+    volumes:
+      - ../ontology:/staging:ro
+    # $$ escapes compose's variable interpolation so the shell sees a literal $.
+    entrypoint:
+      - sh
+      - -c
+      - |
+        set -eu
+        BASE=http://graphdb:7200
+        if ! curl -sf "$${BASE}/rest/repositories/uaf" > /dev/null; then
+          echo ">> Creating 'uaf' repository..."
+          curl -fsS -X POST "$${BASE}/rest/repositories" \
+               -H "Content-Type: multipart/form-data" \
+               -F "config=@/staging/graphdb/repository-config.ttl"
+        else
+          echo ">> 'uaf' repository already exists — reusing."
+        fi
+        echo ">> Clearing existing triples (idempotent reload)..."
+        curl -fsS -X POST "$${BASE}/repositories/uaf/statements" \
+             -H "Content-Type: application/sparql-update" \
+             --data "CLEAR DEFAULT"
+        echo ">> Loading T-Box (uaf-mvo.ttl)..."
+        curl -fsS -X POST "$${BASE}/repositories/uaf/statements" \
+             -H "Content-Type: text/turtle" \
+             --data-binary "@/staging/uaf-mvo.ttl"
+        echo ">> Loading A-Box (dump/uaf-instance.ttl)..."
+        curl -fsS -X POST "$${BASE}/repositories/uaf/statements" \
+             -H "Content-Type: text/turtle" \
+             --data-binary "@/staging/dump/uaf-instance.ttl"
+        echo ">> Done. Open http://localhost:7200/ and pick the 'uaf' repository."
+
+volumes:
+  graphdb-data:
