@@ -1,50 +1,191 @@
-<svg width="100%" viewBox="0 0 680 580" role="img" xmlns="http://www.w3.org/2000/svg" style="">
-<title style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">MSOSA Toolbox architecture</title>
-<desc style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">Diagram showing data flow from MSOSA modeling tool through the msosa-model-exporter to Neo4j running inside Docker, then via a Python MCP server to Claude Desktop.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1660" height="1240" viewBox="0 0 1660 1240" font-family="'IBM Plex Sans','Segoe UI',system-ui,-apple-system,Helvetica,Arial,sans-serif">
 <defs>
-<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+<style>@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Serif:wght@500;600&amp;display=swap');</style>
+<marker id="ah" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 L2.6 4.5 Z" fill="#9DABB8"/></marker>
+<pattern id="grid" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0 H0 V34" fill="none" stroke="#16202B" stroke-width="1"/></pattern>
+<pattern id="gridM" width="170" height="170" patternUnits="userSpaceOnUse"><path d="M170 0 H0 V170" fill="none" stroke="#1B2734" stroke-width="1.2"/></pattern>
+<radialGradient id="vig" cx="50%" cy="34%" r="80%"><stop offset="0%" stop-color="#16202C"/><stop offset="100%" stop-color="#0E141B"/></radialGradient>
 </defs>
-
-<g style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
-<rect x="60" y="40" width="560" height="120" rx="14" stroke-width="0.5" style="fill:rgb(68, 68, 65);stroke:rgb(180, 178, 169);color:rgb(255, 255, 255);stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-<text x="340" y="64" text-anchor="middle" dominant-baseline="central" style="fill:rgb(211, 209, 199);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:14px;font-weight:500;text-anchor:middle;dominant-baseline:central">MSOSA 2022x HF2</text>
-<text x="340" y="82" text-anchor="middle" dominant-baseline="central" style="fill:rgb(180, 178, 169);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">MagicDraw, UAF 1.2 profile</text>
-</g>
-<g onclick="sendPrompt('Explain what the msosa-model-exporter does and how it builds the Cypher writes')" style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
-<rect x="180" y="98" width="320" height="52" rx="8" stroke-width="0.5" style="fill:rgb(8, 80, 65);stroke:rgb(93, 202, 165);color:rgb(255, 255, 255);stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-<text x="340" y="118" text-anchor="middle" dominant-baseline="central" style="fill:rgb(159, 225, 203);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:14px;font-weight:500;text-anchor:middle;dominant-baseline:central">msosa-model-exporter</text>
-<text x="340" y="136" text-anchor="middle" dominant-baseline="central" style="fill:rgb(93, 202, 165);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">Java plugin, exports model elements</text>
-</g>
-
-<line x1="340" y1="160" x2="340" y2="208" marker-end="url(#arrow)" style="fill:none;stroke:rgb(156, 154, 146);color:rgb(255, 255, 255);stroke-width:1.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-<text x="352" y="187" dominant-baseline="central" style="fill:rgb(194, 192, 182);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:start;dominant-baseline:central">Bolt write</text>
-
-<g style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
-<rect x="60" y="208" width="560" height="120" rx="14" stroke-width="0.5" style="fill:rgb(68, 68, 65);stroke:rgb(180, 178, 169);color:rgb(255, 255, 255);stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-<text x="340" y="232" text-anchor="middle" dominant-baseline="central" style="fill:rgb(211, 209, 199);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:14px;font-weight:500;text-anchor:middle;dominant-baseline:central">Docker (docker-compose)</text>
-<text x="340" y="250" text-anchor="middle" dominant-baseline="central" style="fill:rgb(180, 178, 169);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">Local container runtime</text>
-</g>
-<g onclick="sendPrompt('Explain how Neo4j stores the UAF model as a knowledge graph')" style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
-<rect x="180" y="266" width="320" height="52" rx="8" stroke-width="0.5" style="fill:rgb(8, 80, 65);stroke:rgb(93, 202, 165);color:rgb(255, 255, 255);stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-<text x="340" y="286" text-anchor="middle" dominant-baseline="central" style="fill:rgb(159, 225, 203);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:14px;font-weight:500;text-anchor:middle;dominant-baseline:central">Neo4j 5.x</text>
-<text x="340" y="304" text-anchor="middle" dominant-baseline="central" style="fill:rgb(93, 202, 165);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">Graph database, knowledge graph</text>
-</g>
-
-<line x1="340" y1="328" x2="340" y2="376" marker-end="url(#arrow)" style="fill:none;stroke:rgb(156, 154, 146);color:rgb(255, 255, 255);stroke-width:1.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-<text x="352" y="355" dominant-baseline="central" style="fill:rgb(194, 192, 182);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:start;dominant-baseline:central">Bolt query</text>
-
-<g onclick="sendPrompt('Explain how the neo4j_mcp_driver exposes the graph as MCP tools to Claude')" style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
-<rect x="180" y="376" width="320" height="60" rx="8" stroke-width="0.5" style="fill:rgb(113, 43, 19);stroke:rgb(240, 153, 123);color:rgb(255, 255, 255);stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-<text x="340" y="398" text-anchor="middle" dominant-baseline="central" style="fill:rgb(245, 196, 179);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:14px;font-weight:500;text-anchor:middle;dominant-baseline:central">neo4j_mcp_driver</text>
-<text x="340" y="418" text-anchor="middle" dominant-baseline="central" style="fill:rgb(240, 153, 123);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">Python MCP server, exposes Cypher tools</text>
-</g>
-
-<line x1="340" y1="436" x2="340" y2="484" marker-end="url(#arrow)" style="fill:none;stroke:rgb(156, 154, 146);color:rgb(255, 255, 255);stroke-width:1.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-<text x="352" y="463" dominant-baseline="central" style="fill:rgb(194, 192, 182);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:start;dominant-baseline:central">MCP (stdio)</text>
-
-<g onclick="sendPrompt('Explain how Claude Desktop uses the MCP server to reason over the UAF graph')" style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
-<rect x="180" y="484" width="320" height="60" rx="8" stroke-width="0.5" style="fill:rgb(113, 43, 19);stroke:rgb(240, 153, 123);color:rgb(255, 255, 255);stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-<text x="340" y="506" text-anchor="middle" dominant-baseline="central" style="fill:rgb(245, 196, 179);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:14px;font-weight:500;text-anchor:middle;dominant-baseline:central">Claude Desktop</text>
-<text x="340" y="526" text-anchor="middle" dominant-baseline="central" style="fill:rgb(240, 153, 123);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:central">Queries graph in natural language</text>
-</g>
+<rect width="1660" height="1240" fill="url(#vig)"/>
+<rect width="1660" height="1240" fill="url(#grid)"/>
+<rect width="1660" height="1240" fill="url(#gridM)"/>
+<text x="60" y="62" font-family="'IBM Plex Serif',Georgia,'Times New Roman',serif" font-size="31" font-weight="600" fill="#E8EFF5">MSOSA-Toolbox</text>
+<text x="60" y="89" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="13.5" fill="#E0A458" letter-spacing="1">preview branch &#8201;&#183;&#8201; hybrid UAF knowledge-graph pipeline</text>
+<text x="1600" y="56" text-anchor="end" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#6E7E8C">MagicDraw plugin &#8594; Neo4j (LPG) + Fuseki (RDF) &#8594; MCP</text>
+<text x="1600" y="76" text-anchor="end" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#6E7E8C">Java 11 &#183; Python 3.12 &#183; Docker &#183; SPARQL 1.1</text>
+<line x1="60" y1="104" x2="1600" y2="104" stroke="#2B3A48" stroke-width="1"/>
+<rect x="70" y="150" width="360" height="92" rx="11" fill="#161F29" stroke="#2B3A48" stroke-width="1.3" />
+<rect x="70" y="150" width="5" height="92" rx="2.5" fill="#38BEC9"/>
+<text x="90" y="177" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="15" font-weight="600" fill="#E8EFF5">MSOSA 2022x HF2</text>
+<rect x="337.4" y="162" width="78.60000000000001" height="22" rx="11" fill="#38BEC9" fill-opacity="0.14" stroke="#38BEC9" stroke-opacity="0.55" stroke-width="1"/>
+<text x="376.7" y="177" text-anchor="middle" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11.5" fill="#38BEC9">MagicDraw</text>
+<text x="90" y="200" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">UAF 1.2 + SysML 1.6 + BPMN 2.0 model</text>
+<text x="90" y="220" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">host JVM — plugin loads in-process</text>
+<rect x="60" y="282" width="740" height="322" rx="14" fill="#E0A458" fill-opacity="0.045" stroke="#E0A458" stroke-opacity="0.45" stroke-width="1.3" stroke-dasharray="2 4"/>
+<text x="80" y="308" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="13" font-weight="600" letter-spacing="0.5" fill="#E0A458">msosa-model-exporter   ·   Java 11 MSOSA plugin</text>
+<rect x="82" y="322" width="224" height="116" rx="11" fill="#1C2733" stroke="#2B3A48" stroke-width="1.3" />
+<rect x="82" y="322" width="5" height="116" rx="2.5" fill="#E0A458"/>
+<text x="102" y="349" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="14" font-weight="600" fill="#E8EFF5">UI &amp; Actions</text>
+<text x="102" y="366" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">Export · GraphInspector</text>
+<text x="102" y="384" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">OpenSPARQL · About</text>
+<text x="102" y="402" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">Config/Summary/Connection</text>
+<text x="102" y="420" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">GraphPanel (JGraphX)</text>
+<rect x="330" y="322" width="224" height="116" rx="11" fill="#1C2733" stroke="#2B3A48" stroke-width="1.3" />
+<rect x="330" y="322" width="5" height="116" rx="2.5" fill="#E0A458"/>
+<text x="350" y="349" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="14" font-weight="600" fill="#E8EFF5">Model Traversal</text>
+<text x="350" y="366" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">UAFModelTraverser →</text>
+<text x="350" y="384" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">  Element / Relationship DTOs</text>
+<text x="350" y="402" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">UAFStereotypeRegistry</text>
+<text x="350" y="420" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">stereotype → label·domain·lang</text>
+<rect x="82" y="470" width="300" height="116" rx="11" fill="#1C2733" stroke="#2B3A48" stroke-width="1.3" />
+<rect x="82" y="470" width="5" height="116" rx="2.5" fill="#4C9CEC"/>
+<text x="102" y="497" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="14" font-weight="600" fill="#E8EFF5">Neo4j Emitter — LPG</text>
+<text x="102" y="514" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">Neo4jCypherBuilder</text>
+<text x="102" y="532" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">  parameterised MERGE</text>
+<text x="102" y="550" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">Neo4jExportService</text>
+<text x="102" y="568" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">  Bolt driver · batched writes</text>
+<rect x="406" y="470" width="372" height="116" rx="11" fill="#1C2733" stroke="#2B3A48" stroke-width="1.3" />
+<rect x="406" y="470" width="5" height="116" rx="2.5" fill="#E85C52"/>
+<text x="426" y="497" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="14" font-weight="600" fill="#E8EFF5">RDF Emitter — Stage 4</text>
+<text x="426" y="514" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">RDFTripleBuilder · RDFExportService</text>
+<text x="426" y="532" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">  → Turtle (.ttl) written to disk</text>
+<text x="426" y="550" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">FusekiClient</text>
+<text x="426" y="568" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">  → optional PUT (SPARQL 1.1 Graph Store)</text>
+<rect x="840" y="282" width="760" height="232" rx="14" fill="#5FB98C" fill-opacity="0.045" stroke="#5FB98C" stroke-opacity="0.45" stroke-width="1.3" stroke-dasharray="2 4"/>
+<text x="860" y="308" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="13" font-weight="600" letter-spacing="0.5" fill="#5FB98C">ontology / codegen   ·   Python 3.12 (rdflib)</text>
+<rect x="860" y="322" width="232" height="172" rx="11" fill="#1C2733" stroke="#2B3A48" stroke-width="1.3" />
+<rect x="860" y="322" width="5" height="172" rx="2.5" fill="#5FB98C"/>
+<text x="880" y="349" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="14" font-weight="600" fill="#E8EFF5">init_uaf_graph</text>
+<text x="880" y="366" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">cypher/ schema seed</text>
+<text x="880" y="386" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">creates :Stereotype</text>
+<text x="880" y="406" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">metamodel + :Domain</text>
+<text x="880" y="426" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">+ :ModellingLanguage</text>
+<text x="880" y="446" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">(one-time bootstrap)</text>
+<rect x="1108" y="322" width="232" height="172" rx="11" fill="#1C2733" stroke="#2B3A48" stroke-width="1.3" />
+<rect x="1108" y="322" width="5" height="172" rx="2.5" fill="#5FB98C"/>
+<text x="1128" y="349" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="14" font-weight="600" fill="#E8EFF5">generate_mvo.py</text>
+<text x="1128" y="366" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">T-Box codegen from</text>
+<text x="1128" y="386" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">seeded :Stereotype</text>
+<text x="1128" y="406" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">→ uaf-mvo.ttl</text>
+<text x="1128" y="426" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">103 OWL classes</text>
+<text x="1128" y="446" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">31 ObjectProperties</text>
+<rect x="1356" y="322" width="224" height="172" rx="11" fill="#1C2733" stroke="#2B3A48" stroke-width="1.3" />
+<rect x="1356" y="322" width="5" height="172" rx="2.5" fill="#5FB98C"/>
+<text x="1376" y="349" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="14" font-weight="600" fill="#E8EFF5">dump_to_rdf.py</text>
+<text x="1376" y="366" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">Neo4j → Turtle A-Box</text>
+<text x="1376" y="386" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">uaf-instance.ttl</text>
+<text x="1376" y="406" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">(rdflib)</text>
+<text x="1376" y="426" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">fallback / recovery</text>
+<text x="1376" y="446" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#9DABB8">refresh path</text>
+<rect x="70" y="690" width="360" height="196" rx="11" fill="#161F29" stroke="#2B3A48" stroke-width="1.3" />
+<rect x="70" y="690" width="5" height="196" rx="2.5" fill="#4C9CEC"/>
+<text x="90" y="717" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="15" font-weight="600" fill="#E8EFF5">Neo4j 5.26</text>
+<rect x="330.0" y="702" width="86.0" height="22" rx="11" fill="#4C9CEC" fill-opacity="0.14" stroke="#4C9CEC" stroke-opacity="0.55" stroke-width="1"/>
+<text x="373.0" y="717" text-anchor="middle" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11.5" fill="#4C9CEC">:7687 Bolt</text>
+<text x="90" y="742" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">Labelled Property Graph</text>
+<text x="90" y="764" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">  — SYSTEM OF RECORD</text>
+<text x="90" y="786" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">APOC · GDS · Bloom · n10s</text>
+<text x="90" y="808" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">instance —[:INSTANCE_OF]→</text>
+<text x="90" y="830" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">  :Stereotype —[:BELONGS_TO]→ :Domain</text>
+<text x="90" y="852" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">HTTP browser :7474</text>
+<rect x="620" y="690" width="360" height="196" rx="11" fill="#161F29" stroke="#2B3A48" stroke-width="1.3" />
+<rect x="620" y="690" width="5" height="196" rx="2.5" fill="#E85C52"/>
+<text x="640" y="717" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="15" font-weight="600" fill="#E8EFF5">Apache Jena Fuseki</text>
+<rect x="865.2" y="702" width="100.80000000000001" height="22" rx="11" fill="#E85C52" fill-opacity="0.14" stroke="#E85C52" stroke-opacity="0.55" stroke-width="1"/>
+<text x="915.6" y="717" text-anchor="middle" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11.5" fill="#E85C52">:3030 SPARQL</text>
+<text x="640" y="742" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">SPARQL 1.1 endpoint</text>
+<text x="640" y="764" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">  + RDFS reasoner (subsumption)</text>
+<text x="640" y="786" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">UAF Minimum Viable Ontology</text>
+<text x="640" y="808" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">  T-Box (uaf-mvo.ttl)</text>
+<text x="640" y="830" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">  + A-Box (instance triples)</text>
+<text x="640" y="852" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">/uaf/sparql · /uaf/update</text>
+<rect x="1170" y="690" width="360" height="196" rx="11" fill="#161F29" stroke="#2B3A48" stroke-width="1.3" stroke-dasharray="7 5"/>
+<rect x="1170" y="690" width="5" height="196" rx="2.5" fill="#9B7BE8"/>
+<text x="1190" y="717" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="15" font-weight="600" fill="#E8EFF5">GraphDB Free</text>
+<rect x="1444.8" y="702" width="71.2" height="22" rx="11" fill="#9B7BE8" fill-opacity="0.14" stroke="#9B7BE8" stroke-opacity="0.55" stroke-width="1"/>
+<text x="1480.3999999999999" y="717" text-anchor="middle" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11.5" fill="#9B7BE8">:7200 UI</text>
+<text x="1190" y="742" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">optional visual graph browser</text>
+<text x="1190" y="764" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">  (read-only)</text>
+<text x="1190" y="786" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">loads same T-Box + A-Box</text>
+<text x="1190" y="808" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">graphdb-loader sidecar</text>
+<text x="1190" y="830" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">UAF Overview — 8 domain anchors</text>
+<text x="1190" y="852" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">needs Ontotext licence</text>
+<rect x="420" y="980" width="440" height="168" rx="11" fill="#161F29" stroke="#2B3A48" stroke-width="1.3" />
+<rect x="420" y="980" width="5" height="168" rx="2.5" fill="#D97757"/>
+<text x="440" y="1007" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="15" font-weight="600" fill="#E8EFF5">neo4j_mcp_driver</text>
+<rect x="782.2" y="992" width="63.800000000000004" height="22" rx="11" fill="#D97757" fill-opacity="0.14" stroke="#D97757" stroke-opacity="0.55" stroke-width="1"/>
+<text x="814.1" y="1007" text-anchor="middle" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11.5" fill="#D97757">FastMCP</text>
+<text x="440" y="1032" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">Python MCP server — exposes two tools:</text>
+<text x="440" y="1056" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">  run_cypher(q)  → Neo4j (Bolt)</text>
+<text x="440" y="1080" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">  run_sparql(q)  → Fuseki (SPARQL 1.1)</text>
+<text x="440" y="1104" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">ontology-aware + graph-traversal queries</text>
+<rect x="940" y="980" width="360" height="168" rx="11" fill="#161F29" stroke="#2B3A48" stroke-width="1.3" />
+<rect x="940" y="980" width="5" height="168" rx="2.5" fill="#D97757"/>
+<text x="960" y="1007" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="15" font-weight="600" fill="#E8EFF5">LLM Desktop App</text>
+<rect x="1214.8" y="992" width="71.2" height="22" rx="11" fill="#D97757" fill-opacity="0.14" stroke="#D97757" stroke-opacity="0.55" stroke-width="1"/>
+<text x="1250.3999999999999" y="1007" text-anchor="middle" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11.5" fill="#D97757">MCP host</text>
+<text x="960" y="1032" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">MCP client — connects over stdio</text>
+<text x="960" y="1056" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">MCP host config (JSON)</text>
+<text x="960" y="1080" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">natural language →</text>
+<text x="960" y="1104" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">  Cypher / SPARQL over the graph</text>
+<path d="M 268.0 242.0 L 248.0 262.0 L 442.0 262.0 L 442.0 322.0" fill="none" stroke="#38BEC9" stroke-width="1.6"  marker-end="url(#ah)" stroke-linejoin="round" stroke-opacity="0.92"/>
+<rect x="288.5" y="249.0" width="113.0" height="20" rx="6" fill="#0E141B" stroke="#2B3A48" stroke-width="1"/>
+<text x="345.0" y="263.0" text-anchor="middle" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11" fill="#9DABB8">open &amp; traverse</text>
+<line x1="306.0" y1="368.4" x2="330.0" y2="368.4" stroke="#6E7E8C" stroke-width="1.4"  marker-end="url(#ah)" stroke-opacity="0.92"/>
+<rect x="278.0" y="355.4" width="80.0" height="20" rx="6" fill="#0E141B" stroke="#2B3A48" stroke-width="1"/>
+<text x="318.0" y="369.4" text-anchor="middle" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11" fill="#9DABB8">run/config</text>
+<path d="M 408.4 438.0 L 409.0 454.0 L 262.0 454.0 L 277.0 470.0" fill="none" stroke="#4C9CEC" stroke-width="1.6"  marker-end="url(#ah)" stroke-linejoin="round" stroke-opacity="0.92"/>
+<rect x="314.8" y="441.0" width="40.4" height="20" rx="6" fill="#0E141B" stroke="#2B3A48" stroke-width="1"/>
+<text x="335.0" y="455.0" text-anchor="middle" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11" fill="#9DABB8">DTOs</text>
+<path d="M 491.3 438.0 L 490.0 454.0 L 488.0 454.0 L 487.8 470.0" fill="none" stroke="#E85C52" stroke-width="1.6"  marker-end="url(#ah)" stroke-linejoin="round" stroke-opacity="0.92"/>
+<rect x="509.8" y="441.0" width="40.4" height="20" rx="6" fill="#0E141B" stroke="#2B3A48" stroke-width="1"/>
+<text x="530.0" y="455.0" text-anchor="middle" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11" fill="#9DABB8">DTOs</text>
+<line x1="217.0" y1="586.0" x2="235.6" y2="690.0" stroke="#4C9CEC" stroke-width="1.6"  marker-end="url(#ah)" stroke-opacity="0.92"/>
+<rect x="165.6" y="595.0" width="132.8" height="20" rx="6" fill="#0E141B" stroke="#2B3A48" stroke-width="1"/>
+<text x="232.0" y="609.0" text-anchor="middle" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11" fill="#9DABB8">Bolt :7687 · MERGE</text>
+<line x1="610.6" y1="586.0" x2="764.0" y2="690.0" stroke="#E85C52" stroke-width="1.6"  marker-end="url(#ah)" stroke-opacity="0.92"/>
+<rect x="610.4" y="595.0" width="159.2" height="20" rx="6" fill="#0E141B" stroke="#2B3A48" stroke-width="1"/>
+<text x="690.0" y="609.0" text-anchor="middle" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11" fill="#9DABB8">Turtle / GSP PUT :3030</text>
+<path d="M 976.0 494.0 L 976.0 632.0 L 631.0 632.0 L 372.0 632.0 L 372.4 690.0" fill="none" stroke="#5FB98C" stroke-width="1.6"  marker-end="url(#ah)" stroke-linejoin="round" stroke-opacity="0.92"/>
+<rect x="646.8" y="619.0" width="106.4" height="20" rx="6" fill="#0E141B" stroke="#2B3A48" stroke-width="1"/>
+<text x="700.0" y="633.0" text-anchor="middle" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11" fill="#9DABB8">seed metamodel</text>
+<path d="M 394.0 690.0 L 394.0 648.0 L 1058.0 648.0 L 1058.0 500.0 L 1201.0 500.0 L 1205.4 494.0" fill="none" stroke="#5FB98C" stroke-width="1.6"  marker-end="url(#ah)" stroke-linejoin="round" stroke-opacity="0.92"/>
+<rect x="414.9" y="635.0" width="126.2" height="20" rx="6" fill="#0E141B" stroke="#2B3A48" stroke-width="1"/>
+<text x="478.0" y="649.0" text-anchor="middle" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11" fill="#9DABB8">reads :Stereotype</text>
+<path d="M 419.2 690.0 L 419.0 668.0 L 1100.0 668.0 L 1100.0 520.0 L 1468.0 520.0 L 1468.0 494.0" fill="none" stroke="#5FB98C" stroke-width="1.6"  marker-end="url(#ah)" stroke-linejoin="round" stroke-opacity="0.92"/>
+<rect x="870.0" y="655.0" width="80.0" height="20" rx="6" fill="#0E141B" stroke="#2B3A48" stroke-width="1"/>
+<text x="910.0" y="669.0" text-anchor="middle" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11" fill="#9DABB8">A-Box dump</text>
+<path d="M 1173.0 494.0 L 1173.0 548.0 L 901.0 548.0 L 900.8 690.0" fill="none" stroke="#5FB98C" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#ah)" stroke-linejoin="round" stroke-opacity="0.65"/>
+<rect x="968.5" y="535.0" width="47.0" height="20" rx="6" fill="#0E141B" stroke="#2B3A48" stroke-width="1"/>
+<text x="992.0" y="549.0" text-anchor="middle" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11" fill="#9DABB8">T-Box</text>
+<path d="M 1539.7 494.0 L 1540.0 600.0 L 944.0 600.0 L 944.0 690.0" fill="none" stroke="#5FB98C" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#ah)" stroke-linejoin="round" stroke-opacity="0.65"/>
+<rect x="1073.4" y="587.0" width="93.2" height="20" rx="6" fill="#0E141B" stroke="#2B3A48" stroke-width="1"/>
+<text x="1120.0" y="601.0" text-anchor="middle" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11" fill="#9DABB8">A-Box reload</text>
+<path d="M 1580.0 416.6 L 1626.0 418.0 L 1626.0 612.0 L 1453.0 612.0 L 1450.8 690.0" fill="none" stroke="#9B7BE8" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#ah)" stroke-linejoin="round" stroke-opacity="0.65"/>
+<rect x="1490.1" y="599.0" width="99.8" height="20" rx="6" fill="#0E141B" stroke="#2B3A48" stroke-width="1"/>
+<text x="1540.0" y="613.0" text-anchor="middle" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11" fill="#9DABB8">T-Box + A-Box</text>
+<path d="M 508.0 980.0 L 508.0 932.0 L 286.0 932.0 L 286.0 886.0" fill="none" stroke="#D97757" stroke-width="1.6"  marker-end="url(#ah)" stroke-linejoin="round" stroke-opacity="0.92"/>
+<rect x="358.0" y="919.0" width="80.0" height="20" rx="6" fill="#0E141B" stroke="#2B3A48" stroke-width="1"/>
+<text x="398.0" y="933.0" text-anchor="middle" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11" fill="#9DABB8">run_cypher</text>
+<path d="M 750.0 980.0 L 750.0 932.0 L 800.0 932.0 L 800.0 886.0" fill="none" stroke="#D97757" stroke-width="1.6"  marker-end="url(#ah)" stroke-linejoin="round" stroke-opacity="0.92"/>
+<rect x="735.0" y="919.0" width="80.0" height="20" rx="6" fill="#0E141B" stroke="#2B3A48" stroke-width="1"/>
+<text x="775.0" y="933.0" text-anchor="middle" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11" fill="#9DABB8">run_sparql</text>
+<line x1="940.0" y1="1050.6" x2="860.0" y2="1050.6" stroke="#D97757" stroke-width="1.8"  marker-end="url(#ah)" stroke-opacity="0.92"/>
+<rect x="856.7" y="1037.6" width="86.6" height="20" rx="6" fill="#0E141B" stroke="#2B3A48" stroke-width="1"/>
+<text x="900.0" y="1051.6" text-anchor="middle" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11" fill="#9DABB8">stdio (MCP)</text>
+<path d="M 860.0 1080.8 L 940.0 1080.8" fill="none" stroke="#D97757" stroke-width="1.8" marker-end="url(#ah)" stroke-opacity="0.9"/>
+<rect x="61" y="116" width="227.6" height="25" rx="6" fill="#0E141B" fill-opacity="0.92"/>
+<circle cx="74" cy="128" r="4" fill="#38BEC9"/>
+<text x="86" y="132" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" font-weight="600" letter-spacing="3" fill="#9DABB8">1 · AUTHOR &amp; EXPORT</text>
+<rect x="831" y="116" width="238.0" height="25" rx="6" fill="#0E141B" fill-opacity="0.92"/>
+<circle cx="844" cy="128" r="4" fill="#5FB98C"/>
+<text x="856" y="132" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" font-weight="600" letter-spacing="3" fill="#9DABB8">2 · ONTOLOGY TOOLING</text>
+<rect x="61" y="656" width="414.8" height="25" rx="6" fill="#0E141B" fill-opacity="0.92"/>
+<circle cx="74" cy="668" r="4" fill="#4C9CEC"/>
+<text x="86" y="672" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" font-weight="600" letter-spacing="3" fill="#9DABB8">3 · KNOWLEDGE-GRAPH STORES  ·  Docker</text>
+<rect x="411" y="946" width="217.20000000000002" height="25" rx="6" fill="#0E141B" fill-opacity="0.92"/>
+<circle cx="424" cy="958" r="4" fill="#D97757"/>
+<text x="436" y="962" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" font-weight="600" letter-spacing="3" fill="#9DABB8">4 · AI CONSUMPTION</text>
+<text x="60" y="1210" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11.5" fill="#6E7E8C">CI: .github/workflows/msosa-model-exporter-build.yml — builds shaded fat-jar plugin zip, tags v*-Preview from this branch → draft GitHub Release</text>
+<text x="1600" y="1210" text-anchor="end" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11.5" fill="#6E7E8C">solid = export/query flow   ·   dashed = ontology sync / optional</text>
 </svg>
