@@ -1,25 +1,37 @@
-# Byte-compiled / optimized / DLL files
+# IDE / editor
 .vscode/
-# Virtual environment
+.idea/
+
+# Python
 .venv/
-# Claude data
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Claude Code local data
 .claude/
 
 # Logs
 *.log
-# Unit test / coverage reports
-*.pyc
 
-# Test scripts
-Test/
-test/
-# mcp driver
-neo4j_mcp_driver.egg-info/
-# Python cache
-__pycache__/
+# Generated A-Box (large, refreshed after every MSOSA export — re-run dump_to_rdf.py).
+# Track only the placeholder uaf-instance.ttl so a fresh clone can boot Fuseki
+# without needing a Neo4j export first; ignore every other artefact in here.
+ontology/dump/*
+!ontology/dump/uaf-instance.ttl
 
+# Maven build output
+msosa-model-exporter/target/
 
-# Claude notes
-CLAUDE.md
+# Atomic-write tempfiles from editor tools
+**/*.java.tmp.*
+**/*.py.tmp.*
 
+# Local credentials / licence files — must never be committed
+secrets/
+*.license
 
+# Docker compose environment files — credentials and per-machine paths.
+# `.env.example` is committed as a template; real `.env` files never are.
+.env
+**/.env

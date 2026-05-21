@@ -1,0 +1,45 @@
+{
+  "_comment": "Shared input -> expected-IRI fixture for the RDF emitter parity tests. Consumed by Test/test_rdf_parity.py (against dump_to_rdf.py) and msosa-model-exporter RDFTripleBuilderParityTest (against RDFTripleBuilder.java). If you change a namespace or naming rule on either side, update this fixture and both tests will keep agreeing.",
+  "version": 1,
+  "namespaces": {
+    "uaf":     "http://msosa-toolbox.local/uaf#",
+    "sysml":   "http://msosa-toolbox.local/sysml#",
+    "bpmn":    "http://msosa-toolbox.local/bpmn#",
+    "uafinst": "http://msosa-toolbox.local/uaf/instance#",
+    "uaftv":   "http://msosa-toolbox.local/uaf/tag#"
+  },
+  "instance_iri": [
+    {"id": "abc-123",       "expected_curie": "uafinst:abc-123",     "note": "alphanumerics + hyphen preserved"},
+    {"id": "MSOSA-id_42",   "expected_curie": "uafinst:MSOSA-id_42", "note": "alphanumerics, hyphen, underscore preserved"},
+    {"id": "n 01:a",        "expected_curie": "uafinst:n_01_a",      "note": "spaces and colons sanitised to underscore"},
+    {"id": "x/y.z",         "expected_curie": "uafinst:x_y_z",       "note": "slashes and dots sanitised"},
+    {"id": "{guid-form}",   "expected_curie": "uafinst:_guid-form_", "note": "braces sanitised; hyphen preserved"},
+    {"id": "ALL_UPPER",     "expected_curie": "uafinst:ALL_UPPER",   "note": "underscores preserved as-is"}
+  ],
+  "class_iri": [
+    {"label": "Capability",           "language": "UAF",   "expected_curie": "uaf:Capability"},
+    {"label": "Capability",           "language": null,    "expected_curie": "uaf:Capability",        "note": "null language falls back to uaf"},
+    {"label": "Capability",           "language": "",      "expected_curie": "uaf:Capability",        "note": "empty language falls back to uaf"},
+    {"label": "Capability",           "language": "Other", "expected_curie": "uaf:Capability",        "note": "unknown language falls back to uaf"},
+    {"label": "Block",                "language": "SysML", "expected_curie": "sysml:Block"},
+    {"label": "Task",                 "language": "BPMN",  "expected_curie": "bpmn:Task"},
+    {"label": "OperationalPerformer", "language": "UAF",   "expected_curie": "uaf:OperationalPerformer"}
+  ],
+  "predicate_iri": [
+    {"rel_type": "PERFORMS",         "expected_curie": "uaf:performs",        "note": "single word lowercased"},
+    {"rel_type": "TRACES_TO",        "expected_curie": "uaf:tracesTo",        "note": "two segments camelCased"},
+    {"rel_type": "INFORMATION_FLOW", "expected_curie": "uaf:informationFlow", "note": "two segments, multi-syllable"},
+    {"rel_type": "MESSAGE_FLOW",     "expected_curie": "uaf:messageFlow"},
+    {"rel_type": "ALLOCATED_TO",     "expected_curie": "uaf:allocatedTo"},
+    {"rel_type": "FLOWS_TO",         "expected_curie": "uaf:flowsTo"},
+    {"rel_type": "INSTANCE_OF",      "expected_curie": "uaf:instanceOf",      "note": "IRI builder is tested in isolation; emitters skip INSTANCE_OF, but the builder must remain stable"},
+    {"rel_type": "GENERALIZATION",   "expected_curie": "uaf:generalization"}
+  ],
+  "tag_property_iri": [
+    {"key": "tv_nationality",     "expected_curie": "uaftv:nationality",     "note": "tv_ prefix stripped"},
+    {"key": "tv_capability_level","expected_curie": "uaftv:capability_level","note": "underscore inside the key preserved"},
+    {"key": "rawKey",             "expected_curie": "uaftv:rawKey",          "note": "no tv_ prefix means key passes through"},
+    {"key": "tv_x.y",             "expected_curie": "uaftv:x_y",             "note": "dot sanitised after stripping prefix"},
+    {"key": "tv_a b",             "expected_curie": "uaftv:a_b",             "note": "space sanitised after stripping prefix"}
+  ]
+}
