@@ -55,7 +55,7 @@ def _count_label(driver, database: str, label: str) -> int:
 def _count_stereotype(driver, database: str, stereotype: str) -> int:
     with driver.session(database=database) as session:
         record = session.run(
-            "MATCH (n:UAFElement {stereotype: $s}) RETURN count(n) AS c",
+            "MATCH (n {stereotype: $s}) RETURN count(n) AS c",
             s=stereotype,
         ).single()
         return record["c"] if record else 0
@@ -71,7 +71,9 @@ def _count_edges(driver, database: str, rel_type: str) -> int:
 
 def _graph_is_empty(driver, database: str) -> bool:
     with driver.session(database=database) as session:
-        record = session.run("MATCH (n:UAFElement) RETURN count(n) AS c").single()
+        record = session.run(
+            "MATCH (n)-[:INSTANCE_OF]->(:Stereotype) RETURN count(n) AS c"
+        ).single()
         return (record["c"] if record else 0) == 0
 
 

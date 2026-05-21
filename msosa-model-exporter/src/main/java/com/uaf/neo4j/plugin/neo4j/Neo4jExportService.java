@@ -155,7 +155,9 @@ public class Neo4jExportService implements ExportService {
     }
 
     /**
-     * Fetches a summary of every :UAFElement node from Neo4j for the Graph Inspector.
+     * Fetches a summary of every exported UAF element from Neo4j for the Graph
+     * Inspector. Exported elements are identified by carrying a non-null
+     * stereotype property (set by Neo4jCypherBuilder on every MERGE).
      * Returns core properties only (no tv_* tagged values) for performance.
      */
     public List<Map<String, Object>> fetchAllUAFElements() {
@@ -185,7 +187,9 @@ public class Neo4jExportService implements ExportService {
     }
 
     /**
-     * Fetches the 1-hop neighbourhood of a single :UAFElement node.
+     * Fetches the 1-hop neighbourhood of a single exported UAF element.
+     * Centre node and neighbours are filtered to those carrying a non-null
+     * stereotype property — the post-export marker for traversed elements.
      * Returns up to 50 neighbour nodes and up to 200 relationships for the Graph tab.
      */
     public NeighbourhoodResult fetchNeighbourhood(String nodeId) {

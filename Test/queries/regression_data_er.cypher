@@ -14,10 +14,10 @@
 
 // --- Data artefacts (#76 RC #1, #2) ------------------------------------------
 // Reachable post-PR2 (classifier recursion) and exported under their registry labels.
-MATCH (n:UAFElement {stereotype: 'DataObject'}) RETURN 'DataObject' AS stereotype, count(n) AS instances;
-MATCH (n:UAFElement {stereotype: 'DataInput'})  RETURN 'DataInput'  AS stereotype, count(n) AS instances;
-MATCH (n:UAFElement {stereotype: 'DataOutput'}) RETURN 'DataOutput' AS stereotype, count(n) AS instances;
-MATCH (n:UAFElement {stereotype: 'DataStore'})  RETURN 'DataStore'  AS stereotype, count(n) AS instances;
+MATCH (n {stereotype: 'DataObject'}) RETURN 'DataObject' AS stereotype, count(n) AS instances;
+MATCH (n {stereotype: 'DataInput'})  RETURN 'DataInput'  AS stereotype, count(n) AS instances;
+MATCH (n {stereotype: 'DataOutput'}) RETURN 'DataOutput' AS stereotype, count(n) AS instances;
+MATCH (n {stereotype: 'DataStore'})  RETURN 'DataStore'  AS stereotype, count(n) AS instances;
 
 // --- Data-association edges (#76 RC #3) --------------------------------------
 // Wires Task <- consumes -> DataInput and Task -> produces -> DataOutput.
@@ -39,7 +39,7 @@ RETURN 'Edges with multiplicity' AS metric, count(r) AS instances;
 
 // --- Entity / Information modelling ------------------------------------------
 // Entities can appear as Entity, OperationalInformation, or ResourceInformation.
-MATCH (n:UAFElement)
+MATCH (n)
 WHERE n.stereotype IN ['Entity', 'OperationalInformation', 'ResourceInformation']
 RETURN n.stereotype AS stereotype, count(n) AS instances;
 

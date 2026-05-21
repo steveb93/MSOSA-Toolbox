@@ -45,7 +45,7 @@ def database() -> str:
 def _count(driver, database: str, stereotype: str) -> int:
     with driver.session(database=database) as session:
         record = session.run(
-            "MATCH (n:UAFElement {stereotype: $s}) RETURN count(n) AS c",
+            "MATCH (n {stereotype: $s}) RETURN count(n) AS c",
             s=stereotype,
         ).single()
         return record["c"] if record else 0
@@ -62,7 +62,9 @@ def _edge_count(driver, database: str, rel_type: str) -> int:
 
 def _graph_is_empty(driver, database: str) -> bool:
     with driver.session(database=database) as session:
-        record = session.run("MATCH (n:UAFElement) RETURN count(n) AS c").single()
+        record = session.run(
+            "MATCH (n)-[:INSTANCE_OF]->(:Stereotype) RETURN count(n) AS c"
+        ).single()
         return (record["c"] if record else 0) == 0
 
 
@@ -125,12 +127,13 @@ def test_no_empty_stereotype_nodes(driver, database):
         pytest.skip("Graph is empty — run an MSOSA export before this regression test.")
     with driver.session(database=database) as session:
         record = session.run(
-            "MATCH (n:UAFElement) WHERE n.stereotype IS NULL OR n.stereotype = '' "
+            "MATCH (n)-[:INSTANCE_OF]->(:Stereotype) "
+            "WHERE n.stereotype IS NULL OR n.stereotype = '' "
             "RETURN count(n) AS c"
         ).single()
         n = record["c"] if record else 0
     assert n == 0, (
-        f"{n} :UAFElement node(s) have a null or empty stereotype. This indicates "
+        f"{n} exported node(s) have a null or empty stereotype. This indicates "
         "a regression in the DTO builder — every traversed element should carry "
         "the stereotype name that resolved it."
     )
