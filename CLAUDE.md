@@ -9,7 +9,7 @@ This repo converts UAF 1.2 (Unified Architecture Framework) system models into a
 1. **Java Maven plugin** (`msosa-model-exporter/`) — installs into MSOSA (MagicDraw) 2022x Hotfix 2 and exports directly to Neo4j over Bolt from within the modelling tool.
 2. **Python MCP server** (`neo4j_mcp_driver/`) — exposes Neo4j Cypher queries to Claude Desktop via the Model Context Protocol, enabling Claude to query the graph.
 
-Neo4j runs in Docker (`docker-compose/docker-compose.yml`) on `bolt://localhost:7687` with credentials `neo4j / Password123`.
+Neo4j runs in Docker (`docker-compose/docker-compose.yml`) on `bolt://localhost:7687`. The database user is always `neo4j`; the password and the host data directory are read from `docker-compose/.env` (`NEO4J_PASSWORD`, `NEO4J_DATA_DIR`). Copy `docker-compose/.env.example` to `docker-compose/.env` and fill in values before bringing the stack up — Compose will refuse to start otherwise.
 
 ---
 
@@ -39,6 +39,7 @@ python -m neo4j_mcp_driver.server
 
 ```powershell
 cd docker-compose
+cp .env.example .env   # one-time: edit .env and set NEO4J_PASSWORD + NEO4J_DATA_DIR
 docker compose up -d
 docker compose down
 ```
@@ -46,7 +47,7 @@ docker compose down
 ### Graph Initialisation (run once before first export)
 
 ```powershell
-cypher-shell -u neo4j -p Password123 -f cypher/init_uaf_graph.cypher
+cypher-shell -u neo4j -p "$env:NEO4J_PASSWORD" -f cypher/init_uaf_graph.cypher
 ```
 
 ### Neo4j Connection Test
@@ -126,11 +127,15 @@ The MCP server speaks SPARQL because an **Apache Jena Fuseki** sidecar runs alon
 ```powershell
 cd F:/OneDrive/_VSCode/MSOSA-Toolbox/docker-compose
 
+# 0. One-time: copy .env.example to .env and set NEO4J_PASSWORD,
+#    FUSEKI_ADMIN_PASSWORD, NEO4J_DATA_DIR
+cp .env.example .env
+
 # 1. Bring up Neo4j (plus Fuseki via overlay)
 docker compose -f docker-compose.yml -f docker-compose.fuseki.yml up -d
 
 # 2. Seed the UAF metamodel into Neo4j (idempotent)
-cypher-shell -u neo4j -p Password123 -f ../cypher/init_uaf_graph.cypher
+cypher-shell -u neo4j -p "$env:NEO4J_PASSWORD" -f ../cypher/init_uaf_graph.cypher
 
 # 3. Generate the T-Box from the seeded metamodel
 python ../ontology/codegen/generate_mvo.py

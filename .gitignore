@@ -27,3 +27,8 @@ msosa-model-exporter/target/
 # Local credentials / licence files — must never be committed
 secrets/
 *.license
+
+# Docker compose environment files — credentials and per-machine paths.
+# `.env.example` is committed as a template; real `.env` files never are.
+.env
+**/.env
