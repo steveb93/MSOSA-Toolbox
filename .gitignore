@@ -7,6 +7,11 @@
 __pycache__/
 *.pyc
 *.egg-info/
+# Python build outputs from `python -m build` (wheel + sdist).
+# Repo-root /build and /dist anchor to the top so a future plugin
+# called build/ or dist/ wouldn't get caught.
+/build/
+/dist/
 
 # Claude Code local data
 .claude/
