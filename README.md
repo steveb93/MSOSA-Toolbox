@@ -29,7 +29,7 @@ References:
 | [msosa-model-exporter](msosa-model-exporter/) | MSOSA plugin — exports UAF 1.2 / SysML 1.6 / BPMN 2.0 elements and relationships to a Neo4j knowledge graph over Bolt | [![Build](https://github.com/steveb93/UAF-Repo/actions/workflows/msosa-model-exporter-build.yml/badge.svg)](https://github.com/steveb93/UAF-Repo/actions/workflows/msosa-model-exporter-build.yml) |
 | [neo4j_mcp_driver](neo4j_mcp_driver/) | Python MCP server — exposes `run_cypher` and `run_sparql` tools to Claude Desktop | — |
 | [ontology](ontology/) | Generated OWL T-Box, Fuseki configuration, dump script, anchor SPARQL queries | — |
-| [docker-compose](docker-compose/) | Neo4j stack + Fuseki SPARQL overlay (overlay file `docker-compose.fuseki.yml`) | — |
+| [docker-compose](docker-compose/) | Neo4j stack + optional overlays — `docker-compose.fuseki.yml` (SPARQL endpoint) and `docker-compose.graphdb.yml` (visual graph browser, requires a free Ontotext licence) | — |
 
 > New plugins can be added as subdirectories following the conventions in [Contributing](#contributing).
 
@@ -66,6 +66,8 @@ The post-export summary dialog has a **Copy SPARQL Refresh Cmd** button that cop
 
 See [`ontology/NEXT-STEPS.md`](ontology/NEXT-STEPS.md) for Stage 3 (native triplestore, OWL 2 RL reasoning, SHACL validation) and Stage 5 (composite AI / decision intelligence) gating criteria.
 
+**Optional — visual graph browser**: Fuseki only exposes SPARQL; for clickable graph exploration there's a parallel **GraphDB Free** overlay (`docker-compose/docker-compose.graphdb.yml`) that loads the same T-Box and A-Box into a separate store with its own Workbench UI at <http://localhost:7200>. GraphDB 11.x needs a (free) Ontotext licence file mounted from `secrets/graphdb.license` — `msosa-model-exporter/README.md` Step 6 has the registration + base64-decode walkthrough. A pre-built **UAF Overview** graph config that opens directly on the 8 UAF domain anchors is in [`ontology/graphdb/graph-configs/uaf-overview.md`](ontology/graphdb/graph-configs/uaf-overview.md).
+
 ---
 
 ## Repository Structure
@@ -80,13 +82,17 @@ MSOSA-Toolbox/
 ├── neo4j_mcp_driver/                # Python MCP server — run_cypher + run_sparql tools
 ├── docker-compose/
 │   ├── docker-compose.yml           # Neo4j 5.26 + n10s + APOC + GDS
-│   └── docker-compose.fuseki.yml    # Fuseki SPARQL overlay (Stage 2)
+│   ├── docker-compose.fuseki.yml    # Fuseki SPARQL overlay (Stage 2)
+│   └── docker-compose.graphdb.yml   # GraphDB Free overlay — Visual Graph browser (optional)
 ├── ontology/
 │   ├── uaf-mvo.ttl                  # AUTO-GENERATED T-Box (UAF + SysML + BPMN)
 │   ├── codegen/
 │   │   ├── generate_mvo.py          # T-Box codegen from the seeded :Stereotype metamodel
 │   │   └── dump_to_rdf.py           # Neo4j → Turtle A-Box dump (rdflib)
 │   ├── fuseki/configuration/uaf.ttl # Fuseki assembler config (in-mem dataset + RDFS reasoner)
+│   ├── graphdb/
+│   │   ├── repository-config.ttl    # GraphDB repository definition (RDFS-Plus ruleset)
+│   │   └── graph-configs/           # Saved Visual Graph configs (uaf-overview.md = 8 anchors hub)
 │   ├── queries/                     # Anchor SPARQL queries grounding semantic-search use case
 │   ├── dump/                        # (gitignored) latest A-Box dump
 │   └── NEXT-STEPS.md                # Stage 3+ roadmap (decision log records n10s/Ontop rejection)
