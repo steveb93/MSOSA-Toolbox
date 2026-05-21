@@ -215,12 +215,27 @@ GraphDB 11.x requires a (free) licence file even for the Free tier. One-off setu
 # Make sure the A-Box dump exists first (the loader expects it).
 python ontology/codegen/dump_to_rdf.py
 
-# Bring up Neo4j + GraphDB together (add to the Fuseki stack if you want both).
+# Neo4j + GraphDB only:
 docker compose -f docker-compose/docker-compose.yml `
+               -f docker-compose/docker-compose.graphdb.yml up -d
+
+# Neo4j + Fuseki + GraphDB together:
+docker compose -f docker-compose/docker-compose.yml `
+               -f docker-compose/docker-compose.fuseki.yml `
                -f docker-compose/docker-compose.graphdb.yml up -d
 ```
 
-After ~30s the `graphdb-loader` sidecar creates the `uaf` repository and loads both TTLs. Open <http://localhost:7200>, select the `uaf` repository, then **Explore → Visual graph** and start from any element name.
+After ~30s the `graphdb-loader` sidecar creates the `uaf` repository and loads both TTLs. Tail the loader to confirm it finished — `>> Done.` on the last line means the visual graph is ready to use:
+
+```powershell
+docker logs graphdb-uaf-loader
+```
+
+If the loader logs `Failed to read license`, the licence file is still in its base64-armored form — rerun step 2 to decode it, then `docker compose … restart graphdb graphdb-loader`.
+
+Open <http://localhost:7200>, select the `uaf` repository, then **Explore → Visual graph** and start from any element name.
+
+To skip the name search, build the **UAF Overview** Graph Config once — it opens directly on the 8 UAF domain-anchor classes and expands through subclasses and instances on click. Step-by-step queries and UI walkthrough: `../ontology/graphdb/graph-configs/uaf-overview.md`.
 
 Refresh after a new MSOSA export:
 
