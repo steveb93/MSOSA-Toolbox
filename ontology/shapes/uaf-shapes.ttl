@@ -1,0 +1,162 @@
+# UAF SHACL shapes — Stage 3 scaffolding (speculative)
+#
+# Scope: validation constraints sitting alongside the MVO (ontology/uaf-mvo.ttl).
+# This file does NOT modify the MVO; it references MVO classes by IRI.
+#
+# Stage 3 focuses on the Strategic and Security sub-domains per
+# ontology/NEXT-STEPS.md §"Stage 3 — Native triplestore for governed sub-domains".
+# Shapes here are scaffolding: enough to demonstrate the pipeline (shapes ->
+# pyshacl -> violation report -> MCP), not a complete governance ruleset. Extend
+# as Stage 3 firms up.
+#
+# Reasoner alignment: the validator runs pyshacl with inference="rdfs" so that
+# rdfs:subClassOf+ paths resolve, matching Fuseki's RDFS-Exp reasoner. That means
+# sh:targetClass uaf:StrategicElement catches subclasses (uaf:Capability,
+# uaf:CapabilityConfiguration, ...) without listing them individually.
+#
+# Conventions used below:
+#   - Shapes are named with a -Shape suffix on the targeted class IRI.
+#   - sh:severity defaults to sh:Violation; we tag genuinely-loose shapes
+#     (where false positives are likely against a real model) as sh:Warning.
+#   - All shapes use sh:message so violations come back with human prose,
+#     not bare paths.
+
+@prefix sh:      <http://www.w3.org/ns/shacl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix uaf:     <http://msosa-toolbox.local/uaf#> .
+@prefix uafprop: <http://msosa-toolbox.local/uaf/prop#> .
+@prefix uafsh:   <http://msosa-toolbox.local/uaf/shape#> .
+
+<http://msosa-toolbox.local/uaf/shapes> a owl:Ontology ;
+    rdfs:label "UAF SHACL shapes (Stage 3 scaffolding)" ;
+    rdfs:comment "Constraint graph over the UAF MVO. Stage 3 scope: Strategic + Security + cross-cutting hygiene." ;
+    owl:versionInfo "0.1.0" .
+
+# --- Cross-cutting hygiene ---------------------------------------------------
+# Closes the "language uniqueness" item in NEXT-STEPS.md §"Ontology hygiene":
+# every concrete UAF/SysML/BPMN class declared in the MVO must carry exactly one
+# uafprop:language annotation. Catches drift in UAFStereotypeRegistry that would
+# otherwise become silent RDF collisions (e.g. UAF and SysML both declaring a
+# Capability-like term).
+
+uafsh:LanguageUniquenessShape a sh:NodeShape ;
+    sh:targetSubjectsOf uafprop:language ;
+    sh:property [
+        sh:path uafprop:language ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "UAF" "SysML" "BPMN" ) ;
+        sh:message "Class must have exactly one uafprop:language annotation in {UAF, SysML, BPMN}. Drift here turns into silent IRI collisions across MVO namespaces." ;
+    ] .
+
+# --- Universal instance shape -----------------------------------------------
+# Every exported element should carry rdfs:label (the name). We target via
+# uaf:domain rather than rdf:type because uaf:domain is only emitted on
+# instances (the T-Box uses the distinct annotation property uafprop:domain),
+# whereas sh:targetSubjectsOf rdf:type would also catch every owl:Class in the
+# MVO. The dump writes both predicates for every exported element, so this is
+# a reliable instance-only target.
+
+uafsh:LabelledInstanceShape a sh:NodeShape ;
+    sh:targetSubjectsOf uaf:domain ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "Instance has no rdfs:label. Most likely an unnamed model element; benign for transient objects but suspicious for first-class UAF artefacts." ;
+    ] .
+
+# --- Strategic domain --------------------------------------------------------
+# Backbone Stage 3 shape per NEXT-STEPS.md: a Capability without a realising
+# activity is a governance failure. We split this across three property shapes
+# rather than one big sh:and so the violation messages stay actionable.
+#
+# NOTE: the dump emits Neo4j relationship types in camelCase under the uaf:
+# namespace (REALISES -> uaf:realises). These shapes assume the OPPOSITE
+# direction is also present where appropriate — i.e. an OperationalActivity
+# carrying uaf:realises pointing at a CapabilityConfiguration is the canonical
+# representation. If the model authors the inverse direction instead, this
+# constraint will fire incorrectly. Treat sh:Warning until we add owl:inverseOf
+# pairs to the MVO (Stage 3, next chunk).
+
+uafsh:CapabilityConfigurationShape a sh:NodeShape ;
+    sh:targetClass uaf:CapabilityConfiguration ;
+    sh:property [
+        sh:path [ sh:inversePath uaf:realises ] ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "CapabilityConfiguration has no realising element (no incoming uaf:realises). Stage 3 governance expects every config to be realised by at least one OperationalActivity / Resource / Role." ;
+    ] .
+
+# A Capability with no Vision / EndState / DesiredEffect upstream is a
+# capability detached from strategic intent. Speculative — many real models
+# have free-floating Capabilities during early design. Warning, not violation.
+
+uafsh:CapabilityStrategicAnchorShape a sh:NodeShape ;
+    sh:targetClass uaf:Capability ;
+    sh:property [
+        sh:path uaf:exhibits ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "Capability exhibits no DesiredEffect / EndState. Acceptable during early design, but flag for review before architecture baseline." ;
+    ] .
+
+# Vision without VisionStatement is a structural defect.
+
+uafsh:VisionShape a sh:NodeShape ;
+    sh:targetClass uaf:Vision ;
+    sh:property [
+        sh:path uaf:composedOf ;
+        sh:minCount 1 ;
+        sh:message "Vision has no composing VisionStatement (uaf:composedOf). A Vision without statements is structurally incomplete." ;
+    ] .
+
+# --- Security domain ---------------------------------------------------------
+# Stage 3 calls out classification dominance chains for accreditation. True
+# transitive dominance reasoning belongs in OWL (property chain
+# `:dominates o :dominates ⊑ :dominates`), so we don't try to express that
+# here. SHACL's job is to catch the structural cases: an unprotected asset, a
+# control without a family, a risk without a mitigation.
+
+uafsh:SecurityAssetShape a sh:NodeShape ;
+    sh:targetClass uaf:SecurityAsset ;
+    sh:property [
+        sh:path [ sh:inversePath uaf:contributesTo ] ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "SecurityAsset has no incoming uaf:contributesTo from a SecurityControl. Either the asset is unprotected (governance gap) or the model omits the link (modelling gap)." ;
+    ] .
+
+uafsh:SecurityControlShape a sh:NodeShape ;
+    sh:targetClass uaf:SecurityControl ;
+    sh:property [
+        sh:path uaf:containedIn ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "SecurityControl is not contained in any SecurityControlFamily. Accreditation traceability typically requires every control to roll up to a family (e.g. NIST 800-53 AC, AU, ...)." ;
+    ] .
+
+uafsh:SecurityRiskShape a sh:NodeShape ;
+    sh:targetClass uaf:SecurityRisk ;
+    sh:property [
+        sh:path [ sh:inversePath uaf:tracesTo ] ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "SecurityRisk has no SecurityControl tracing to it. Risks without mitigations are flagged for residual-risk review." ;
+    ] .
+
+# A SecurityDomain without enclaves is a placeholder. Often legitimate during
+# early architecture; warning so it surfaces but doesn't block.
+
+uafsh:SecurityDomainShape a sh:NodeShape ;
+    sh:targetClass uaf:SecurityDomain ;
+    sh:property [
+        sh:path uaf:composedOf ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "SecurityDomain has no composing SecurityEnclave. Acceptable during scoping; flag for review at baseline." ;
+    ] .

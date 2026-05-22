@@ -44,6 +44,10 @@ packages = ["graph_mcp_driver"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "pytest-cov"]
+# Stage 3 scaffolding: SHACL validation of the dumped UAF instance graph.
+# Pulled in by ontology/codegen/validate_shacl.py and the MCP server's
+# validate_shacl() tool. Optional so the core MCP server stays lightweight.
+ontology = ["pyshacl>=0.25"]
 
 [tool.pytest.ini_options]
 testpaths = ["Test"]
