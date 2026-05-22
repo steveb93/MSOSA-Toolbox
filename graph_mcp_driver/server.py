@@ -51,8 +51,8 @@ def run_sparql(query: str) -> list[dict]:
 
 
 def main() -> None:
-    """Console entry point. Also referenced by neo4j_mcp_driver/__main__.py
-    and by the `neo4j-mcp-driver` console script declared in pyproject.toml."""
+    """Console entry point. Also referenced by graph_mcp_driver/__main__.py
+    and by the `graph-mcp-driver` console script declared in pyproject.toml."""
     print(f"MCP Neo4j server starting for {uri} (SPARQL: {sparql_url})", file=sys.stderr)
     mcp.run()
 
