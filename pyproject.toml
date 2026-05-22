@@ -1,5 +1,5 @@
 [project]
-name = "neo4j-mcp-driver"
+name = "graph-mcp-driver"
 version = "1.0.0"
 description = "MCP server that exposes Neo4j (Cypher) and Apache Jena Fuseki (SPARQL) tools to Claude Desktop for querying UAF 1.2 / SysML 1.6 / BPMN 2.0 knowledge graphs."
 readme = "README.md"
@@ -33,14 +33,14 @@ Repository = "https://github.com/steveb93/MSOSA-Toolbox"
 Issues = "https://github.com/steveb93/MSOSA-Toolbox/issues"
 
 [project.scripts]
-neo4j-mcp-driver = "neo4j_mcp_driver.server:main"
+graph-mcp-driver = "graph_mcp_driver.server:main"
 
 [build-system]
 requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["neo4j_mcp_driver"]
+packages = ["graph_mcp_driver"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "pytest-cov"]
