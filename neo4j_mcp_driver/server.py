@@ -50,6 +50,12 @@ def run_sparql(query: str) -> list[dict]:
     return [{k: v["value"] for k, v in row.items()} for row in bindings]
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Console entry point. Also referenced by neo4j_mcp_driver/__main__.py
+    and by the `neo4j-mcp-driver` console script declared in pyproject.toml."""
     print(f"MCP Neo4j server starting for {uri} (SPARQL: {sparql_url})", file=sys.stderr)
     mcp.run()
+
+
+if __name__ == "__main__":
+    main()
