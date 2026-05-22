@@ -86,10 +86,10 @@ uafsh:LabelledInstanceShape a sh:NodeShape ;
 uafsh:CapabilityConfigurationShape a sh:NodeShape ;
     sh:targetClass uaf:CapabilityConfiguration ;
     sh:property [
-        sh:path [ sh:inversePath uaf:realises ] ;
+        sh:path uaf:realisedBy ;
         sh:minCount 1 ;
         sh:severity sh:Warning ;
-        sh:message "CapabilityConfiguration has no realising element (no incoming uaf:realises). Stage 3 governance expects every config to be realised by at least one OperationalActivity / Resource / Role." ;
+        sh:message "CapabilityConfiguration has no realising element. Stage 3 governance expects every config to be realised by at least one OperationalActivity / Resource / Role. Forward path uaf:realisedBy resolves under OWL FB via owl:inverseOf with uaf:realises." ;
     ] .
 
 # A Capability with no Vision / EndState / DesiredEffect upstream is a
@@ -125,10 +125,10 @@ uafsh:VisionShape a sh:NodeShape ;
 uafsh:SecurityAssetShape a sh:NodeShape ;
     sh:targetClass uaf:SecurityAsset ;
     sh:property [
-        sh:path [ sh:inversePath uaf:contributesTo ] ;
+        sh:path uaf:contributedToBy ;
         sh:minCount 1 ;
         sh:severity sh:Warning ;
-        sh:message "SecurityAsset has no incoming uaf:contributesTo from a SecurityControl. Either the asset is unprotected (governance gap) or the model omits the link (modelling gap)." ;
+        sh:message "SecurityAsset has no contributing SecurityControl. Either the asset is unprotected (governance gap) or the model omits the link (modelling gap). Forward path uaf:contributedToBy resolves under OWL FB via owl:inverseOf with uaf:contributesTo." ;
     ] .
 
 uafsh:SecurityControlShape a sh:NodeShape ;
@@ -143,10 +143,10 @@ uafsh:SecurityControlShape a sh:NodeShape ;
 uafsh:SecurityRiskShape a sh:NodeShape ;
     sh:targetClass uaf:SecurityRisk ;
     sh:property [
-        sh:path [ sh:inversePath uaf:tracesTo ] ;
+        sh:path uaf:tracedBy ;
         sh:minCount 1 ;
         sh:severity sh:Warning ;
-        sh:message "SecurityRisk has no SecurityControl tracing to it. Risks without mitigations are flagged for residual-risk review." ;
+        sh:message "SecurityRisk has no SecurityControl tracing to it. Risks without mitigations are flagged for residual-risk review. Forward path uaf:tracedBy resolves under OWL FB via owl:inverseOf with uaf:tracesTo." ;
     ] .
 
 # A SecurityDomain without enclaves is a placeholder. Often legitimate during

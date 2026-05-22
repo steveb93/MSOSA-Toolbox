@@ -1,13 +1,19 @@
 """SHACL validation of the dumped UAF instance graph against ontology/shapes/uaf-shapes.ttl.
 
 Stage 3 scaffolding (speculative). Runs pyshacl against:
-  - data:   ontology/uaf-mvo.ttl + ontology/dump/uaf-instance.ttl
+  - data:   ontology/uaf-mvo.ttl + ontology/uaf-mvo-axioms.ttl + ontology/dump/uaf-instance.ttl
   - shapes: ontology/shapes/uaf-shapes.ttl
 
-Inference is set to "rdfs" so rdfs:subClassOf+ paths resolve, matching the
-RDFS-Exp reasoner Fuseki runs at query time. This means a shape with
-sh:targetClass uaf:StrategicElement matches every subclass (uaf:Capability,
-uaf:CapabilityConfiguration, ...) without listing them individually.
+Inference is set to "rdfsowlrl" so:
+  - rdfs:subClassOf+ paths resolve (sh:targetClass uaf:StrategicElement
+    matches every subclass without listing them individually),
+  - owl:inverseOf materialises both directions of canonical pairs
+    (uaf:realises ↔ uaf:realisedBy etc.) — shapes use forward paths
+    rather than sh:inversePath,
+  - owl:TransitiveProperty closes the security classification dominance
+    chain.
+
+This matches Fuseki's OWL FB reasoner (Stage 3 upgrade from RDFS-Exp).
 
 Usage:
     python ontology/codegen/validate_shacl.py
@@ -33,6 +39,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MVO_FILE = REPO_ROOT / "ontology" / "uaf-mvo.ttl"
+AXIOMS_FILE = REPO_ROOT / "ontology" / "uaf-mvo-axioms.ttl"
 DUMP_FILE = REPO_ROOT / "ontology" / "dump" / "uaf-instance.ttl"
 SHAPES_FILE = REPO_ROOT / "ontology" / "shapes" / "uaf-shapes.ttl"
 
@@ -100,10 +107,12 @@ def _format_text(conforms: bool, rows: list[dict]) -> str:
 
 
 def run(mvo: Path = MVO_FILE,
+        axioms: Path = AXIOMS_FILE,
         dump: Path = DUMP_FILE,
         shapes: Path = SHAPES_FILE) -> tuple[bool, list[dict]]:
     """Validate the dump against the shapes. Returns (conforms, rows)."""
     _require(mvo, "regenerate via `python ontology/codegen/generate_mvo.py`")
+    _require(axioms, "expected ontology/uaf-mvo-axioms.ttl (Stage 3 OWL axioms)")
     _require(dump, "regenerate via `python ontology/codegen/dump_to_rdf.py`")
     _require(shapes, "expected ontology/shapes/uaf-shapes.ttl (Stage 3 scaffolding)")
 
@@ -111,6 +120,7 @@ def run(mvo: Path = MVO_FILE,
 
     data_graph = Graph()
     data_graph.parse(mvo, format="turtle")
+    data_graph.parse(axioms, format="turtle")
     data_graph.parse(dump, format="turtle")
 
     shapes_graph = Graph()
@@ -119,7 +129,7 @@ def run(mvo: Path = MVO_FILE,
     conforms, report_graph, _report_text = validate(
         data_graph=data_graph,
         shacl_graph=shapes_graph,
-        inference="rdfs",
+        inference="rdfsowlrl",
         meta_shacl=False,
         advanced=True,
         debug=False,

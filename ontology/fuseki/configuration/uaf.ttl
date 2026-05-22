@@ -2,11 +2,19 @@
 ## Loaded automatically because it lives in /fuseki/configuration.
 ##
 ## The dataset is an in-memory model containing:
-##   - uaf-mvo.ttl       (T-Box, generated from UAFStereotypeRegistry)
+##   - uaf-mvo.ttl         (T-Box, generated from UAFStereotypeRegistry)
+##   - uaf-mvo-axioms.ttl  (Stage 3 OWL axioms — inverses, disjointness,
+##                          dominance transitivity, CapabilityConfiguration
+##                          restrictions; hand-authored, sibling to MVO)
 ##   - dump/uaf-instance.ttl (A-Box, dumped from Neo4j by dump_to_rdf.py)
 ##
-## An RDFS-Exp reasoner is wrapped around the base model so subsumption queries
-## (rdfs:subClassOf+, etc.) resolve without manual property paths.
+## Reasoner: OWL FB rule reasoner (OWLFBRuleReasoner). Stage 3 upgraded this
+## from RDFS-Exp to materialise OWL property chains, owl:inverseOf, and
+## class disjointness. The previous RDFS-Exp reasoner ignored every axiom
+## in uaf-mvo-axioms.ttl. Trade-off: OWL FB is slower at load time than
+## RDFS-Exp because it expands a larger rule set; query-time performance is
+## comparable for the MVO size. Revisit if the materialised dataset grows
+## past a few hundred thousand triples.
 
 @prefix :       <#> .
 @prefix fuseki: <http://jena.apache.org/fuseki#> .
@@ -27,8 +35,9 @@
 
 :inf_model a ja:InfModel ;
     ja:baseModel :base_model ;
-    ja:reasoner  [ ja:reasonerURL <http://jena.hpl.hp.com/2003/RDFSExptRuleReasoner> ] .
+    ja:reasoner  [ ja:reasonerURL <http://jena.hpl.hp.com/2003/OWLFBRuleReasoner> ] .
 
 :base_model a ja:MemoryModel ;
     ja:content [ ja:externalContent <file:///staging/uaf-mvo.ttl> ] ;
+    ja:content [ ja:externalContent <file:///staging/uaf-mvo-axioms.ttl> ] ;
     ja:content [ ja:externalContent <file:///staging/dump/uaf-instance.ttl> ] .

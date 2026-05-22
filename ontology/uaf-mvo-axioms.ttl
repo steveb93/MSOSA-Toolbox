@@ -1,0 +1,241 @@
+# UAF MVO axioms — Stage 3 scaffolding (speculative)
+#
+# Sibling file to ontology/uaf-mvo.ttl. The MVO is generated from
+# UAFStereotypeRegistry by generate_mvo.py; this file is hand-authored and
+# loaded alongside the MVO by Fuseki. Keeping the two separate means the
+# codegen output stays mechanical and these richer axioms stay legible.
+#
+# Loaded by:  ontology/fuseki/configuration/uaf.ttl (alongside uaf-mvo.ttl)
+# Reasoner:   OWL FB rule reasoner (jena OWLFBRuleReasoner) — required for
+#             property chains and full inverseOf materialisation. The
+#             previous RDFS-Exp reasoner ignored every axiom in this file.
+#
+# Scope (Stage 3, per ontology/NEXT-STEPS.md):
+#   1. owl:inverseOf for canonical UAF traceability pairs
+#   2. owl:disjointWith between domain superclasses
+#   3. uaf:dominates as owl:TransitiveProperty for security classification
+#   4. owl:someValuesFrom restrictions on CapabilityConfiguration
+#
+# What this file does NOT do, by design:
+#   - Coin inverses for every ObjectProperty in the MVO. Only the ones that
+#     appear in shapes today or in canonical UAF traceability are declared
+#     here. Add more as queries/shapes need them.
+#   - Replace SHACL shapes. OWL someValuesFrom is open-world (says "there
+#     exists" without flagging absence); SHACL shapes are closed-world
+#     constraints. Both are useful for different purposes, both stay.
+
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix uaf:     <http://msosa-toolbox.local/uaf#> .
+
+<http://msosa-toolbox.local/uaf/axioms> a owl:Ontology ;
+    rdfs:label "UAF MVO axioms (Stage 3)" ;
+    rdfs:comment "Hand-authored OWL axioms layered over the generated MVO. Inverses, domain disjointness, classification dominance, capability-configuration restrictions." ;
+    owl:imports <http://msosa-toolbox.local/uaf/mvo> ;
+    owl:versionInfo "0.1.0" ;
+    dcterms:created "2026-05-22"^^xsd:date .
+
+# --- 1. owl:inverseOf for canonical UAF traceability pairs ------------------
+#
+# The MVO declares one direction of each pair (e.g. uaf:realises). The dump
+# emits whichever direction the model authors used. Declaring the inverse
+# lets the reasoner materialise the reverse triples — so SHACL shapes and
+# SPARQL queries can use forward paths regardless of which way the model
+# happens to write them.
+#
+# Each inverse property is declared as a new ObjectProperty here (it has to
+# be — the MVO doesn't include it) and tied to its forward partner with
+# owl:inverseOf.
+
+uaf:realisedBy a owl:ObjectProperty ;
+    rdfs:label "realisedBy" ;
+    rdfs:comment "Inverse of uaf:realises. realiser uaf:realises realised → realised uaf:realisedBy realiser." ;
+    owl:inverseOf uaf:realises .
+
+uaf:tracedBy a owl:ObjectProperty ;
+    rdfs:label "tracedBy" ;
+    rdfs:comment "Inverse of uaf:tracesTo. Useful for `risk ^tracesTo control` queries that become `risk tracedBy control` under the reasoner." ;
+    owl:inverseOf uaf:tracesTo .
+
+uaf:exhibitedBy a owl:ObjectProperty ;
+    rdfs:label "exhibitedBy" ;
+    rdfs:comment "Inverse of uaf:exhibits. Capability uaf:exhibits DesiredEffect → DesiredEffect uaf:exhibitedBy Capability." ;
+    owl:inverseOf uaf:exhibits .
+
+uaf:contributedToBy a owl:ObjectProperty ;
+    rdfs:label "contributedToBy" ;
+    rdfs:comment "Inverse of uaf:contributesTo. SecurityControl uaf:contributesTo SecurityAsset → asset contributedToBy control." ;
+    owl:inverseOf uaf:contributesTo .
+
+uaf:partOf a owl:ObjectProperty ;
+    rdfs:label "partOf" ;
+    rdfs:comment "Inverse of uaf:composedOf. Vision uaf:composedOf VisionStatement → statement partOf vision." ;
+    owl:inverseOf uaf:composedOf .
+
+uaf:contains a owl:ObjectProperty ;
+    rdfs:label "contains" ;
+    rdfs:comment "Inverse of uaf:containedIn. ControlFamily uaf:contains SecurityControl ← SecurityControl uaf:containedIn ControlFamily." ;
+    owl:inverseOf uaf:containedIn .
+
+uaf:performedBy a owl:ObjectProperty ;
+    rdfs:label "performedBy" ;
+    rdfs:comment "Inverse of uaf:performs. Activity uaf:performedBy Performer ← Performer uaf:performs Activity." ;
+    owl:inverseOf uaf:performs .
+
+uaf:allocationOf a owl:ObjectProperty ;
+    rdfs:label "allocationOf" ;
+    rdfs:comment "Inverse of uaf:allocatedTo. Useful for tracing what's allocated where without inversePath." ;
+    owl:inverseOf uaf:allocatedTo .
+
+uaf:assigneeOf a owl:ObjectProperty ;
+    rdfs:label "assigneeOf" ;
+    rdfs:comment "Inverse of uaf:assignedTo." ;
+    owl:inverseOf uaf:assignedTo .
+
+uaf:satisfiedBy a owl:ObjectProperty ;
+    rdfs:label "satisfiedBy" ;
+    rdfs:comment "Inverse of uaf:satisfies. Requirement uaf:satisfiedBy Element ← Element uaf:satisfies Requirement." ;
+    owl:inverseOf uaf:satisfies .
+
+uaf:refinedBy a owl:ObjectProperty ;
+    rdfs:label "refinedBy" ;
+    rdfs:comment "Inverse of uaf:refines." ;
+    owl:inverseOf uaf:refines .
+
+uaf:enabledBy a owl:ObjectProperty ;
+    rdfs:label "enabledBy" ;
+    rdfs:comment "Inverse of uaf:enables. Capability uaf:enabledBy Activity ← Activity uaf:enables Capability." ;
+    owl:inverseOf uaf:enables .
+
+uaf:supportedBy a owl:ObjectProperty ;
+    rdfs:label "supportedBy" ;
+    rdfs:comment "Inverse of uaf:supports." ;
+    owl:inverseOf uaf:supports .
+
+uaf:implementedBy a owl:ObjectProperty ;
+    rdfs:label "implementedBy" ;
+    rdfs:comment "Inverse of uaf:implements." ;
+    owl:inverseOf uaf:implements .
+
+uaf:requiredBy a owl:ObjectProperty ;
+    rdfs:label "requiredBy" ;
+    rdfs:comment "Inverse of uaf:dependsOn." ;
+    owl:inverseOf uaf:dependsOn .
+
+# --- 2. Disjointness between UAF domain superclasses ------------------------
+#
+# A UAF element should belong to exactly one domain. If a model element ends
+# up typed as both Strategic and Operational (e.g. via stereotype mis-applied)
+# the reasoner will flag the dataset as inconsistent. This is a real OWL
+# constraint, not a SHACL one — it's the reasoner's responsibility.
+#
+# Pairwise disjointness expressed via owl:disjointWith. Could be expressed
+# more compactly with owl:AllDisjointClasses, but pairwise reads clearer
+# in the rule reasoner trace when a violation fires.
+
+uaf:StrategicElement owl:disjointWith uaf:OperationalElement ,
+                                      uaf:ResourceElement ,
+                                      uaf:ServiceElement ,
+                                      uaf:PersonnelElement ,
+                                      uaf:AcquisitionElement ,
+                                      uaf:SecurityElement .
+
+uaf:OperationalElement owl:disjointWith uaf:ResourceElement ,
+                                        uaf:ServiceElement ,
+                                        uaf:PersonnelElement ,
+                                        uaf:AcquisitionElement ,
+                                        uaf:SecurityElement .
+
+uaf:ResourceElement owl:disjointWith uaf:ServiceElement ,
+                                     uaf:PersonnelElement ,
+                                     uaf:AcquisitionElement ,
+                                     uaf:SecurityElement .
+
+uaf:ServiceElement owl:disjointWith uaf:PersonnelElement ,
+                                    uaf:AcquisitionElement ,
+                                    uaf:SecurityElement .
+
+uaf:PersonnelElement owl:disjointWith uaf:AcquisitionElement ,
+                                      uaf:SecurityElement .
+
+uaf:AcquisitionElement owl:disjointWith uaf:SecurityElement .
+
+# Note: uaf:SharedElement is intentionally NOT in the disjointness web —
+# anything shared can carry a domain-specific stereotype as well.
+
+# --- 3. Security classification dominance -----------------------------------
+#
+# Per ontology/NEXT-STEPS.md Stage 3: "Property chains for security
+# classification dominance: :dominates o :dominates ⊑ :dominates".
+#
+# A new ObjectProperty `uaf:dominates` is declared here (the registry has
+# no DOMINATES relationship today — see comment block at end of file for
+# what would need to land on the Java side to emit it). The transitive
+# closure makes "TOP SECRET dominates SECRET dominates CONFIDENTIAL" imply
+# "TOP SECRET dominates CONFIDENTIAL" — the canonical accreditation
+# reasoning pattern.
+#
+# Expressed as owl:TransitiveProperty (idiomatic) rather than the equivalent
+# property-chain form, which would be:
+#
+#   uaf:dominates owl:propertyChainAxiom ( uaf:dominates uaf:dominates ) .
+#
+# Both forms are computed by OWL FB; the TransitiveProperty form is shorter
+# and matches how OWL textbooks express this.
+
+uaf:dominates a owl:ObjectProperty , owl:TransitiveProperty ;
+    rdfs:label "dominates" ;
+    rdfs:comment "Security classification dominance. TOP_SECRET dominates SECRET dominates CONFIDENTIAL → TOP_SECRET dominates CONFIDENTIAL by transitivity. Declared here as scaffolding; the Java plugin does not yet emit DOMINATES edges, so this axiom currently has nothing to chain over." ;
+    rdfs:domain uaf:SecurityElement ;
+    rdfs:range uaf:SecurityElement .
+
+# --- 4. owl:someValuesFrom restrictions on CapabilityConfiguration ----------
+#
+# Per ontology/NEXT-STEPS.md: "every config must have ≥1 realising activity,
+# ≥1 resource, ≥1 role". The SHACL shape uafsh:CapabilityConfigurationShape
+# already enforces this as a hard constraint; these OWL axioms add a
+# definitional layer.
+#
+# IMPORTANT semantic difference from SHACL:
+#   - SHACL is closed-world: "if there is no realising element, flag it."
+#   - OWL someValuesFrom is open-world: "if X is a CapabilityConfiguration,
+#     there exists some realiser somewhere in the world." It does NOT flag
+#     missing data — it asserts existence.
+#
+# So why bother? Two reasons:
+#   1. Documentation. The OWL axiom formalises the constraint in a way that
+#      tooling (Protégé, GraphDB UI, etc.) renders nicely on the class card.
+#   2. Class-membership inference. If we later add owl:equivalentClass
+#      (instead of subClassOf), the reasoner could derive that any element
+#      with realisedBy of an OperationalActivity etc. IS a
+#      CapabilityConfiguration. We don't do that here — subClassOf only —
+#      to avoid surprising the dump.
+
+uaf:CapabilityConfiguration rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty uaf:realisedBy ;
+      owl:someValuesFrom uaf:OperationalActivity ;
+      rdfs:comment "Every CapabilityConfiguration is realised by at least one OperationalActivity." ] ,
+    [ a owl:Restriction ;
+      owl:onProperty uaf:realisedBy ;
+      owl:someValuesFrom uaf:ResourcePerformer ;
+      rdfs:comment "Every CapabilityConfiguration is realised by at least one ResourcePerformer." ] ,
+    [ a owl:Restriction ;
+      owl:onProperty uaf:realisedBy ;
+      owl:someValuesFrom uaf:ResourceRole ;
+      rdfs:comment "Every CapabilityConfiguration is realised by at least one ResourceRole." ] .
+
+# --- Notes for follow-up work ----------------------------------------------
+#
+# When the Java plugin gains DOMINATES emission (UAFRelationshipDTO.REL_DOMINATES
+# and a registry entry), the uaf:dominates declaration above will start
+# materialising transitive closures over real Security model data. Until
+# then it's harmless scaffolding.
+#
+# When more shapes need inverse paths, add the corresponding inverseOf
+# pair here rather than relying on sh:inversePath in the shapes file —
+# under OWL FB, the reasoner pre-materialises both directions and queries
+# become symmetric.
