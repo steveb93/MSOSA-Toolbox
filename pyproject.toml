@@ -1,12 +1,39 @@
 [project]
 name = "neo4j-mcp-driver"
-version = "0.1.0"
+version = "1.0.0"
+description = "MCP server that exposes Neo4j (Cypher) and Apache Jena Fuseki (SPARQL) tools to Claude Desktop for querying UAF 1.2 / SysML 1.6 / BPMN 2.0 knowledge graphs."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "steveb93", email = "steve93.sb@gmail.com" }]
+keywords = ["mcp", "neo4j", "sparql", "fuseki", "uaf", "sysml", "bpmn", "knowledge-graph", "claude"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Database",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
 dependencies = [
     "mcp",
     "neo4j",
     "httpx",
-    "rdflib"
+    "rdflib",
 ]
+
+[project.urls]
+Homepage = "https://github.com/steveb93/MSOSA-Toolbox"
+Repository = "https://github.com/steveb93/MSOSA-Toolbox"
+Issues = "https://github.com/steveb93/MSOSA-Toolbox/issues"
+
+[project.scripts]
+neo4j-mcp-driver = "neo4j_mcp_driver.server:main"
 
 [build-system]
 requires = ["setuptools>=64"]
