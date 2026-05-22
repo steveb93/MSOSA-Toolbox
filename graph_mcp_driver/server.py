@@ -99,7 +99,7 @@ def validate_shacl(shapes_file: str | None = None) -> dict:
     conforms, report_graph, _ = validate(
         data_graph=data_graph,
         shacl_graph=shapes_graph,
-        inference="rdfs",
+        inference="rdfsowlrl",
         meta_shacl=False,
         advanced=True,
     )

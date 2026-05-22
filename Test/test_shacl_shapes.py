@@ -20,6 +20,7 @@ from rdflib import Graph  # noqa: E402  (after importorskip)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MVO_FILE = REPO_ROOT / "ontology" / "uaf-mvo.ttl"
+AXIOMS_FILE = REPO_ROOT / "ontology" / "uaf-mvo-axioms.ttl"
 SHAPES_FILE = REPO_ROOT / "ontology" / "shapes" / "uaf-shapes.ttl"
 
 PREFIXES = """
@@ -32,12 +33,13 @@ PREFIXES = """
 
 
 def _validate(extra_ttl: str) -> tuple[bool, list[dict]]:
-    """Validate MVO + synthetic instance TTL against the shapes file."""
+    """Validate MVO + axioms + synthetic instance TTL against the shapes file."""
     from pyshacl import validate
     from rdflib import Namespace, URIRef
 
     data = Graph()
     data.parse(MVO_FILE, format="turtle")
+    data.parse(AXIOMS_FILE, format="turtle")
     data.parse(data=PREFIXES + extra_ttl, format="turtle")
 
     shapes = Graph()
@@ -46,7 +48,7 @@ def _validate(extra_ttl: str) -> tuple[bool, list[dict]]:
     conforms, report, _ = validate(
         data_graph=data,
         shacl_graph=shapes,
-        inference="rdfs",
+        inference="rdfsowlrl",
         advanced=True,
         meta_shacl=False,
     )
