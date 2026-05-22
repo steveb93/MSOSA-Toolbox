@@ -27,22 +27,6 @@
         <msosa.sdk.version>2022x-hf2</msosa.sdk.version>
     </properties>
 
-    <!--
-      Published to GitHub Packages on every stable tag push by the publish-maven
-      job in .github/workflows/msosa-model-exporter-build.yml. The `github`
-      server id is wired up by actions/setup-java@v4 using GITHUB_TOKEN — no
-      ~/.m2/settings.xml entry is required in CI. For local `mvn deploy`, add a
-      <server id="github"> entry to your settings.xml with a PAT that has
-      write:packages scope.
-    -->
-    <distributionManagement>
-        <repository>
-            <id>github</id>
-            <name>GitHub Packages — steveb93/MSOSA-Toolbox</name>
-            <url>https://maven.pkg.github.com/steveb93/MSOSA-Toolbox</url>
-        </repository>
-    </distributionManagement>
-
     <dependencies>
         <!-- Neo4j Java Driver (bundled into fat jar) -->
         <dependency>
