@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This repo converts UAF 1.2 (Unified Architecture Framework) system models into a Neo4j knowledge graph. There are two pipelines:
 
 1. **Java Maven plugin** (`msosa-model-exporter/`) — installs into MSOSA (MagicDraw) 2022x Hotfix 2 and exports directly to Neo4j over Bolt from within the modelling tool.
-2. **Python MCP server** (`neo4j_mcp_driver/`) — exposes Neo4j Cypher queries to Claude Desktop via the Model Context Protocol, enabling Claude to query the graph.
+2. **Python MCP server** (`graph_mcp_driver/`) — exposes Neo4j Cypher and Fuseki SPARQL queries to Claude Desktop via the Model Context Protocol, enabling Claude to query the graph.
 
 Neo4j runs in Docker (`docker-compose/docker-compose.yml`) on `bolt://localhost:7687`. The database user is always `neo4j`; the password and the host data directory are read from `docker-compose/.env` (`NEO4J_PASSWORD`, `NEO4J_DATA_DIR`). Copy `docker-compose/.env.example` to `docker-compose/.env` and fill in values before bringing the stack up — Compose will refuse to start otherwise.
 
@@ -30,9 +30,9 @@ The zip (`target/msosa-model-exporter-1.5.0-Preview-plugin.zip`) extracts to a f
 ### Python MCP Server
 
 ```powershell
-cd neo4j_mcp_driver
+cd graph_mcp_driver
 pip install -e .
-python -m neo4j_mcp_driver.server
+python -m graph_mcp_driver.server
 ```
 
 ### Docker — Neo4j
@@ -98,7 +98,7 @@ The `:Stereotype` and `:Domain` nodes are the **pre-existing metamodel** — cre
 
 ### Python MCP Server
 
-`neo4j_mcp_driver/server.py` exposes two FastMCP tools:
+`graph_mcp_driver/server.py` exposes two FastMCP tools:
 
 - **`run_cypher(query)`** — executes arbitrary Cypher over Bolt and returns records as `list[dict]`.
 - **`run_sparql(query)`** — POSTs SPARQL 1.1 SELECT/ASK to the Fuseki endpoint (`http://localhost:3030/uaf/sparql` by default; override via `NEO4J_SPARQL_URL`) and returns one dict per binding row.
