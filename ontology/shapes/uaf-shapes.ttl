@@ -3,8 +3,12 @@
 # Scope: validation constraints sitting alongside the MVO (ontology/uaf-mvo.ttl).
 # This file does NOT modify the MVO; it references MVO classes by IRI.
 #
-# Stage 3 focuses on the Strategic and Security sub-domains per
+# Stage 3 originally focused on the Strategic and Security sub-domains per
 # ontology/NEXT-STEPS.md §"Stage 3 — Native triplestore for governed sub-domains".
+# Coverage has since been extended to Operational + Resource (the next two
+# largest UAF domains) so Stage 3 governance now spans 4 of 7 domains.
+# Service, Personnel, and Acquisition are the remaining gap.
+#
 # Shapes here are scaffolding: enough to demonstrate the pipeline (shapes ->
 # pyshacl -> violation report -> MCP), not a complete governance ruleset. Extend
 # as Stage 3 firms up.
@@ -159,4 +163,106 @@ uafsh:SecurityDomainShape a sh:NodeShape ;
         sh:minCount 1 ;
         sh:severity sh:Warning ;
         sh:message "SecurityDomain has no composing SecurityEnclave. Acceptable during scoping; flag for review at baseline." ;
+    ] .
+
+# --- Operational domain ------------------------------------------------------
+# Stage 3 governance for the Operational slice. The defining structural
+# invariants for this domain are: every activity is performed by someone;
+# every performer performs at least one activity; every process composes
+# at least one activity. All flagged sh:Warning — partial Operational
+# Architecture Description (OV-1/OV-2 scoping work) typically leaves these
+# links incomplete and we don't want to block design-time exports.
+#
+# All paths are forward-direction under OWL FB. uaf:performedBy resolves to
+# the reverse of uaf:performs via owl:inverseOf in uaf-mvo-axioms.ttl §1, so
+# whichever way the modeller drew the link, the shape sees it.
+
+uafsh:OperationalActivityShape a sh:NodeShape ;
+    sh:targetClass uaf:OperationalActivity ;
+    sh:property [
+        sh:path uaf:performedBy ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "OperationalActivity has no performer (uaf:performedBy). An activity that nobody performs is either an unassigned task or a modelling gap. Forward path resolves under OWL FB via owl:inverseOf with uaf:performs." ;
+    ] .
+
+# An OperationalPerformer not bound to any activity is a floating role — the
+# inverse view of the same constraint above. Both shapes together catch the
+# asymmetric cases where one side links and the other doesn't.
+
+uafsh:OperationalPerformerShape a sh:NodeShape ;
+    sh:targetClass uaf:OperationalPerformer ;
+    sh:property [
+        sh:path uaf:performs ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "OperationalPerformer performs no OperationalActivity. Either an unassigned performer or a modelling gap. Acceptable during early scoping." ;
+    ] .
+
+# OperationalProcess is a composition of activities. A process with zero
+# composedOf is essentially an empty container — almost always a stub left
+# over from an early sketch.
+
+uafsh:OperationalProcessShape a sh:NodeShape ;
+    sh:targetClass uaf:OperationalProcess ;
+    sh:property [
+        sh:path uaf:composedOf ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "OperationalProcess composes no OperationalActivity. Empty process containers are usually scoping placeholders; flag for review before baseline." ;
+    ] .
+
+# --- Resource domain ---------------------------------------------------------
+# Stage 3 governance for the Resource slice. Resources are where Operational
+# intent becomes physical/logical realisation, so the invariants here are
+# about "this resource construct is actually wired into the realisation":
+# performers perform functions, roles are assigned to performers, an
+# architecture contains components, an artifact is allocated somewhere.
+
+uafsh:ResourcePerformerShape a sh:NodeShape ;
+    sh:targetClass uaf:ResourcePerformer ;
+    sh:property [
+        sh:path uaf:performs ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "ResourcePerformer performs no ResourceElement (function / action / service). A performer without behaviour is either unspecified or a modelling gap." ;
+    ] .
+
+# Roles bound to nothing are governance debt — the role exists conceptually
+# but no performer is responsible for it. Warning so the violation surfaces
+# without blocking architecture iteration.
+
+uafsh:ResourceRoleShape a sh:NodeShape ;
+    sh:targetClass uaf:ResourceRole ;
+    sh:property [
+        sh:path uaf:assignedTo ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "ResourceRole is not assigned to any ResourcePerformer (uaf:assignedTo). Role bindings clarify accountability; expected before architecture baseline." ;
+    ] .
+
+# A ResourceArchitecture with no components is a top-level container missing
+# its content. Equivalent to OperationalProcess for the Resource domain.
+
+uafsh:ResourceArchitectureShape a sh:NodeShape ;
+    sh:targetClass uaf:ResourceArchitecture ;
+    sh:property [
+        sh:path uaf:composedOf ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "ResourceArchitecture composes no ResourceElement. Empty architecture containers are usually scoping placeholders; flag for review before baseline." ;
+    ] .
+
+# ResourceArtifact carries the allocation pattern: an artifact (document,
+# build output, data file) typically allocates to a performer/role/system.
+# Unallocated artifacts are common during ingest; warning so they surface
+# without blocking.
+
+uafsh:ResourceArtifactShape a sh:NodeShape ;
+    sh:targetClass uaf:ResourceArtifact ;
+    sh:property [
+        sh:path uaf:allocatedTo ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "ResourceArtifact is not allocated to anything (uaf:allocatedTo). Artifacts without allocation lose configuration-management traceability." ;
     ] .
