@@ -15,6 +15,8 @@
 #   2. owl:disjointWith between domain superclasses
 #   3. uaf:dominates as owl:TransitiveProperty for security classification
 #   4. owl:someValuesFrom restrictions on CapabilityConfiguration
+#   5. owl:someValuesFrom restrictions on key Operational + Resource classes
+#      (extending Stage 3 governance coverage beyond Strategic + Security)
 #
 # What this file does NOT do, by design:
 #   - Coin inverses for every ObjectProperty in the MVO. Only the ones that
@@ -228,6 +230,43 @@ uaf:CapabilityConfiguration rdfs:subClassOf
       owl:someValuesFrom uaf:ResourceRole ;
       rdfs:comment "Every CapabilityConfiguration is realised by at least one ResourceRole." ] .
 
+# --- 5. owl:someValuesFrom restrictions — Operational + Resource -----------
+#
+# Parallel to §4, but for the Operational and Resource domains. Same
+# open-world semantics: these axioms assert existence ("there is some
+# performer for this activity"), not absence-flagging — SHACL shapes in
+# ontology/shapes/uaf-shapes.ttl handle absence under closed-world.
+#
+# Class choices match the seven SHACL shapes added alongside this section;
+# only the four with a clear class-definitional constraint get an OWL
+# restriction here. The other three (OperationalPerformer "performs",
+# ResourceRole "assignedTo", ResourceArtifact "allocatedTo") are governance
+# expectations rather than definitions, so SHACL-only is the right level.
+
+uaf:OperationalActivity rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty uaf:performedBy ;
+      owl:someValuesFrom uaf:OperationalPerformer ;
+      rdfs:comment "Every OperationalActivity is performed by at least one OperationalPerformer." ] .
+
+uaf:OperationalProcess rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty uaf:composedOf ;
+      owl:someValuesFrom uaf:OperationalActivity ;
+      rdfs:comment "Every OperationalProcess composes at least one OperationalActivity." ] .
+
+uaf:ResourcePerformer rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty uaf:performs ;
+      owl:someValuesFrom uaf:ResourceElement ;
+      rdfs:comment "Every ResourcePerformer performs at least one ResourceElement (function / action / service)." ] .
+
+uaf:ResourceArchitecture rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty uaf:composedOf ;
+      owl:someValuesFrom uaf:ResourceElement ;
+      rdfs:comment "Every ResourceArchitecture composes at least one ResourceElement." ] .
+
 # --- Notes for follow-up work ----------------------------------------------
 #
 # When the Java plugin gains DOMINATES emission (UAFRelationshipDTO.REL_DOMINATES
@@ -239,3 +278,9 @@ uaf:CapabilityConfiguration rdfs:subClassOf
 # pair here rather than relying on sh:inversePath in the shapes file —
 # under OWL FB, the reasoner pre-materialises both directions and queries
 # become symmetric.
+#
+# The remaining three UAF domains — Service, Personnel, Acquisition — are
+# not yet shaped or restricted. Add their analogous someValuesFrom
+# restrictions and SHACL shapes once the canonical classes are agreed
+# (likely: Service ⊑ ∃ providedBy . ResourcePerformer; Post ⊑ ∃ heldBy . ;
+# ProjectMilestone ⊑ ∃ partOf . Project).
