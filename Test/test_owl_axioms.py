@@ -263,3 +263,53 @@ def test_performs_inverseOf_performed_by_via_closure():
     g = _close(ttl)
     assert (UAFINST.a, UAF.performedBy, UAFINST.p) in g, \
         "uaf:performs should infer uaf:performedBy under owl:inverseOf"
+
+
+# --- §6 Service + Personnel + Acquisition someValuesFrom restrictions -------
+
+def test_service_restriction_targets_performer():
+    """Service ⊑ ∃ providedBy . ServicePerformer (axioms §6)."""
+    g = Graph()
+    g.parse(MVO_FILE, format="turtle")
+    g.parse(AXIOMS_FILE, format="turtle")
+    assert UAF.ServicePerformer in _restriction_targets(g, UAF.Service)
+
+
+def test_service_architecture_restriction_targets_element():
+    """ServiceArchitecture ⊑ ∃ composedOf . ServiceElement (axioms §6)."""
+    g = Graph()
+    g.parse(MVO_FILE, format="turtle")
+    g.parse(AXIOMS_FILE, format="turtle")
+    assert UAF.ServiceElement in _restriction_targets(g, UAF.ServiceArchitecture)
+
+
+def test_post_restriction_targets_organization():
+    """Post ⊑ ∃ partOf . Organization (axioms §6)."""
+    g = Graph()
+    g.parse(MVO_FILE, format="turtle")
+    g.parse(AXIOMS_FILE, format="turtle")
+    assert UAF.Organization in _restriction_targets(g, UAF.Post)
+
+
+def test_project_restriction_targets_acquisition_element():
+    """Project ⊑ ∃ composedOf . AcquisitionElement (axioms §6)."""
+    g = Graph()
+    g.parse(MVO_FILE, format="turtle")
+    g.parse(AXIOMS_FILE, format="turtle")
+    assert UAF.AcquisitionElement in _restriction_targets(g, UAF.Project)
+
+
+def test_provides_inverseOf_provided_by_via_closure():
+    """uaf:provides and uaf:providedBy interoperate under owl:inverseOf.
+
+    Sanity-check the newly-added pair (§1) used by uafsh:ServiceShape.
+    Same reasoning as test_performs_inverseOf_performed_by_via_closure.
+    """
+    ttl = """
+    uafinst:sp a uaf:ServicePerformer ; uaf:domain "SERVICE" .
+    uafinst:sv a uaf:Service ;          uaf:domain "SERVICE" .
+    uafinst:sp uaf:provides uafinst:sv .
+    """
+    g = _close(ttl)
+    assert (UAFINST.sv, UAF.providedBy, UAFINST.sp) in g, \
+        "uaf:provides should infer uaf:providedBy under owl:inverseOf"

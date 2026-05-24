@@ -279,3 +279,174 @@ def test_resource_artifact_warns_without_allocation():
     matches = [r for r in rows
                if r["focus"].endswith("art1") and r["severity"] == "Warning"]
     assert matches, f"ResourceArtifact warning not raised. Got: {rows}"
+
+
+# --- Service domain ----------------------------------------------------------
+
+def test_service_warns_without_provider():
+    """Service with no provider (forward providedBy or reverse provides) must warn."""
+    ttl = """
+    uafinst:svc1 a uaf:Service ;
+        rdfs:label "Svc1" ;
+        uaf:domain "SERVICE" .
+    """
+    _, rows = _validate(ttl)
+    matches = [r for r in rows
+               if r["focus"].endswith("svc1") and r["severity"] == "Warning"]
+    assert matches, f"Service warning not raised. Got: {rows}"
+
+
+def test_service_with_provider_does_not_warn():
+    """Service linked to a ServicePerformer via uaf:provides must not flag."""
+    ttl = """
+    uafinst:svc2 a uaf:Service ;
+        rdfs:label "Svc2" ;
+        uaf:domain "SERVICE" .
+    uafinst:sp2 a uaf:ServicePerformer ;
+        rdfs:label "SP2" ;
+        uaf:domain "SERVICE" ;
+        uaf:provides uafinst:svc2 .
+    """
+    _, rows = _validate(ttl)
+    svc_rows = [r for r in rows if r["focus"].endswith("svc2")]
+    assert svc_rows == [], f"Provided service should not flag: {svc_rows}"
+
+
+def test_service_architecture_warns_without_components():
+    """ServiceArchitecture with no composedOf must warn."""
+    ttl = """
+    uafinst:sarch1 a uaf:ServiceArchitecture ;
+        rdfs:label "SArch1" ;
+        uaf:domain "SERVICE" .
+    """
+    _, rows = _validate(ttl)
+    matches = [r for r in rows
+               if r["focus"].endswith("sarch1") and r["severity"] == "Warning"]
+    assert matches, f"ServiceArchitecture warning not raised. Got: {rows}"
+
+
+def test_service_role_warns_without_assignment():
+    """ServiceRole not assignedTo a performer must warn."""
+    ttl = """
+    uafinst:srole1 a uaf:ServiceRole ;
+        rdfs:label "SRole1" ;
+        uaf:domain "SERVICE" .
+    """
+    _, rows = _validate(ttl)
+    matches = [r for r in rows
+               if r["focus"].endswith("srole1") and r["severity"] == "Warning"]
+    assert matches, f"ServiceRole warning not raised. Got: {rows}"
+
+
+# --- Personnel domain --------------------------------------------------------
+
+def test_post_warns_without_organisation():
+    """Post with no partOf Organization must warn."""
+    ttl = """
+    uafinst:post1 a uaf:Post ;
+        rdfs:label "Post1" ;
+        uaf:domain "PERSONNEL" .
+    """
+    _, rows = _validate(ttl)
+    matches = [r for r in rows
+               if r["focus"].endswith("post1") and r["severity"] == "Warning"]
+    assert matches, f"Post warning not raised. Got: {rows}"
+
+
+def test_post_with_organisation_does_not_warn():
+    """Post linked to Organization via uaf:composedOf must not flag (inverse path)."""
+    ttl = """
+    uafinst:org2 a uaf:Organization ;
+        rdfs:label "Org2" ;
+        uaf:domain "PERSONNEL" ;
+        uaf:composedOf uafinst:post2 .
+    uafinst:post2 a uaf:Post ;
+        rdfs:label "Post2" ;
+        uaf:domain "PERSONNEL" .
+    """
+    _, rows = _validate(ttl)
+    post_rows = [r for r in rows if r["focus"].endswith("post2")]
+    assert post_rows == [], f"Owned Post should not flag: {post_rows}"
+
+
+def test_organisation_warns_without_posts():
+    """Organization with no composedOf must warn."""
+    ttl = """
+    uafinst:org1 a uaf:Organization ;
+        rdfs:label "Org1" ;
+        uaf:domain "PERSONNEL" .
+    """
+    _, rows = _validate(ttl)
+    matches = [r for r in rows
+               if r["focus"].endswith("org1") and r["severity"] == "Warning"]
+    assert matches, f"Organization warning not raised. Got: {rows}"
+
+
+def test_personnel_activity_warns_without_performer():
+    """PersonnelActivity with no performer must warn."""
+    ttl = """
+    uafinst:pact1 a uaf:PersonnelActivity ;
+        rdfs:label "PAct1" ;
+        uaf:domain "PERSONNEL" .
+    """
+    _, rows = _validate(ttl)
+    matches = [r for r in rows
+               if r["focus"].endswith("pact1") and r["severity"] == "Warning"]
+    assert matches, f"PersonnelActivity warning not raised. Got: {rows}"
+
+
+# --- Acquisition domain ------------------------------------------------------
+
+def test_project_warns_without_components():
+    """Project with no composedOf must warn."""
+    ttl = """
+    uafinst:proj1 a uaf:Project ;
+        rdfs:label "Proj1" ;
+        uaf:domain "ACQUISITION" .
+    """
+    _, rows = _validate(ttl)
+    matches = [r for r in rows
+               if r["focus"].endswith("proj1") and r["severity"] == "Warning"]
+    assert matches, f"Project warning not raised. Got: {rows}"
+
+
+def test_project_milestone_warns_without_project():
+    """ProjectMilestone not partOf any Project must warn."""
+    ttl = """
+    uafinst:mile1 a uaf:ProjectMilestone ;
+        rdfs:label "Mile1" ;
+        uaf:domain "ACQUISITION" .
+    """
+    _, rows = _validate(ttl)
+    matches = [r for r in rows
+               if r["focus"].endswith("mile1") and r["severity"] == "Warning"]
+    assert matches, f"ProjectMilestone warning not raised. Got: {rows}"
+
+
+def test_project_milestone_with_project_does_not_warn():
+    """ProjectMilestone reachable from Project via composedOf must not flag."""
+    ttl = """
+    uafinst:proj2 a uaf:Project ;
+        rdfs:label "Proj2" ;
+        uaf:domain "ACQUISITION" ;
+        uaf:composedOf uafinst:mile2 .
+    uafinst:mile2 a uaf:ProjectMilestone ;
+        rdfs:label "Mile2" ;
+        uaf:domain "ACQUISITION" .
+    """
+    _, rows = _validate(ttl)
+    mile_rows = [r for r in rows if r["focus"].endswith("mile2")]
+    assert mile_rows == [], f"Project-owned milestone should not flag: {mile_rows}"
+
+
+def test_project_theme_warns_without_projects():
+    """ProjectTheme with no composedOf must warn."""
+    ttl = """
+    uafinst:theme1 a uaf:ProjectTheme ;
+        rdfs:label "Theme1" ;
+        uaf:domain "ACQUISITION" .
+    """
+    _, rows = _validate(ttl)
+    matches = [r for r in rows
+               if r["focus"].endswith("theme1") and r["severity"] == "Warning"]
+    assert matches, f"ProjectTheme warning not raised. Got: {rows}"

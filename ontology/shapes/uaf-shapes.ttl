@@ -5,9 +5,8 @@
 #
 # Stage 3 originally focused on the Strategic and Security sub-domains per
 # ontology/NEXT-STEPS.md §"Stage 3 — Native triplestore for governed sub-domains".
-# Coverage has since been extended to Operational + Resource (the next two
-# largest UAF domains) so Stage 3 governance now spans 4 of 7 domains.
-# Service, Personnel, and Acquisition are the remaining gap.
+# Coverage has since been extended to cover all 7 UAF domains: Strategic,
+# Operational, Resource, Service, Personnel, Acquisition, Security.
 #
 # Shapes here are scaffolding: enough to demonstrate the pipeline (shapes ->
 # pyshacl -> violation report -> MCP), not a complete governance ruleset. Extend
@@ -265,4 +264,123 @@ uafsh:ResourceArtifactShape a sh:NodeShape ;
         sh:minCount 1 ;
         sh:severity sh:Warning ;
         sh:message "ResourceArtifact is not allocated to anything (uaf:allocatedTo). Artifacts without allocation lose configuration-management traceability." ;
+    ] .
+
+# --- Service domain ----------------------------------------------------------
+# Stage 3 governance for the Service slice. A service is something a
+# performer provides, exposed via an architecture. The defining structural
+# invariants: every Service has a provider; every ServicePerformer provides
+# at least one service; every ServiceArchitecture composes at least one
+# service element; every ServiceRole is assigned to a performer.
+#
+# uaf:providedBy is declared in uaf-mvo-axioms.ttl §1 as inverse of
+# uaf:provides, so the forward path in uafsh:ServiceShape resolves under
+# OWL FB regardless of which direction the model authors used.
+
+uafsh:ServiceShape a sh:NodeShape ;
+    sh:targetClass uaf:Service ;
+    sh:property [
+        sh:path uaf:providedBy ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "Service has no provider (uaf:providedBy). Services without a ServicePerformer are unallocated capabilities. Forward path resolves under OWL FB via owl:inverseOf with uaf:provides." ;
+    ] .
+
+uafsh:ServicePerformerShape a sh:NodeShape ;
+    sh:targetClass uaf:ServicePerformer ;
+    sh:property [
+        sh:path uaf:provides ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "ServicePerformer provides no Service. Either an unallocated performer or a modelling gap." ;
+    ] .
+
+uafsh:ServiceArchitectureShape a sh:NodeShape ;
+    sh:targetClass uaf:ServiceArchitecture ;
+    sh:property [
+        sh:path uaf:composedOf ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "ServiceArchitecture composes no ServiceElement. Empty architecture containers are usually scoping placeholders; flag for review before baseline." ;
+    ] .
+
+uafsh:ServiceRoleShape a sh:NodeShape ;
+    sh:targetClass uaf:ServiceRole ;
+    sh:property [
+        sh:path uaf:assignedTo ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "ServiceRole is not assigned to any ServicePerformer (uaf:assignedTo). Role bindings clarify accountability; expected before architecture baseline." ;
+    ] .
+
+# --- Personnel domain --------------------------------------------------------
+# Stage 3 governance for the Personnel slice. UAF's Personnel domain
+# centres on Organizations and Posts (UAF has no first-class Person
+# concept in the registered class set — ActualOrganization and Post are
+# the canonical role-bearing elements).
+#
+# A Post that is not part of any Organization is a floating role-slot. An
+# Organization with no Posts is an empty container. A PersonnelActivity
+# without a performer is the personnel analogue of an OperationalActivity
+# with no performer.
+
+uafsh:PostShape a sh:NodeShape ;
+    sh:targetClass uaf:Post ;
+    sh:property [
+        sh:path uaf:partOf ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "Post is not part of any Organization (uaf:partOf, inverse of uaf:composedOf under OWL FB). Posts without an organisational owner are floating role-slots." ;
+    ] .
+
+uafsh:OrganizationShape a sh:NodeShape ;
+    sh:targetClass uaf:Organization ;
+    sh:property [
+        sh:path uaf:composedOf ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "Organization composes no Posts (or sub-units). Acceptable during scoping; flag for review at baseline." ;
+    ] .
+
+uafsh:PersonnelActivityShape a sh:NodeShape ;
+    sh:targetClass uaf:PersonnelActivity ;
+    sh:property [
+        sh:path uaf:performedBy ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "PersonnelActivity has no performer (uaf:performedBy). An activity that no Post / Organization performs is either unassigned or a modelling gap." ;
+    ] .
+
+# --- Acquisition domain ------------------------------------------------------
+# Stage 3 governance for the Acquisition slice. Projects organise the
+# delivery of capabilities over time; the defining structural invariants
+# are containment hierarchies: a Project composes acquisition elements
+# (milestones, activities, themes); a ProjectMilestone belongs to a
+# Project; a ProjectTheme composes Projects.
+
+uafsh:ProjectShape a sh:NodeShape ;
+    sh:targetClass uaf:Project ;
+    sh:property [
+        sh:path uaf:composedOf ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "Project composes no AcquisitionElement (milestone / activity / role). Empty project containers are usually scoping placeholders; flag for review before baseline." ;
+    ] .
+
+uafsh:ProjectMilestoneShape a sh:NodeShape ;
+    sh:targetClass uaf:ProjectMilestone ;
+    sh:property [
+        sh:path uaf:partOf ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "ProjectMilestone is not part of any Project (uaf:partOf, inverse of uaf:composedOf under OWL FB). Floating milestones lose their planning context." ;
+    ] .
+
+uafsh:ProjectThemeShape a sh:NodeShape ;
+    sh:targetClass uaf:ProjectTheme ;
+    sh:property [
+        sh:path uaf:composedOf ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "ProjectTheme composes no Project. Themes without projects are usually placeholders during portfolio scoping; flag for review at baseline." ;
     ] .
