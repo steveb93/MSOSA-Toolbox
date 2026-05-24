@@ -22,11 +22,16 @@ import java.util.Properties;
  *
  * <p>Which dialog(s): {@code -Dpreview.dialog=export|graph|all} (default {@code all}).
  *
- * <p>Interactive (needs a display):
+ * <p>Interactive (needs a display) — the window carries a {@link UiInspector}
+ * overlay: hover a widget to see the field/class/source line behind it.
  * <pre>mvn -Pui-preview test-compile exec:java -Dpreview.dialog=graph</pre>
  *
  * <p>Headless screenshot render (e.g. CI / cloud, run under xvfb-run):
  * <pre>mvn -Pui-preview test-compile exec:java -Dpreview.screenshot=target/ui-preview</pre>
+ *
+ * <p>Headless demo of the inspector overlay highlighting one named field:
+ * <pre>mvn -Pui-preview test-compile exec:java -Dpreview.dialog=export \
+ *     -Dpreview.inspect=exportBtn -Dpreview.screenshot=target/ui-preview</pre>
  *
  * <p>The "Export", "Test Connection", "Refresh" and "Locate in MSOSA" buttons
  * need a live MSOSA project / Neo4j and are not exercised here — this harness is
@@ -41,12 +46,18 @@ public final class UiPreview {
         boolean doExport = which.equals("all") || which.equals("export");
         boolean doGraph  = which.equals("all") || which.equals("graph");
 
+        String inspectField = System.getProperty("preview.inspect");
         String shotDir = System.getProperty("preview.screenshot");
         if (shotDir != null && !shotDir.isEmpty()) {
             File outDir = new File(shotDir);
             outDir.mkdirs();
-            if (doExport) renderExportWizard(outDir);
-            if (doGraph)  renderGraphInspector(outDir);
+            if (inspectField != null && !inspectField.isEmpty()) {
+                if (doExport) renderInspectDemo("export", inspectField, outDir);
+                if (doGraph)  renderInspectDemo("graph",  inspectField, outDir);
+            } else {
+                if (doExport) renderExportWizard(outDir);
+                if (doGraph)  renderGraphInspector(outDir);
+            }
             System.out.println("UI preview screenshots written to " + outDir.getAbsolutePath());
             System.exit(0);
         } else {
@@ -57,14 +68,54 @@ public final class UiPreview {
                     d.setModal(false);
                     d.setDefaultCloseOperation(JDialog.EXIT_ON_CLOSE);
                     d.setVisible(true);
+                    UiInspector.install(d);
                 }
                 if (fGraph) {
                     PreviewGraphInspectorDialog g = new PreviewGraphInspectorDialog(null, defaultConfig());
                     g.setDefaultCloseOperation(JDialog.EXIT_ON_CLOSE);
                     g.setVisible(true);
+                    UiInspector.install(g);
                 }
             });
         }
+    }
+
+    // ── Headless demo of the UI inspector overlay on a named field ──────────────
+
+    private static void renderInspectDemo(String which, String field, File outDir) throws Exception {
+        final JDialog[] holder = new JDialog[1];
+        SwingUtilities.invokeAndWait(() -> {
+            JDialog d = which.equals("graph")
+                ? new PreviewGraphInspectorDialog(null, defaultConfig())
+                : new PreviewExportConfigDialog(null);
+            d.pack();
+            holder[0] = d;
+        });
+        Thread.sleep(1200); // background data load
+
+        if (which.equals("graph")) {
+            SwingUtilities.invokeAndWait(() -> {
+                JTable main = findMainTable(holder[0].getContentPane());
+                if (main != null && main.getRowCount() > 0) main.setRowSelectionInterval(0, 0);
+            });
+            Thread.sleep(1200); // neighbourhood load
+        }
+
+        SwingUtilities.invokeAndWait(() -> {
+            try {
+                UiInspector insp = UiInspector.install(holder[0]);
+                JComponent root = holder[0].getRootPane();
+                root.validate();
+                root.doLayout();
+                if (!insp.highlightField(field)) {
+                    System.out.println("[ui-inspector] no field named '" + field + "' on the " + which + " dialog");
+                }
+                holder[0].getGlassPane().setSize(root.getSize());
+                writePng(root, new File(outDir, "inspect-demo-" + which + ".png"));
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     // ── Export wizard — one PNG per tab ─────────────────────────────────────────
