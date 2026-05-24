@@ -1,12 +1,12 @@
 ﻿# UAF 1.2 → Neo4j Knowledge Graph Exporter
-## Catia Magic MSOSA 2022x Refresh2 Plugin
+## Catia Magic MSOSA 2022x Hotfix 2 Plugin
 
 ---
 
 ## Overview
 
 This plugin exports architectural elements and relationships from a Catia Magic MSOSA
-2022x Refresh2 project into a Neo4j graph database running in Docker. It supports
+2022x Hotfix 2 project into a Neo4j graph database running in Docker. It supports
 hybrid models combining **UAF 1.2**, **SysML 1.6**, and **BPMN 2.0** — each element
 and relationship is tagged with its modelling language so cross-language queries are
 possible from day one.
@@ -41,7 +41,7 @@ Neo4j (Docker :7687)
 
 | Component | Version |
 |---|---|
-| Catia Magic MSOSA | 2022x Refresh2 |
+| Catia Magic MSOSA | 2022x Hotfix 2 |
 | Java (plugin compile) | JDK 11+ |
 | Neo4j | 4.4.x or 5.x |
 | Docker | 20.10+ |
@@ -69,7 +69,7 @@ msosa-model-exporter/
 │   │   │   │   ├── UAFStereotypeRegistry.java   ← Single source of truth: stereotype → label/domain/language
 │   │   │   │   ├── UAFModelTraverser.java        ← Walks MSOSA project, extracts DTOs (UAF + SysML + BPMN)
 │   │   │   │   ├── UAFElementDTO.java            ← Immutable node DTO (builder pattern)
-│   │   │   │   └── UAFRelationshipDTO.java       ← Immutable edge DTO (31 type constants)
+│   │   │   │   └── UAFRelationshipDTO.java       ← Immutable edge DTO (35 type constants)
 │   │   │   ├── neo4j/
 │   │   │   │   ├── Neo4jCypherBuilder.java       ← Parameterised MERGE Cypher
 │   │   │   │   └── Neo4jExportService.java       ← Bolt driver lifecycle; batched writes; graph queries
@@ -77,7 +77,7 @@ msosa-model-exporter/
 │   │   │       ├── ExportConfigDialog.java       ← Screen 1: package selection, options, connection
 │   │   │       ├── ExportSummaryDialog.java      ← Post-export counts, errors, Browse Graph button
 │   │   │       ├── GraphInspectorDialog.java     ← Screen 2: searchable node table + inspector tabs
-│   │   │       ├── GraphPanel.java               ← JGraphX neighbourhood graph (Phase 2b)
+│   │   │       ├── GraphPanel.java               ← JGraphX neighbourhood graph (1-hop, domain-coloured)
 │   │   │       └── ConnectionDialog.java         ← Edit URI / credentials / batch size
 │   │   └── resources/
 │   │       ├── plugin.xml                  ← MagicDraw plugin descriptor
@@ -179,7 +179,7 @@ The **Graph Inspector** provides two ways to explore:
 
 ### Step 5 — Query via SPARQL (optional, Stage 2 overlay)
 
-The plugin writes to Neo4j as the **system of record**, but a **SPARQL endpoint** is available as an overlay via Apache Jena Fuseki. The overlay is loaded from a periodic RDF dump of the Neo4j graph plus an OWL T-Box generated from `UAFStereotypeRegistry`. RDFS subsumption reasoning is on, so queries like "all uaf:StrategicElement instances" resolve without manual property paths.
+The plugin writes to Neo4j as the **system of record**, but a **SPARQL endpoint** is available as an overlay via Apache Jena Fuseki. The overlay is loaded either directly by the plugin's RDF emitter (PUT to Graph Store Protocol) or via the recovery path `python ontology/codegen/dump_to_rdf.py`. **OWL FB reasoning** is on (Stage 3), so inverseOf, transitivity, disjointness and someValuesFrom restrictions all materialise — queries like "all uaf:StrategicElement instances" or "what dominates this Risk?" resolve without manual property paths.
 
 Start the overlay:
 

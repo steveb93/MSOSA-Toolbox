@@ -13,7 +13,7 @@
 > [!IMPORTANT]
 > All plugins in this toolbox target **No Magic MSOSA 2022x Hotfix 2** (MagicDraw). They are not tested against earlier or later MSOSA releases.
 
-A curated collection of open-source plugins and tooling that extend **MSOSA 2022x HF2** for teams working with **UAF 1.2**, **SysML 1.6**, and **BPMN 2.0** in MSOSA. The toolbox builds a **hybrid knowledge graph** — Neo4j is the system of record (labelled property graph + Cypher), and Apache Jena Fuseki adds a SPARQL 1.1 endpoint with RDFS reasoning over a UAF Minimum Viable Ontology. The two stores are kept in step by a Python dump script that runs after each MSOSA export.
+A curated collection of open-source plugins and tooling that extend **MSOSA 2022x HF2** for teams working with **UAF 1.2**, **SysML 1.6**, and **BPMN 2.0** in MSOSA. The toolbox builds a **hybrid knowledge graph** — Neo4j is the system of record (labelled property graph + Cypher), and Apache Jena Fuseki adds a SPARQL 1.1 endpoint with **OWL FB reasoning** (Stage 3) over a UAF Minimum Viable Ontology with SHACL governance shapes across all 7 UAF domains. The two stores are kept in step by the Java plugin's RDF emitter, which writes Turtle and PUTs to Fuseki via SPARQL 1.1 Graph Store Protocol in the same export action; `ontology/codegen/dump_to_rdf.py` remains as the recovery path.
 
 References:
 - [UAF 1.2 specification](https://www.omg.org/spec/UAF/) — OMG
@@ -33,9 +33,15 @@ References:
 
 > New plugins can be added as subdirectories following the conventions in [Contributing](#contributing).
 
-## Stage 2 ontology overlay (SPARQL) — and Stage 4 in-plugin RDF emitter
+## Ontology overlay — Stages 2, 3, 4 status
 
-Stage 2 of the migration described in `Ontology-Approach-to-Knowledge.md` is live: Apache Jena Fuseki provides a real SPARQL 1.1 endpoint with RDFS reasoning over a UAF Minimum Viable Ontology (MVO) covering **all 8 UAF domains plus SysML and BPMN** — 103 OWL classes, 31 ObjectProperties, code-generated from the seeded `:Stereotype` metamodel in Neo4j.
+Per the staged migration in `Ontology-Approach-to-Knowledge.md`:
+
+- **Stage 2 (live)** — Apache Jena Fuseki provides a real SPARQL 1.1 endpoint with **OWL FB reasoning** over a UAF Minimum Viable Ontology covering the **7 UAF domains plus Shared + SysML 1.6 + BPMN 2.0** — **193 OWL classes, 35 ObjectProperties**, code-generated from the seeded `:Stereotype` metamodel in Neo4j.
+- **Stage 3 (whole-ontology complete)** — Stage-3 governance now spans all 7 UAF domains: **24 SHACL NodeShapes**, **12 `owl:someValuesFrom` restrictions**, **16 `owl:inverseOf` pairs**, pairwise domain disjointness, and `uaf:dominates` transitivity. Validator at `ontology/codegen/validate_shacl.py`; MCP server exposes the live conformance report.
+- **Stage 4 emitter-side (live)** — Java plugin emits RDF directly via `RDFExportService` alongside the Cypher path, and optionally PUTs to Fuseki's Graph Store Protocol. `dump_to_rdf.py` retained as recovery path.
+
+Remaining: outbound `SERVICE` federation templates, ExportSummaryDialog SHACL row, and the NetworkX bridge for Stage 5 graph algorithms. See `ontology/NEXT-STEPS.md` for the open backlog and decision log.
 
 **Endpoints**:
 - Bolt (system of record): `bolt://localhost:7687`
