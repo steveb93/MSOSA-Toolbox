@@ -330,10 +330,7 @@ public class GraphInspectorDialog extends JDialog {
         new SwingWorker<List<Map<String, Object>>, Void>() {
             @Override
             protected List<Map<String, Object>> doInBackground() throws Exception {
-                try (Neo4jExportService svc = new Neo4jExportService(connectionConfig)) {
-                    svc.init();
-                    return svc.fetchAllUAFElements();
-                }
+                return fetchAllNodes();
             }
             @Override
             protected void done() {
@@ -360,6 +357,15 @@ public class GraphInspectorDialog extends JDialog {
                 }
             }
         }.execute();
+    }
+
+    /** Source of all node rows for the table. Overridable so the inspector can be
+     *  driven from sample data (UI preview harness) without a live Neo4j. */
+    protected List<Map<String, Object>> fetchAllNodes() throws Exception {
+        try (Neo4jExportService svc = new Neo4jExportService(connectionConfig)) {
+            svc.init();
+            return svc.fetchAllUAFElements();
+        }
     }
 
     // ── Filtering ─────────────────────────────────────────────────────────────
@@ -430,10 +436,7 @@ public class GraphInspectorDialog extends JDialog {
         new SwingWorker<Neo4jExportService.NeighbourhoodResult, Void>() {
             @Override
             protected Neo4jExportService.NeighbourhoodResult doInBackground() throws Exception {
-                try (Neo4jExportService svc = new Neo4jExportService(connectionConfig)) {
-                    svc.init();
-                    return svc.fetchNeighbourhood(nodeId);
-                }
+                return fetchNeighbourhood(nodeId);
             }
             @Override
             protected void done() {
@@ -444,6 +447,14 @@ public class GraphInspectorDialog extends JDialog {
                 } catch (Exception ignored) {}
             }
         }.execute();
+    }
+
+    /** Source of a node's 1-hop neighbourhood. Overridable for the UI preview harness. */
+    protected Neo4jExportService.NeighbourhoodResult fetchNeighbourhood(String nodeId) throws Exception {
+        try (Neo4jExportService svc = new Neo4jExportService(connectionConfig)) {
+            svc.init();
+            return svc.fetchNeighbourhood(nodeId);
+        }
     }
 
     // ── Locate in MSOSA ───────────────────────────────────────────────────────

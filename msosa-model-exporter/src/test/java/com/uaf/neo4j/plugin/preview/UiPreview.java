@@ -5,6 +5,7 @@ import com.uaf.neo4j.plugin.UAFNeo4jPlugin;
 import javax.imageio.ImageIO;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
+import javax.swing.JTable;
 import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
 import java.awt.Component;
@@ -17,59 +18,72 @@ import java.lang.reflect.Field;
 import java.util.Properties;
 
 /**
- * Standalone launcher for previewing the export wizard UI off-MSOSA.
+ * Standalone launcher for previewing the plugin's Swing dialogs off-MSOSA.
+ *
+ * <p>Which dialog(s): {@code -Dpreview.dialog=export|graph|all} (default {@code all}).
  *
  * <p>Interactive (needs a display):
- * <pre>mvn -Pui-preview test-compile exec:java</pre>
+ * <pre>mvn -Pui-preview test-compile exec:java -Dpreview.dialog=graph</pre>
  *
  * <p>Headless screenshot render (e.g. CI / cloud, run under xvfb-run):
  * <pre>mvn -Pui-preview test-compile exec:java -Dpreview.screenshot=target/ui-preview</pre>
  *
- * <p>The dialog's "Export" and "Test Connection" buttons need a live MSOSA
- * project / Neo4j and are not exercised here — this harness is for visual
- * layout iteration only.
+ * <p>The "Export", "Test Connection", "Refresh" and "Locate in MSOSA" buttons
+ * need a live MSOSA project / Neo4j and are not exercised here — this harness is
+ * for visual layout iteration only.
  */
 public final class UiPreview {
 
     public static void main(String[] args) throws Exception {
         seedPluginSingleton();
 
+        String which = System.getProperty("preview.dialog", "all").toLowerCase();
+        boolean doExport = which.equals("all") || which.equals("export");
+        boolean doGraph  = which.equals("all") || which.equals("graph");
+
         String shotDir = System.getProperty("preview.screenshot");
         if (shotDir != null && !shotDir.isEmpty()) {
-            renderScreenshots(new File(shotDir));
-            System.out.println("UI preview screenshots written to " + new File(shotDir).getAbsolutePath());
+            File outDir = new File(shotDir);
+            outDir.mkdirs();
+            if (doExport) renderExportWizard(outDir);
+            if (doGraph)  renderGraphInspector(outDir);
+            System.out.println("UI preview screenshots written to " + outDir.getAbsolutePath());
             System.exit(0);
         } else {
+            final boolean fExport = doExport, fGraph = doGraph;
             SwingUtilities.invokeLater(() -> {
-                PreviewExportConfigDialog d = new PreviewExportConfigDialog(null);
-                d.setModal(false);
-                d.setDefaultCloseOperation(JDialog.EXIT_ON_CLOSE);
-                d.setVisible(true);
+                if (fExport) {
+                    PreviewExportConfigDialog d = new PreviewExportConfigDialog(null);
+                    d.setModal(false);
+                    d.setDefaultCloseOperation(JDialog.EXIT_ON_CLOSE);
+                    d.setVisible(true);
+                }
+                if (fGraph) {
+                    PreviewGraphInspectorDialog g = new PreviewGraphInspectorDialog(null, defaultConfig());
+                    g.setDefaultCloseOperation(JDialog.EXIT_ON_CLOSE);
+                    g.setVisible(true);
+                }
             });
         }
     }
 
-    // ── Render each tab of the wizard to a PNG ──────────────────────────────────
+    // ── Export wizard — one PNG per tab ─────────────────────────────────────────
 
-    private static void renderScreenshots(File outDir) throws Exception {
-        outDir.mkdirs();
+    private static void renderExportWizard(File outDir) throws Exception {
         final String[] tabFile = {"connection", "options", "preview"};
-
         final PreviewExportConfigDialog[] holder = new PreviewExportConfigDialog[1];
+
         SwingUtilities.invokeAndWait(() -> {
             PreviewExportConfigDialog d = new PreviewExportConfigDialog(null);
-            d.pack(); // realises the peer and lays out at preferred size
+            d.pack();
             holder[0] = d;
         });
-
-        // Let the background element-count SwingWorker finish and post to the EDT
-        // so package rows render as "Strategic (12)" rather than "Counting elements…".
+        // Let the background element-count SwingWorker finish and post to the EDT.
         Thread.sleep(1200);
 
         SwingUtilities.invokeAndWait(() -> {
             try {
-                PreviewExportConfigDialog d = holder[0];
-                JComponent content = (JComponent) d.getContentPane();
+                JComponent content = (JComponent) holder[0].getContentPane();
                 JTabbedPane tabs = findTabbedPane(content);
                 if (tabs == null) {
                     writePng(content, new File(outDir, "export-wizard.png"));
@@ -87,6 +101,52 @@ public final class UiPreview {
             }
         });
     }
+
+    // ── Graph inspector — Properties tab (node selected) + Graph tab ────────────
+
+    private static void renderGraphInspector(File outDir) throws Exception {
+        final PreviewGraphInspectorDialog[] holder = new PreviewGraphInspectorDialog[1];
+
+        SwingUtilities.invokeAndWait(() -> {
+            PreviewGraphInspectorDialog g = new PreviewGraphInspectorDialog(null, defaultConfig());
+            g.pack();
+            holder[0] = g;
+        });
+        // Let the node-loading SwingWorker post rows to the table.
+        Thread.sleep(1200);
+
+        // Select the first row so the property inspector + neighbourhood populate.
+        SwingUtilities.invokeAndWait(() -> {
+            JTable main = findMainTable(holder[0].getContentPane());
+            if (main != null && main.getRowCount() > 0) {
+                main.setRowSelectionInterval(0, 0);
+            }
+        });
+        // Let the neighbourhood SwingWorker render into the GraphPanel.
+        Thread.sleep(1200);
+
+        SwingUtilities.invokeAndWait(() -> {
+            try {
+                JComponent content = (JComponent) holder[0].getContentPane();
+                JTabbedPane tabs = findTabbedPane(content);
+                if (tabs == null) {
+                    writePng(content, new File(outDir, "graph-inspector.png"));
+                    return;
+                }
+                tabs.setSelectedIndex(0);
+                content.validate(); content.doLayout();
+                writePng(content, new File(outDir, "graph-inspector-properties.png"));
+
+                tabs.setSelectedIndex(1);
+                content.validate(); content.doLayout();
+                writePng(content, new File(outDir, "graph-inspector-graph.png"));
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    // ── Rendering helpers ───────────────────────────────────────────────────────
 
     private static void writePng(JComponent comp, File file) throws Exception {
         Dimension size = comp.getSize();
@@ -109,8 +169,21 @@ public final class UiPreview {
         return null;
     }
 
+    /** The inspector's node table is the first JTable with >= 5 columns
+     *  (the 2-column property table is skipped). */
+    private static JTable findMainTable(Component c) {
+        if (c instanceof JTable && ((JTable) c).getColumnCount() >= 5) return (JTable) c;
+        if (c instanceof Container) {
+            for (Component child : ((Container) c).getComponents()) {
+                JTable found = findMainTable(child);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
     // ── Make UAFNeo4jPlugin.getInstance().getConfig() work off-MSOSA ────────────
-    // The dialog reads config from the plugin singleton in its constructor. We
+    // The dialogs read config from the plugin singleton in their constructors. We
     // can't call Plugin.init() (it touches MSOSA), so seed instance + config
     // directly. Mirrors the defaults in UAFNeo4jPlugin.loadConfig().
 
