@@ -17,6 +17,8 @@
 #   4. owl:someValuesFrom restrictions on CapabilityConfiguration
 #   5. owl:someValuesFrom restrictions on key Operational + Resource classes
 #      (extending Stage 3 governance coverage beyond Strategic + Security)
+#   6. owl:someValuesFrom restrictions on key Service + Personnel + Acquisition
+#      classes — completes Stage 3 coverage across all 7 UAF domains
 #
 # What this file does NOT do, by design:
 #   - Coin inverses for every ObjectProperty in the MVO. Only the ones that
@@ -126,6 +128,11 @@ uaf:requiredBy a owl:ObjectProperty ;
     rdfs:label "requiredBy" ;
     rdfs:comment "Inverse of uaf:dependsOn." ;
     owl:inverseOf uaf:dependsOn .
+
+uaf:providedBy a owl:ObjectProperty ;
+    rdfs:label "providedBy" ;
+    rdfs:comment "Inverse of uaf:provides. ServicePerformer uaf:provides Service → Service uaf:providedBy ServicePerformer. Added in §6 work so the Service SHACL shape can use a forward path." ;
+    owl:inverseOf uaf:provides .
 
 # --- 2. Disjointness between UAF domain superclasses ------------------------
 #
@@ -267,6 +274,54 @@ uaf:ResourceArchitecture rdfs:subClassOf
       owl:someValuesFrom uaf:ResourceElement ;
       rdfs:comment "Every ResourceArchitecture composes at least one ResourceElement." ] .
 
+# --- 6. owl:someValuesFrom restrictions — Service, Personnel, Acquisition ---
+#
+# Completes Stage 3 OWL restriction coverage across all 7 UAF domains.
+# Same open-world semantics as §4 and §5 — these axioms assert existence
+# at the class-definitional level; SHACL shapes in
+# ontology/shapes/uaf-shapes.ttl handle absence under closed-world.
+#
+# Service: a Service is something provided by a ServicePerformer; a
+# ServiceArchitecture composes service elements. (ServicePerformer
+# "provides" and ServiceRole "assignedTo" are SHACL-only — they're
+# governance expectations rather than class definitions.)
+#
+# Personnel: a Post is definitionally a position within an Organization
+# (uaf:partOf, inverse of uaf:composedOf). UAF has no "Person" class in
+# the registered set — Post is the canonical role-bearing element. The
+# sketch invariant "Post ⊑ ∃ heldBy . Person" that appeared in earlier
+# NEXT-STEPS bullets was incorrect; the actual canonical relation is
+# Post partOf Organization.
+#
+# Acquisition: a Project is definitionally a composition of acquisition
+# elements (milestones, activities, themes). ProjectMilestone is shaped
+# in SHACL only — "milestone belongs to a project" is a governance
+# expectation that's frequently violated during early planning.
+
+uaf:Service rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty uaf:providedBy ;
+      owl:someValuesFrom uaf:ServicePerformer ;
+      rdfs:comment "Every Service is provided by at least one ServicePerformer." ] .
+
+uaf:ServiceArchitecture rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty uaf:composedOf ;
+      owl:someValuesFrom uaf:ServiceElement ;
+      rdfs:comment "Every ServiceArchitecture composes at least one ServiceElement." ] .
+
+uaf:Post rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty uaf:partOf ;
+      owl:someValuesFrom uaf:Organization ;
+      rdfs:comment "Every Post is part of at least one Organization (uaf:partOf, inverse of uaf:composedOf)." ] .
+
+uaf:Project rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty uaf:composedOf ;
+      owl:someValuesFrom uaf:AcquisitionElement ;
+      rdfs:comment "Every Project composes at least one AcquisitionElement (milestone / activity / theme / role)." ] .
+
 # --- Notes for follow-up work ----------------------------------------------
 #
 # When the Java plugin gains DOMINATES emission (UAFRelationshipDTO.REL_DOMINATES
@@ -279,8 +334,7 @@ uaf:ResourceArchitecture rdfs:subClassOf
 # under OWL FB, the reasoner pre-materialises both directions and queries
 # become symmetric.
 #
-# The remaining three UAF domains — Service, Personnel, Acquisition — are
-# not yet shaped or restricted. Add their analogous someValuesFrom
-# restrictions and SHACL shapes once the canonical classes are agreed
-# (likely: Service ⊑ ∃ providedBy . ResourcePerformer; Post ⊑ ∃ heldBy . ;
-# ProjectMilestone ⊑ ∃ partOf . Project).
+# Stage 3 OWL + SHACL coverage now spans all 7 UAF domains (Strategic,
+# Operational, Resource, Service, Personnel, Acquisition, Security).
+# Further axiom additions should be driven by specific governance / query
+# requirements rather than uniform coverage of the class space.
