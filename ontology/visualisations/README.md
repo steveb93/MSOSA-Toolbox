@@ -20,11 +20,17 @@ mainstream graph desktop tool.
 
 ### Quickstart (live Fuseki)
 
+On Windows, the bare `python` command often resolves to the Microsoft Store alias when no Python is on PATH — call the project's venv interpreter directly, or activate it first.
+
 ```powershell
 # Assumes Fuseki is up — see docker-compose/docker-compose.fuseki.yml
-python ontology/codegen/sparql_to_graphml.py `
+.\.venv\Scripts\python.exe ontology\codegen\sparql_to_graphml.py `
     --preset capability-realisation `
     --output cap-realisation.graphml
+
+# …or activate the venv once per shell, then use bare `python`:
+#   .\.venv\Scripts\Activate.ps1
+#   python ontology/codegen/sparql_to_graphml.py --preset capability-realisation --output cap.graphml
 ```
 
 Open `cap-realisation.graphml` in:
@@ -49,7 +55,7 @@ and reference it by stem with `--preset`, or pass an arbitrary path with
 `--query`:
 
 ```powershell
-python ontology/codegen/sparql_to_graphml.py `
+.\.venv\Scripts\python.exe ontology\codegen\sparql_to_graphml.py `
     --query path/to/my-query.sparql `
     --output my-view.graphml
 ```
@@ -60,7 +66,7 @@ Skip the network round-trip and run the query against a local Turtle file
 — useful for offline work or for replaying a known-good dump:
 
 ```powershell
-python ontology/codegen/sparql_to_graphml.py `
+.\.venv\Scripts\python.exe ontology\codegen\sparql_to_graphml.py `
     --from-file ontology/dump/uaf-instance.ttl `
     --preset operational-flow `
     --output ops.graphml
@@ -72,7 +78,7 @@ For a web page that embeds [Cytoscape.js](https://js.cytoscape.org/),
 emit the same data as Cytoscape JSON:
 
 ```powershell
-python ontology/codegen/sparql_to_graphml.py `
+.\.venv\Scripts\python.exe ontology\codegen\sparql_to_graphml.py `
     --preset capability-realisation `
     --format cyjs `
     --output cap-realisation.cyjs
