@@ -6,19 +6,30 @@
     <formats><format>zip</format></formats>
     <includeBaseDirectory>false</includeBaseDirectory>
 
+    <!--
+      MagicDraw Resource/Plugin Manager expects the standard resource zip
+      layout: descriptor.xml at the zip root, all payload files inside a
+      sibling 'files/' directory. Each <file from="X" to="Y"/> inside
+      descriptor.xml resolves X relative to that files/ directory and
+      installs to <MSOSA_HOME>/Y.
+
+      Previous flat layout (everything at root) triggered "'files'
+      directory is not found" — Issue #86 follow-on, comment dated
+      2026-05-24.
+    -->
     <files>
         <file>
             <source>${project.build.directory}/${project.artifactId}-${project.version}.jar</source>
-            <outputDirectory>.</outputDirectory>
+            <outputDirectory>files</outputDirectory>
         </file>
         <file>
             <source>src/main/resources/plugin.xml</source>
-            <outputDirectory>.</outputDirectory>
+            <outputDirectory>files</outputDirectory>
             <filtered>true</filtered>
         </file>
         <file>
             <source>src/main/resources/neo4j-connection.properties</source>
-            <outputDirectory>.</outputDirectory>
+            <outputDirectory>files</outputDirectory>
         </file>
         <file>
             <source>src/main/resources/descriptor.xml</source>
