@@ -148,3 +148,134 @@ def test_security_risk_with_traces_does_not_warn():
     _, rows = _validate(ttl)
     risk_rows = [r for r in rows if r["focus"].endswith("risk2")]
     assert risk_rows == [], f"Mitigated SecurityRisk should not flag: {risk_rows}"
+
+
+# --- Operational domain ------------------------------------------------------
+
+def test_operational_activity_warns_without_performer():
+    """OperationalActivity with no performer (forward or inverse) must warn."""
+    ttl = """
+    uafinst:act1 a uaf:OperationalActivity ;
+        rdfs:label "Act1" ;
+        uaf:domain "OPERATIONAL" .
+    """
+    _, rows = _validate(ttl)
+    matches = [r for r in rows
+               if r["focus"].endswith("act1") and r["severity"] == "Warning"]
+    assert matches, f"OperationalActivity warning not raised. Got: {rows}"
+
+
+def test_operational_activity_with_performer_does_not_warn():
+    """OperationalActivity linked to a performer via uaf:performs must not flag."""
+    ttl = """
+    uafinst:act2 a uaf:OperationalActivity ;
+        rdfs:label "Act2" ;
+        uaf:domain "OPERATIONAL" .
+    uafinst:perf2 a uaf:OperationalPerformer ;
+        rdfs:label "Perf2" ;
+        uaf:domain "OPERATIONAL" ;
+        uaf:performs uafinst:act2 .
+    """
+    _, rows = _validate(ttl)
+    act_rows = [r for r in rows if r["focus"].endswith("act2")]
+    assert act_rows == [], f"Performed activity should not flag: {act_rows}"
+
+
+def test_operational_performer_warns_without_activity():
+    """OperationalPerformer with no performs link must warn."""
+    ttl = """
+    uafinst:perf3 a uaf:OperationalPerformer ;
+        rdfs:label "Perf3" ;
+        uaf:domain "OPERATIONAL" .
+    """
+    _, rows = _validate(ttl)
+    matches = [r for r in rows
+               if r["focus"].endswith("perf3") and r["severity"] == "Warning"]
+    assert matches, f"OperationalPerformer warning not raised. Got: {rows}"
+
+
+def test_operational_process_warns_without_activities():
+    """OperationalProcess with no composedOf must warn."""
+    ttl = """
+    uafinst:proc1 a uaf:OperationalProcess ;
+        rdfs:label "Proc1" ;
+        uaf:domain "OPERATIONAL" .
+    """
+    _, rows = _validate(ttl)
+    matches = [r for r in rows
+               if r["focus"].endswith("proc1") and r["severity"] == "Warning"]
+    assert matches, f"OperationalProcess warning not raised. Got: {rows}"
+
+
+# --- Resource domain ---------------------------------------------------------
+
+def test_resource_performer_warns_without_function():
+    """ResourcePerformer with no performs link must warn."""
+    ttl = """
+    uafinst:rp1 a uaf:ResourcePerformer ;
+        rdfs:label "RP1" ;
+        uaf:domain "RESOURCE" .
+    """
+    _, rows = _validate(ttl)
+    matches = [r for r in rows
+               if r["focus"].endswith("rp1") and r["severity"] == "Warning"]
+    assert matches, f"ResourcePerformer warning not raised. Got: {rows}"
+
+
+def test_resource_role_warns_without_assignment():
+    """ResourceRole not assignedTo a performer must warn."""
+    ttl = """
+    uafinst:role1 a uaf:ResourceRole ;
+        rdfs:label "Role1" ;
+        uaf:domain "RESOURCE" .
+    """
+    _, rows = _validate(ttl)
+    matches = [r for r in rows
+               if r["focus"].endswith("role1") and r["severity"] == "Warning"]
+    assert matches, f"ResourceRole warning not raised. Got: {rows}"
+
+
+def test_resource_role_with_assignment_does_not_warn():
+    """ResourceRole assignedTo a ResourcePerformer must not flag."""
+    ttl = """
+    uafinst:role2 a uaf:ResourceRole ;
+        rdfs:label "Role2" ;
+        uaf:domain "RESOURCE" ;
+        uaf:assignedTo uafinst:rp2 .
+    uafinst:rp2 a uaf:ResourcePerformer ;
+        rdfs:label "RP2" ;
+        uaf:domain "RESOURCE" ;
+        uaf:performs uafinst:fn2 .
+    uafinst:fn2 a uaf:ResourceFunction ;
+        rdfs:label "Fn2" ;
+        uaf:domain "RESOURCE" .
+    """
+    _, rows = _validate(ttl)
+    role_rows = [r for r in rows if r["focus"].endswith("role2")]
+    assert role_rows == [], f"Assigned ResourceRole should not flag: {role_rows}"
+
+
+def test_resource_architecture_warns_without_components():
+    """ResourceArchitecture with no composedOf must warn."""
+    ttl = """
+    uafinst:arch1 a uaf:ResourceArchitecture ;
+        rdfs:label "Arch1" ;
+        uaf:domain "RESOURCE" .
+    """
+    _, rows = _validate(ttl)
+    matches = [r for r in rows
+               if r["focus"].endswith("arch1") and r["severity"] == "Warning"]
+    assert matches, f"ResourceArchitecture warning not raised. Got: {rows}"
+
+
+def test_resource_artifact_warns_without_allocation():
+    """ResourceArtifact not allocatedTo anything must warn."""
+    ttl = """
+    uafinst:art1 a uaf:ResourceArtifact ;
+        rdfs:label "Art1" ;
+        uaf:domain "RESOURCE" .
+    """
+    _, rows = _validate(ttl)
+    matches = [r for r in rows
+               if r["focus"].endswith("art1") and r["severity"] == "Warning"]
+    assert matches, f"ResourceArtifact warning not raised. Got: {rows}"
