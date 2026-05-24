@@ -30,7 +30,7 @@ This document describes what comes next, in the order the staging in `Ontology-A
 
 **Trigger.** When formal compliance, accreditation, or cross-tool federation pressure arrives. Likely sub-domains first: **Strategic** (Capability portfolio governance) and **Security** (classification dominance chains for accreditation).
 
-**What changes.** Materialise the Strategic + Security slice as native RDF in a triplestore that supports OWL 2 RL or EL reasoning (GraphDB Free, Stardog Community, or upgrading the Jena profile from RDFS to OWL Mini). The rest of the model stays in Neo4j + Fuseki.
+**What changes (as delivered).** Originally framed as materialising the Strategic + Security slice as native RDF in a *separate* triplestore (GraphDB Free, Stardog Community, …) with the rest staying in Neo4j + Fuseki. **Replaced** by staying on Fuseki and upgrading its reasoner profile from RDFS-Exp to OWL FB — covers everything in the Stage 3 axiom list (property chains, inverseOf, disjointness, someValuesFrom). See decision-log rows "GraphDB excluded for Stage 3" and "Stage 3 widened from Strategic+Security to whole ontology". Coverage now spans all 7 UAF domains in a single SPARQL endpoint.
 
 **Concrete tasks.**
 

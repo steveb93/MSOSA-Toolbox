@@ -29,7 +29,7 @@ References:
 | [msosa-model-exporter](msosa-model-exporter/) | MSOSA plugin — exports UAF 1.2 / SysML 1.6 / BPMN 2.0 elements and relationships to a Neo4j knowledge graph over Bolt | [![Build](https://github.com/steveb93/UAF-Repo/actions/workflows/msosa-model-exporter-build.yml/badge.svg)](https://github.com/steveb93/UAF-Repo/actions/workflows/msosa-model-exporter-build.yml) |
 | [graph_mcp_driver](graph_mcp_driver/) | Python MCP server — exposes `run_cypher` (Neo4j) and `run_sparql` (Fuseki) tools to Claude Desktop | — |
 | [ontology](ontology/) | Generated OWL T-Box, Fuseki configuration, dump script, anchor SPARQL queries | — |
-| [docker-compose](docker-compose/) | Neo4j stack + optional overlays — `docker-compose.fuseki.yml` (SPARQL endpoint) and `docker-compose.graphdb.yml` (visual graph browser, requires a free Ontotext licence). Copy `docker-compose/.env.example` to `docker-compose/.env` and set passwords + `NEO4J_DATA_DIR` before first run. | — |
+| [docker-compose](docker-compose/) | Neo4j stack + `docker-compose.fuseki.yml` SPARQL overlay. Copy `docker-compose/.env.example` to `docker-compose/.env` and set passwords + `NEO4J_DATA_DIR` before first run. | — |
 
 > New plugins can be added as subdirectories following the conventions in [Contributing](#contributing).
 
@@ -68,7 +68,7 @@ The post-export summary dialog has a **Copy SPARQL Refresh Cmd** button that cop
 
 See [`ontology/NEXT-STEPS.md`](ontology/NEXT-STEPS.md) for Stage 3 (native triplestore, OWL 2 RL reasoning, SHACL validation) and Stage 5 (composite AI / decision intelligence) gating criteria.
 
-**Optional — visual graph browser**: Fuseki only exposes SPARQL; for clickable graph exploration there's a parallel **GraphDB Free** overlay (`docker-compose/docker-compose.graphdb.yml`) that loads the same T-Box and A-Box into a separate store with its own Workbench UI at <http://localhost:7200>. GraphDB 11.x needs a (free) Ontotext licence file mounted from `secrets/graphdb.license` — `msosa-model-exporter/README.md` Step 6 has the registration + base64-decode walkthrough. A pre-built **UAF Overview** graph config that opens directly on the 8 UAF domain anchors is in [`ontology/graphdb/graph-configs/uaf-overview.md`](ontology/graphdb/graph-configs/uaf-overview.md).
+**Visualisation**: Fuseki only exposes SPARQL; for clickable graph exploration use `ontology/codegen/sparql_to_graphml.py` to export any SPARQL `CONSTRUCT` result as GraphML, then open in Cytoscape Desktop / yEd / Gephi. For the T-Box itself (class hierarchy, properties, restrictions) open `ontology/uaf-mvo.ttl` in Protégé Desktop or upload to <https://service.visualdataweb.de/webvowl/>. Walkthroughs in [`ontology/visualisations/README.md`](ontology/visualisations/README.md).
 
 ---
 
@@ -84,20 +84,21 @@ MSOSA-Toolbox/
 ├── graph_mcp_driver/                # Python MCP server — run_cypher + run_sparql tools
 ├── docker-compose/
 │   ├── docker-compose.yml           # Neo4j 5.26 + n10s + APOC + GDS
-│   ├── docker-compose.fuseki.yml    # Fuseki SPARQL overlay (Stage 2)
-│   └── docker-compose.graphdb.yml   # GraphDB Free overlay — Visual Graph browser (optional)
+│   └── docker-compose.fuseki.yml    # Fuseki SPARQL overlay (Stage 2)
 ├── ontology/
 │   ├── uaf-mvo.ttl                  # AUTO-GENERATED T-Box (UAF + SysML + BPMN)
+│   ├── uaf-mvo-axioms.ttl           # Hand-authored OWL axioms (Stage 3: inverses, disjointness, restrictions)
+│   ├── shapes/uaf-shapes.ttl        # SHACL governance shapes (Stage 3, all 7 UAF domains)
 │   ├── codegen/
 │   │   ├── generate_mvo.py          # T-Box codegen from the seeded :Stereotype metamodel
-│   │   └── dump_to_rdf.py           # Neo4j → Turtle A-Box dump (rdflib)
-│   ├── fuseki/configuration/uaf.ttl # Fuseki assembler config (in-mem dataset + RDFS reasoner)
-│   ├── graphdb/
-│   │   ├── repository-config.ttl    # GraphDB repository definition (RDFS-Plus ruleset)
-│   │   └── graph-configs/           # Saved Visual Graph configs (uaf-overview.md = 8 anchors hub)
+│   │   ├── dump_to_rdf.py           # Neo4j → Turtle A-Box dump (rdflib) — recovery path
+│   │   ├── sparql_to_graphml.py     # SPARQL CONSTRUCT → GraphML for Cytoscape / yEd / Gephi
+│   │   └── validate_shacl.py        # pyshacl validator against the live Fuseki dataset
+│   ├── fuseki/configuration/uaf.ttl # Fuseki assembler config (in-mem dataset + OWL FB reasoner)
 │   ├── queries/                     # Anchor SPARQL queries grounding semantic-search use case
+│   ├── visualisations/              # GraphML preset CONSTRUCT queries + README
 │   ├── dump/                        # (gitignored) latest A-Box dump
-│   └── NEXT-STEPS.md                # Stage 3+ roadmap (decision log records n10s/Ontop rejection)
+│   └── NEXT-STEPS.md                # Stage 3+ roadmap (decision log records n10s/Ontop/GraphDB rejection)
 ├── Test/                            # Python tests (connection, MCP tools, SPARQL endpoint)
 ├── Ontology-Approach-to-Knowledge.md # Strategy doc — Gartner-anchored, ISO 15288 aligned
 └── CLAUDE.md                        # End-to-end stand-up + architectural decisions

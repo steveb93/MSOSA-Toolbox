@@ -216,7 +216,7 @@ uaf:dominates a owl:ObjectProperty , owl:TransitiveProperty ;
 #
 # So why bother? Two reasons:
 #   1. Documentation. The OWL axiom formalises the constraint in a way that
-#      tooling (Protégé, GraphDB UI, etc.) renders nicely on the class card.
+#      tooling (Protégé, webvowl.dev, etc.) renders nicely on the class card.
 #   2. Class-membership inference. If we later add owl:equivalentClass
 #      (instead of subClassOf), the reasoner could derive that any element
 #      with realisedBy of an OperationalActivity etc. IS a

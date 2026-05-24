@@ -194,58 +194,26 @@ See `../ontology/queries/semantic-search-examples.sparql` for anchor queries and
 
 ### Step 6 — Browse the RDF Graph Visually (optional)
 
-Fuseki gives you SPARQL but no interactive graph view. **GraphDB Free** can run alongside Fuseki as a read-only visual browser, loading the same T-Box and A-Box so the two stay aligned. Its Workbench renders instance triples, `rdf:type` links, and the `rdfs:subClassOf` class hierarchy as one connected, clickable graph.
-
-GraphDB 11.x requires a (free) licence file even for the Free tier. One-off setup:
-
-1. Register at <https://www.ontotext.com/products/graphdb/download/> → choose **GraphDB Free** → you'll receive a licence by email.
-2. If the email contains a base64 block (rather than an attached binary file), decode it once:
-
-   ```powershell
-   # PowerShell — paste the base64 block into base64.txt first, then:
-   [IO.File]::WriteAllBytes(
-       "secrets/graphdb.license",
-       [Convert]::FromBase64String((Get-Content base64.txt -Raw) -replace '\s',''))
-   ```
-
-   The container needs the decoded binary at `secrets/graphdb.license`; GraphDB rejects the base64-armored form with "Failed to read license". The `secrets/` directory is already in `.gitignore`.
-3. Bring the stack up — the compose file mounts `secrets/graphdb.license` read-only and passes its path to GraphDB via `GDB_JAVA_OPTS=-Dgraphdb.license.file=...`:
+Fuseki only exposes SPARQL. For clickable graph exploration the toolbox ships a static exporter — no extra container, no licence:
 
 ```powershell
-# Make sure the A-Box dump exists first (the loader expects it).
-python ontology/codegen/dump_to_rdf.py
+# Export a SPARQL CONSTRUCT result as GraphML (live Fuseki)
+.\.venv\Scripts\python.exe ontology\codegen\sparql_to_graphml.py `
+    --preset capability-realisation `
+    --output cap.graphml
 
-# Neo4j + GraphDB only:
-docker compose -f docker-compose/docker-compose.yml `
-               -f docker-compose/docker-compose.graphdb.yml up -d
-
-# Neo4j + Fuseki + GraphDB together:
-docker compose -f docker-compose/docker-compose.yml `
-               -f docker-compose/docker-compose.fuseki.yml `
-               -f docker-compose/docker-compose.graphdb.yml up -d
+# Or offline against the local TTL fixture (no Fuseki needed)
+.\.venv\Scripts\python.exe ontology\codegen\sparql_to_graphml.py `
+    --from-file ontology\dump\uaf-instance.ttl `
+    --preset operational-flow `
+    --output ops.graphml
 ```
 
-After ~30s the `graphdb-loader` sidecar creates the `uaf` repository and loads both TTLs. Tail the loader to confirm it finished — `>> Done.` on the last line means the visual graph is ready to use:
+Open the resulting `*.graphml` in **Cytoscape Desktop**, **yEd**, or **Gephi** — apply a force-directed layout for instance graphs, hierarchical for class trees. Four preset CONSTRUCT queries ship under `../ontology/visualisations/queries/`: `capability-realisation`, `security-controls`, `operational-flow`, `resource-allocation`. Drop your own into the same directory and reference by stem with `--preset`, or pass an arbitrary path with `--query`.
 
-```powershell
-docker logs graphdb-uaf-loader
-```
+For the **T-Box** (ontology classes, properties, OWL restrictions) open `../ontology/uaf-mvo.ttl` in **Protégé Desktop** (OntoGraf / OWLViz / DL Query) or upload to <https://service.visualdataweb.de/webvowl/> in a browser.
 
-If the loader logs `Failed to read license`, the licence file is still in its base64-armored form — rerun step 2 to decode it, then `docker compose … restart graphdb graphdb-loader`.
-
-Open <http://localhost:7200>, select the `uaf` repository, then **Explore → Visual graph** and start from any element name.
-
-To skip the name search, build the **UAF Overview** Graph Config once — it opens directly on the 8 UAF domain-anchor classes and expands through subclasses and instances on click. Step-by-step queries and UI walkthrough: `../ontology/graphdb/graph-configs/uaf-overview.md`.
-
-Refresh after a new MSOSA export:
-
-```powershell
-python ontology/codegen/dump_to_rdf.py
-docker compose -f docker-compose/docker-compose.yml `
-               -f docker-compose/docker-compose.graphdb.yml restart graphdb-loader
-```
-
-The loader clears and reloads the repo on each restart, so this single command resyncs the visual graph with Neo4j. Fuseki remains the SPARQL endpoint the MCP server queries; GraphDB is purely a browser.
+Full walkthrough including Cytoscape.js JSON output for web embedding: [`../ontology/visualisations/README.md`](../ontology/visualisations/README.md).
 
 ---
 
