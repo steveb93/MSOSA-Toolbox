@@ -1,7 +1,9 @@
 package com.uaf.neo4j.plugin.preview;
 
+import javax.swing.AbstractButton;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
+import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
 import java.awt.AWTEvent;
 import java.awt.BasicStroke;
@@ -22,6 +24,7 @@ import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -30,19 +33,28 @@ import java.util.regex.Pattern;
 
 /**
  * Debug overlay for the interactive UI preview. Hovering any widget highlights
- * it and shows which field / class / source line builds it; clicking prints the
- * same to the console.
+ * it and shows the code behind it; clicking prints the same to the console.
  *
- * <p>It works purely by reflecting over the dialog instance's fields at runtime,
- * so production dialogs need no annotations or changes. Only widgets stored in
- * fields (text fields, checkboxes, buttons, tables, etc.) are resolvable; pure
- * layout scaffolding created inline in builder methods is not, so the overlay
- * falls back to the nearest field-backed ancestor.
+ * <p>Resolution is two-tiered, both purely reflective / source-scanning so
+ * production dialogs need no annotations or changes:
+ * <ol>
+ *   <li><b>Field-backed widgets</b> (text fields, checkboxes, buttons, tables,
+ *       the package-checkbox map, …) resolve to {@code Class.field · Type ·
+ *       File:line} by reflecting over the dialog's declared fields.</li>
+ *   <li><b>Inline widgets</b> created in builder methods (section labels, the
+ *       "Test Connection" button, headings, …) carry no field, so they resolve
+ *       by their text: the inspector greps the dialog's source for the string
+ *       literal and reports {@code "text" · Type · File:line}.</li>
+ * </ol>
+ * The closest match on the component's ancestor chain wins; pure layout
+ * scaffolding with neither a field nor text falls through to its nearest
+ * resolvable ancestor.
  */
 public final class UiInspector {
 
     private final JDialog dialog;
     private final String sourceRoot;
+    private final List<Class<?>> sourceClasses = new ArrayList<>();
     private final Map<Component, FieldRef> index = new IdentityHashMap<>();
     private final Map<String, List<String>> sourceCache = new HashMap<>();
     private final Glass glass = new Glass();
@@ -50,6 +62,11 @@ public final class UiInspector {
     private UiInspector(JDialog dialog) {
         this.dialog = dialog;
         this.sourceRoot = System.getProperty("preview.srcRoot", "src/main/java");
+        Class<?> c = dialog.getClass();
+        while (c != null && c != JDialog.class && c != Dialog.class) {
+            sourceClasses.add(c);
+            c = c.getSuperclass();
+        }
         buildIndex();
     }
 
@@ -74,50 +91,110 @@ public final class UiInspector {
         if (SwingUtilities.getWindowAncestor(me.getComponent()) != dialog) return;
 
         if (me.getID() == MouseEvent.MOUSE_MOVED) {
-            Component c = fieldBackedAt(me);
-            if (c == null) { glass.set(null, null); return; }
-            Rectangle r = SwingUtilities.convertRectangle(c.getParent(), c.getBounds(), glass);
-            glass.set(r, index.get(c).label());
+            Hit h = resolveAt(me);
+            if (h == null) { glass.set(null, null); return; }
+            Rectangle r = SwingUtilities.convertRectangle(h.comp.getParent(), h.comp.getBounds(), glass);
+            glass.set(r, h.label);
         } else if (me.getID() == MouseEvent.MOUSE_CLICKED) {
-            Component c = fieldBackedAt(me);
-            if (c != null) System.out.println("[ui-inspector] " + index.get(c).label());
+            Hit h = resolveAt(me);
+            if (h != null) System.out.println("[ui-inspector] " + h.label);
         }
     }
 
-    private Component fieldBackedAt(MouseEvent me) {
+    /** Closest resolvable widget under the cursor: field-backed first, then text. */
+    private Hit resolveAt(MouseEvent me) {
         Container content = dialog.getContentPane();
         Point p = SwingUtilities.convertPoint(me.getComponent(), me.getPoint(), content);
-        Component c = SwingUtilities.getDeepestComponentAt(content, p.x, p.y);
-        while (c != null && !index.containsKey(c)) c = c.getParent();
-        return c;
+        for (Component c = SwingUtilities.getDeepestComponentAt(content, p.x, p.y); c != null; c = c.getParent()) {
+            FieldRef fr = index.get(c);
+            if (fr != null) return new Hit(c, fr.label());
+            String t = text(c);
+            if (isUsableText(t)) return new Hit(c, textLabel(c, t));
+        }
+        return null;
     }
 
-    /** Forces the highlight onto a named field (for headless screenshot demos). */
-    public boolean highlightField(String fieldName) {
+    /** Forces the highlight onto a named field or a text literal (screenshot demos). */
+    public boolean highlightField(String spec) {
         for (Map.Entry<Component, FieldRef> e : index.entrySet()) {
-            if (e.getValue().fieldName.equals(fieldName)) {
-                Component c = e.getKey();
-                Rectangle r = SwingUtilities.convertRectangle(c.getParent(), c.getBounds(), glass);
-                glass.set(r, e.getValue().label());
+            if (e.getValue().fieldName.equals(spec)) {
+                highlight(e.getKey(), e.getValue().label());
                 return true;
             }
         }
+        Component c = findByText(dialog.getContentPane(), spec);
+        if (c != null) {
+            highlight(c, textLabel(c, spec));
+            return true;
+        }
         return false;
+    }
+
+    private void highlight(Component c, String label) {
+        Rectangle r = SwingUtilities.convertRectangle(c.getParent(), c.getBounds(), glass);
+        glass.set(r, label);
+    }
+
+    private Component findByText(Component c, String spec) {
+        if (spec.equals(text(c))) return c;
+        if (c instanceof Container) {
+            for (Component child : ((Container) c).getComponents()) {
+                Component found = findByText(child, spec);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    private static final class Hit {
+        final Component comp;
+        final String label;
+        Hit(Component comp, String label) { this.comp = comp; this.label = label; }
+    }
+
+    // ── Text resolution (inline widgets) ────────────────────────────────────────
+
+    private static String text(Component c) {
+        if (c instanceof JLabel) return ((JLabel) c).getText();
+        if (c instanceof AbstractButton) return ((AbstractButton) c).getText();
+        return null;
+    }
+
+    private static boolean isUsableText(String t) {
+        return t != null && !t.isEmpty() && !t.toLowerCase().startsWith("<html");
+    }
+
+    private String textLabel(Component c, String text) {
+        String shown = text.length() > 30 ? text.substring(0, 29) + "…" : text;
+        String src = findTextSource(text);
+        return "\"" + shown + "\"  ·  " + c.getClass().getSimpleName() + (src != null ? "  ·  " + src : "");
+    }
+
+    /** First source line (across the dialog's class hierarchy) containing the
+     *  quoted string literal, e.g. {@code ExportConfigDialog.java:392}. */
+    private String findTextSource(String text) {
+        String needle = "\"" + text + "\"";
+        for (Class<?> cls : sourceClasses) {
+            List<String> lines = sourceLines(cls);
+            if (lines == null) continue;
+            for (int i = 0; i < lines.size(); i++) {
+                if (lines.get(i).contains(needle)) return cls.getSimpleName() + ".java:" + (i + 1);
+            }
+        }
+        return null;
     }
 
     // ── Build component → field index by reflection ─────────────────────────────
 
     private void buildIndex() {
-        Class<?> c = dialog.getClass();
-        while (c != null && c != JDialog.class && c != Dialog.class) {
-            for (Field f : c.getDeclaredFields()) {
+        for (Class<?> cls : sourceClasses) {
+            for (Field f : cls.getDeclaredFields()) {
                 if (Modifier.isStatic(f.getModifiers())) continue;
                 f.setAccessible(true);
                 Object val;
                 try { val = f.get(dialog); } catch (Exception e) { continue; }
-                indexValue(c, f.getName(), "", val);
+                indexValue(cls, f.getName(), "", val);
             }
-            c = c.getSuperclass();
         }
     }
 
