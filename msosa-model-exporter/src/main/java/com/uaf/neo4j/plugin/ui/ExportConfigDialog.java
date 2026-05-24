@@ -196,7 +196,7 @@ public class ExportConfigDialog extends JDialog {
 
     // ── Model scanning ────────────────────────────────────────────────────────
 
-    private List<String> topLevelPackageNames() {
+    protected List<String> topLevelPackageNames() {
         List<String> names = new ArrayList<>();
         for (Element el : project.getPrimaryModel().getOwnedElement()) {
             if (el instanceof Package && el instanceof NamedElement) {
@@ -207,12 +207,18 @@ public class ExportConfigDialog extends JDialog {
         return names;
     }
 
+    /** Source of the elements counted per package. Overridable so the dialog can be
+     *  driven from sample data (UI preview harness) without a live MSOSA project. */
+    protected List<UAFElementDTO> scanModelElements() {
+        return new UAFModelTraverser(project).getElements();
+    }
+
     private void loadElementCounts() {
         new SwingWorker<Map<String, Integer>, Void>() {
             @Override
             protected Map<String, Integer> doInBackground() {
                 Map<String, Integer> counts = new LinkedHashMap<>();
-                for (UAFElementDTO el : new UAFModelTraverser(project).getElements()) {
+                for (UAFElementDTO el : scanModelElements()) {
                     counts.merge(topPackageOf(el.packageName), 1, Integer::sum);
                 }
                 return counts;
