@@ -192,3 +192,74 @@ def test_capability_configuration_restriction_documented():
                         OWL_NS.Restriction) in g]
     assert restrictions, \
         "CapabilityConfiguration should have at least one owl:Restriction parent"
+
+
+# --- §5 Operational + Resource someValuesFrom restrictions ------------------
+
+def _restriction_targets(g: Graph, cls: URIRef) -> set[URIRef]:
+    """Collect the owl:someValuesFrom targets reachable from cls via owl:Restriction.
+
+    Walks rdfs:subClassOf parents that are owl:Restriction nodes, then reads
+    owl:someValuesFrom. Used to assert the four §5 restrictions are present
+    and point at the expected superclass.
+    """
+    RDFS_SUBCLASS = URIRef("http://www.w3.org/2000/01/rdf-schema#subClassOf")
+    RDF_TYPE = URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#type")
+    targets: set[URIRef] = set()
+    for parent in g.objects(subject=cls, predicate=RDFS_SUBCLASS):
+        if (parent, RDF_TYPE, OWL_NS.Restriction) not in g:
+            continue
+        for tgt in g.objects(subject=parent, predicate=OWL_NS.someValuesFrom):
+            if isinstance(tgt, URIRef):
+                targets.add(tgt)
+    return targets
+
+
+def test_operational_activity_restriction_targets_performer():
+    """OperationalActivity ⊑ ∃ performedBy . OperationalPerformer (axioms §5)."""
+    g = Graph()
+    g.parse(MVO_FILE, format="turtle")
+    g.parse(AXIOMS_FILE, format="turtle")
+    assert UAF.OperationalPerformer in _restriction_targets(g, UAF.OperationalActivity)
+
+
+def test_operational_process_restriction_targets_activity():
+    """OperationalProcess ⊑ ∃ composedOf . OperationalActivity (axioms §5)."""
+    g = Graph()
+    g.parse(MVO_FILE, format="turtle")
+    g.parse(AXIOMS_FILE, format="turtle")
+    assert UAF.OperationalActivity in _restriction_targets(g, UAF.OperationalProcess)
+
+
+def test_resource_performer_restriction_targets_element():
+    """ResourcePerformer ⊑ ∃ performs . ResourceElement (axioms §5)."""
+    g = Graph()
+    g.parse(MVO_FILE, format="turtle")
+    g.parse(AXIOMS_FILE, format="turtle")
+    assert UAF.ResourceElement in _restriction_targets(g, UAF.ResourcePerformer)
+
+
+def test_resource_architecture_restriction_targets_element():
+    """ResourceArchitecture ⊑ ∃ composedOf . ResourceElement (axioms §5)."""
+    g = Graph()
+    g.parse(MVO_FILE, format="turtle")
+    g.parse(AXIOMS_FILE, format="turtle")
+    assert UAF.ResourceElement in _restriction_targets(g, UAF.ResourceArchitecture)
+
+
+def test_performs_inverseOf_performed_by_via_closure():
+    """uaf:performs and uaf:performedBy interoperate under owl:inverseOf.
+
+    Sanity-check that the inverse pair used by the new Operational shapes
+    actually closes — if this regressed, the SHACL test
+    test_operational_activity_with_performer_does_not_warn would also fail
+    but the SHACL trace would obscure the root cause.
+    """
+    ttl = """
+    uafinst:p a uaf:OperationalPerformer ; uaf:domain "OPERATIONAL" .
+    uafinst:a a uaf:OperationalActivity ;  uaf:domain "OPERATIONAL" .
+    uafinst:p uaf:performs uafinst:a .
+    """
+    g = _close(ttl)
+    assert (UAFINST.a, UAF.performedBy, UAFINST.p) in g, \
+        "uaf:performs should infer uaf:performedBy under owl:inverseOf"
