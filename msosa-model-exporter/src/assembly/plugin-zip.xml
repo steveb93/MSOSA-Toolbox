@@ -7,33 +7,42 @@
     <includeBaseDirectory>false</includeBaseDirectory>
 
     <!--
-      MagicDraw Resource/Plugin Manager expects the standard resource zip
-      layout: descriptor.xml at the zip root, all payload files inside a
-      sibling 'files/' directory. Each <file from="X" to="Y"/> inside
-      descriptor.xml resolves X relative to that files/ directory and
-      installs to <MSOSA_HOME>/Y.
+      MSOSA / MagicDraw Resource Manager zip layout. The zip is unpacked
+      INTO the modeling-tool install directory, so it must mirror that
+      directory's structure exactly:
 
-      Previous flat layout (everything at root) triggered "'files'
-      directory is not found" — Issue #86 follow-on, comment dated
-      2026-05-24.
+          data/resourcemanager/MDR_Plugin_<name>_<id>_descriptor.xml
+          plugins/<plugin-id>/<payload>
+
+      The descriptor's <file from="..."/> paths are zip-relative; <file
+      to="..."/> paths are install-dir-relative. The two match here
+      because we mirror the install tree.
+
+      Background on prior failed layouts (Issue #86):
+        * Flat zip with descriptor.xml at root  -> "'files' directory is
+          not found" (misleading: real problem is wrong layout entirely).
+        * descriptor.xml + files/<payload>      -> "Error reading
+          descriptor file" (descriptor wasn't where the Resource Manager
+          looks: data/resourcemanager/).
     -->
     <files>
         <file>
             <source>${project.build.directory}/${project.artifactId}-${project.version}.jar</source>
-            <outputDirectory>files</outputDirectory>
+            <outputDirectory>plugins/com.uaf.neo4j.plugin</outputDirectory>
         </file>
         <file>
             <source>src/main/resources/plugin.xml</source>
-            <outputDirectory>files</outputDirectory>
+            <outputDirectory>plugins/com.uaf.neo4j.plugin</outputDirectory>
             <filtered>true</filtered>
         </file>
         <file>
             <source>src/main/resources/neo4j-connection.properties</source>
-            <outputDirectory>files</outputDirectory>
+            <outputDirectory>plugins/com.uaf.neo4j.plugin</outputDirectory>
         </file>
         <file>
             <source>src/main/resources/descriptor.xml</source>
-            <outputDirectory>.</outputDirectory>
+            <outputDirectory>data/resourcemanager</outputDirectory>
+            <destName>MDR_Plugin_MSOSA_Model_Exporter_30086_descriptor.xml</destName>
             <filtered>true</filtered>
         </file>
     </files>
