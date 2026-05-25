@@ -101,32 +101,24 @@ msosa-model-exporter/
 
 **Option A — Plugin Manager:**
 1. In MSOSA: **Help → Resource/Plugin Manager → Install Plugin from File**
-2. Select `target/msosa-model-exporter-1.5.0-Preview-plugin.zip`
+2. Select `target/msosa-model-exporter-1.5.1-Preview-plugin.zip`
 3. Restart MSOSA when prompted
 
 **Option B — Manual:**
 
-Unzip `target/msosa-model-exporter-1.5.0-Preview-plugin.zip` to a temp folder. The zip lays out as the MagicDraw Resource standard — `descriptor.xml` at the root, payload under `files/`:
+The zip is a Resource Manager bundle that mirrors the MSOSA install tree, so its contents drop straight into `<MSOSA_HOME>`:
 
 ```
-<tempdir>/
-├── descriptor.xml
-└── files/
+<MSOSA_HOME>/
+├── data/resourcemanager/
+│   └── MDR_Plugin_MSOSA_Model_Exporter_30086_descriptor.xml
+└── plugins/com.uaf.neo4j.plugin/
     ├── plugin.xml
     ├── neo4j-connection.properties
-    └── msosa-model-exporter-1.5.0-Preview.jar
+    └── msosa-model-exporter-1.5.1-Preview.jar
 ```
 
-Copy the **contents of `files/`** (not the directory itself) into `<MSOSA_HOME>/plugins/com.uaf.neo4j.plugin/` (create the folder):
-
-```
-<MSOSA_HOME>/plugins/com.uaf.neo4j.plugin/
-    plugin.xml
-    neo4j-connection.properties
-    msosa-model-exporter-1.5.0-Preview.jar
-```
-
-That mirrors exactly what the Plugin Manager does — `descriptor.xml`'s `to="plugins/com.uaf.neo4j.plugin/..."` paths install each payload file under the `com.uaf.neo4j.plugin` plugin directory. Restart MSOSA. The plugin appears under **Tools → UAF Neo4j Export**.
+Unzip `target/msosa-model-exporter-1.5.1-Preview-plugin.zip` directly into `<MSOSA_HOME>`. Restart MSOSA. The plugin appears under **Tools → UAF Neo4j Export**.
 
 ---
 
