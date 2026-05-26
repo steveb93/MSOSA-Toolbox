@@ -25,6 +25,11 @@ __pycache__/
 ontology/dump/*
 !ontology/dump/uaf-instance.ttl
 
+# Throwaway TTL produced by concatenating uaf-mvo.ttl + uaf-mvo-axioms.ttl for
+# upload to https://service.tib.eu/webvowl/ — WebVOWL's UI only accepts one file.
+#  Get-Content ontology\uaf-mvo.ttl, ontology\uaf-mvo-axioms.ttl | Set-Content ontology\uaf-mvo-combined.ttl
+ontology/uaf-mvo-combined.ttl
+
 # Maven build output
 msosa-model-exporter/target/
 
