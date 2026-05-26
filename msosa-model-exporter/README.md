@@ -195,28 +195,15 @@ See `../ontology/queries/semantic-search-examples.sparql` for anchor queries and
 
 ---
 
-### Step 6 — Browse the RDF Graph Visually (optional)
+### Step 6 — Browse the OWL T-Box Visually (optional)
 
-Fuseki only exposes SPARQL. For clickable graph exploration the toolbox ships a static exporter — no extra container, no licence:
+Fuseki only exposes SPARQL. For the T-Box (ontology classes, properties, OWL restrictions) the Fuseki overlay also runs a self-hosted **WebVOWL** container — set `WEBVOWL_IMAGE` in `../docker-compose/.env` (see `../docker-compose/.env.example` for image suggestions), bring the overlay up, then open:
 
-```powershell
-# Export a SPARQL CONSTRUCT result as GraphML (live Fuseki)
-.\.venv\Scripts\python.exe ontology\codegen\sparql_to_graphml.py `
-    --preset capability-realisation `
-    --output cap.graphml
-
-# Or offline against the local TTL fixture (no Fuseki needed)
-.\.venv\Scripts\python.exe ontology\codegen\sparql_to_graphml.py `
-    --from-file ontology\dump\uaf-instance.ttl `
-    --preset operational-flow `
-    --output ops.graphml
+```
+http://localhost:8080/
 ```
 
-Open the resulting `*.graphml` in **Cytoscape Desktop**, **yEd**, or **Gephi** — apply a force-directed layout for instance graphs, hierarchical for class trees. Four preset CONSTRUCT queries ship under `../ontology/visualisations/queries/`: `capability-realisation`, `security-controls`, `operational-flow`, `resource-allocation`. Drop your own into the same directory and reference by stem with `--preset`, or pass an arbitrary path with `--query`.
-
-For the **T-Box** (ontology classes, properties, OWL restrictions) open `../ontology/uaf-mvo.ttl` in **Protégé Desktop** (OntoGraf / OWLViz / DL Query) or upload to <https://service.visualdataweb.de/webvowl/> in a browser.
-
-Full walkthrough including Cytoscape.js JSON output for web embedding: [`../ontology/visualisations/README.md`](../ontology/visualisations/README.md).
+In the WebVOWL UI choose **Ontology → Select ontology file** and upload `../ontology/uaf-mvo.ttl` (and optionally `../ontology/uaf-mvo-axioms.ttl` for the Stage-3 inverses, disjointness, and `someValuesFrom` restrictions).
 
 ---
 

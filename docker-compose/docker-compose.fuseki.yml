@@ -1,4 +1,5 @@
-# Overlay: adds Apache Jena Fuseki sidecar as the SPARQL endpoint for the UAF MVO.
+# Overlay: adds Apache Jena Fuseki sidecar as the SPARQL endpoint for the UAF MVO,
+# plus a self-hosted WebVOWL container for browsing the OWL T-Box.
 #
 # Usage:
 #   docker compose -f docker-compose.yml -f docker-compose.fuseki.yml up -d
@@ -6,7 +7,10 @@
 # Endpoints:
 #   SPARQL query : http://localhost:3030/uaf/sparql
 #   SPARQL update: http://localhost:3030/uaf/update
-#   Web UI       : http://localhost:3030/
+#   Fuseki UI    : http://localhost:3030/
+#   WebVOWL UI   : http://localhost:${WEBVOWL_PORT:-8080}/
+#                  Upload ontology/uaf-mvo.ttl (and optionally uaf-mvo-axioms.ttl)
+#                  via the WebVOWL "Ontology" menu to render the T-Box.
 #
 # Refresh data after a Neo4j export:
 #   python ontology/codegen/dump_to_rdf.py
@@ -32,3 +36,21 @@ services:
       # mount is read-write. Edit ontology/fuseki/configuration/uaf.ttl on the host
       # and restart the container to apply changes.
       - ../ontology/fuseki/configuration:/fuseki/configuration
+
+  webvowl:
+    # WebVOWL renders the OWL T-Box (classes, properties, restrictions) as the
+    # Visual Notation for OWL Ontologies. Replaces the previous SPARQL→GraphML
+    # exporter — no intermediary steps, point a browser at the container.
+    #
+    # Pin the image in .env via WEBVOWL_IMAGE — there are several community
+    # builds on Docker Hub and none are official. See docker-compose/.env.example.
+    image: ${WEBVOWL_IMAGE:?WEBVOWL_IMAGE must be set in .env}
+    container_name: webvowl-uaf
+    restart: unless-stopped
+    ports:
+      - "${WEBVOWL_PORT:-8080}:8080"
+    volumes:
+      # Read-only mount of the ontology dir so uaf-mvo.ttl + uaf-mvo-axioms.ttl
+      # are available to the container — uploading the file through the WebVOWL
+      # UI works for any image, but some images can also auto-load from a path.
+      - ../ontology:/staging:ro
