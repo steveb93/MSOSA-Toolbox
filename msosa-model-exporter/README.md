@@ -197,13 +197,9 @@ See `../ontology/queries/semantic-search-examples.sparql` for anchor queries and
 
 ### Step 6 — Browse the OWL T-Box Visually (optional)
 
-Fuseki only exposes SPARQL. For the T-Box (ontology classes, properties, OWL restrictions) the Fuseki overlay also runs a self-hosted **WebVOWL** container — set `WEBVOWL_IMAGE` in `../docker-compose/.env` (see `../docker-compose/.env.example` for image suggestions), bring the overlay up, then open:
+Fuseki only exposes SPARQL. For the T-Box (ontology classes, properties, OWL restrictions) use the upstream-blessed hosted **WebVOWL** at <https://service.tib.eu/webvowl/>. Choose **Ontology → Select ontology file** and upload `../ontology/uaf-mvo.ttl` (and optionally `../ontology/uaf-mvo-axioms.ttl` for the Stage-3 inverses, disjointness, and `someValuesFrom` restrictions). The ontology is already public in this repo, so a third-party upload is fine.
 
-```
-http://localhost:8080/
-```
-
-In the WebVOWL UI choose **Ontology → Select ontology file** and upload `../ontology/uaf-mvo.ttl` (and optionally `../ontology/uaf-mvo-axioms.ttl` for the Stage-3 inverses, disjointness, and `someValuesFrom` restrictions).
+Self-hosting WebVOWL was explored and rejected — the upstream Docker image is broken (the pre-built WAR host returns 403), and a from-source rebuild needs WebVOWL (JS frontend) **and** OWL2VOWL (Java backend) plus an nginx proxy. See `../ontology/NEXT-STEPS.md` for the decision log.
 
 ---
 

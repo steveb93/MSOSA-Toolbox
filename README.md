@@ -74,7 +74,7 @@ The post-export summary dialog has a **Copy SPARQL Refresh Cmd** button that cop
 
 See [`ontology/NEXT-STEPS.md`](ontology/NEXT-STEPS.md) for Stage 3 (native triplestore, OWL 2 RL reasoning, SHACL validation) and Stage 5 (composite AI / decision intelligence) gating criteria.
 
-**Visualisation**: Fuseki only exposes SPARQL. For browsing the OWL T-Box (classes, properties, restrictions) the Fuseki overlay runs a self-hosted **WebVOWL** container alongside Fuseki — set `WEBVOWL_IMAGE` in `docker-compose/.env`, bring the overlay up, then open `http://localhost:8080/` and upload `ontology/uaf-mvo.ttl` (and optionally `uaf-mvo-axioms.ttl`).
+**Visualisation**: Fuseki only exposes SPARQL. For browsing the OWL T-Box (classes, properties, restrictions) use the upstream-blessed hosted instance at <https://service.tib.eu/webvowl/> — choose **Ontology → Select ontology file** and upload `ontology/uaf-mvo.ttl` (and optionally `uaf-mvo-axioms.ttl`). The ontology is already public in this repo, so a third-party upload is fine. Self-hosting was explored and rejected: the upstream Docker image is broken, and a from-source rebuild needs WebVOWL (JS frontend) **and** OWL2VOWL (Java backend) plus an nginx proxy — more intermediary steps than the GraphML pipeline this stack already dropped. See `ontology/NEXT-STEPS.md` for the decision log.
 
 ---
 
@@ -90,7 +90,7 @@ MSOSA-Toolbox/
 ├── graph_mcp_driver/                # Python MCP server — run_cypher + run_sparql tools
 ├── docker-compose/
 │   ├── docker-compose.yml           # Neo4j 5.26 + n10s + APOC + GDS
-│   └── docker-compose.fuseki.yml    # Fuseki SPARQL overlay (Stage 2) + WebVOWL T-Box viewer
+│   └── docker-compose.fuseki.yml    # Fuseki SPARQL overlay (Stage 2)
 ├── ontology/
 │   ├── uaf-mvo.ttl                  # AUTO-GENERATED T-Box (UAF + SysML + BPMN)
 │   ├── uaf-mvo-axioms.ttl           # Hand-authored OWL axioms (Stage 3: inverses, disjointness, restrictions)
