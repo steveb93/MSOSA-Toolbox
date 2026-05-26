@@ -26,7 +26,7 @@ This report compares three ontology approaches:
 
 It places these approaches in the context of Gartner's May 2025 research note *How to Build Knowledge Graphs That Enable AI-Driven Enterprise Applications* (Jaffri, G00768041), and analyses each against the UAF MBSE programme dimensions that matter for an enterprise rollout: metamodel fidelity, cross-domain traceability, reasoning value, enterprise integration, stakeholder fit, and lifecycle posture under ISO/IEC/IEEE 15288 and the INCOSE SE Handbook.
 
-**Headline conclusion.** RDF Native is the correct long-term target for a serious UAF programme that will face accreditation, cross-tool federation, or formal compliance obligations. It is *not* the correct first move from the current state. A staged migration via an RDF Virtual (OBDA) overlay — following Gartner's **Minimum Viable Ontology / Minimum Viable Graph** cadence — preserves every existing investment (Java plugin, Docker stack, Claude MCP server), delivers SPARQL interoperability immediately, and positions the programme for a full migration when (and only when) governance maturity, team skills, and stakeholder demand justify it. The value narrative driving that migration must lead with **AI use cases** (Claude-fronted decision intelligence, semantic search, capability gap discovery) rather than "joining up architecture data" — a framing that Gartner explicitly identifies as the most common failure mode for knowledge graph initiatives.
+**Headline conclusion.** RDF Native is the correct long-term target for a serious UAF programme that will face accreditation, cross-tool federation, or formal compliance obligations. It is *not* the correct first move from the current state. A staged migration via an RDF Virtual (OBDA) overlay — following Gartner's **Minimum Viable Ontology / Minimum Viable Graph** cadence — preserves every existing investment (Java plugin, Docker stack, MCP server), delivers SPARQL interoperability immediately, and positions the programme for a full migration when (and only when) governance maturity, team skills, and stakeholder demand justify it. The value narrative driving that migration must lead with **AI use cases** (LLM-fronted decision intelligence, semantic search, capability gap discovery) rather than "joining up architecture data" — a framing that Gartner explicitly identifies as the most common failure mode for knowledge graph initiatives.
 
 ---
 
@@ -54,7 +54,7 @@ The Jaffri note is the most directly relevant Gartner research to this programme
 
 ### 3.1 Gartner's three key findings
 
-1. **Business cases must lead with AI applications, not data integration.** Gartner: *"Data and analytics leaders fail to get stakeholder buy-in for knowledge graph initiatives because they form business cases solely on the basis of connecting data silos, without addressing the opportunities for delivering AI applications."* For this programme that means the value narrative is **not** "we have a UAF knowledge graph that joins our architecture data" — it is "we have a UAF knowledge graph that drives Claude-augmented impact analysis, capability-gap discovery, and decision-intelligence dashboards."
+1. **Business cases must lead with AI applications, not data integration.** Gartner: *"Data and analytics leaders fail to get stakeholder buy-in for knowledge graph initiatives because they form business cases solely on the basis of connecting data silos, without addressing the opportunities for delivering AI applications."* For this programme that means the value narrative is **not** "we have a UAF knowledge graph that joins our architecture data" — it is "we have a UAF knowledge graph that drives LLM-augmented impact analysis, capability-gap discovery, and decision-intelligence dashboards."
 2. **Composability eases semantic consistency.** Gartner: *"The flexible, composable and open nature of knowledge-graph-based data delivery eases the challenge of ensuring the semantic consistency of data across the enterprise. This allows business users, software engineers and data scientists to find, understand and use the data they need."*
 3. **Knowledge graphs are an AI asset, alone or in composite.** They function *"as a stand-alone AI asset — or be used in conjunction with machine learning models in a composite AI approach — to deliver knowledge discovery, search and retrieval, recommendation, and decision intelligence platforms."*
 
@@ -68,11 +68,11 @@ The Jaffri note is the most directly relevant Gartner research to this programme
 
 | Gartner application | What it means in a UAF programme |
 |---|---|
-| **Semantic Search / Question Answering** | Architects ask Claude "which Capabilities are realised by deprecated ResourceFunctions and which OperationalActivities depend on them?" The graph supplies grounded multi-hop answers across the UAF grid that document-only retrieval cannot. |
-| **Knowledge Discovery** | Discover previously hidden traceability: orphaned OperationalActivities, redundant CapabilityConfigurations, security-classification conflicts. Gartner specifically calls out **"graph analytics, machine learning and reasoning"** as composite AI — directly aligning with the GDS + OWL reasoning + Claude triad. |
+| **Semantic Search / Question Answering** | Architects ask the LLM "which Capabilities are realised by deprecated ResourceFunctions and which OperationalActivities depend on them?" The graph supplies grounded multi-hop answers across the UAF grid that document-only retrieval cannot. |
+| **Knowledge Discovery** | Discover previously hidden traceability: orphaned OperationalActivities, redundant CapabilityConfigurations, security-classification conflicts. Gartner specifically calls out **"graph analytics, machine learning and reasoning"** as composite AI — directly aligning with the GDS + OWL reasoning + LLM triad. |
 | **Recommendation Engines** | For UAF programmes: recommend ResourceArtifacts to fill capability gaps; recommend reuse candidates across architectures; recommend Personnel roles that match a CapabilityConfiguration's competence profile. Gartner notes that **content-based** (graph-position-based) recommendation, not collaborative filtering, is the right pattern here. |
 
-Gartner argues that **decision intelligence platforms** — which incorporate aspects of all three — *"are likely to become the most popular knowledge-graph-driven application."* This is precisely the trajectory of the MSOSA-Toolbox: from a static export pipeline today, to a Claude-fronted decision-intelligence surface for UAF programmes tomorrow.
+Gartner argues that **decision intelligence platforms** — which incorporate aspects of all three — *"are likely to become the most popular knowledge-graph-driven application."* This is precisely the trajectory of the MSOSA-Toolbox: from a static export pipeline today, to an LLM-fronted decision-intelligence surface for UAF programmes tomorrow.
 
 ### 3.4 The MVO / MVG approach — and why it changes the migration plan
 
@@ -102,7 +102,7 @@ Gartner's Figure 4 maps four delivery channels to four personas:
 | Domain experts | Visual interface |
 | Software engineers | REST / GraphQL API |
 
-This maps almost one-to-one onto the stakeholder fit analysis in §8 below. Gartner also explicitly notes that **"the integration of generative AI-based assistants in many graph platforms has accelerated the time to reach value and gain actionable insights from graph data"** — direct external validation for the Claude MCP integration as a first-class delivery channel for this programme.
+This maps almost one-to-one onto the stakeholder fit analysis in §8 below. Gartner also explicitly notes that **"the integration of generative AI-based assistants in many graph platforms has accelerated the time to reach value and gain actionable insights from graph data"** — direct external validation for the MCP integration as a first-class delivery channel for this programme.
 
 ### 3.6 The data-integration evidence
 
@@ -112,9 +112,9 @@ Gartner cites the *2023 AI in the Enterprise Survey*: **79% of organisations cla
 
 Gartner's positioning materially **endorses** three judgements in this report:
 
-1. **Lead with AI use cases, not "join up data."** The Claude MCP integration is not a side feature — it is the primary value narrative the business case should be built around.
+1. **Lead with AI use cases, not "join up data."** The MCP integration is not a side feature — it is the primary value narrative the business case should be built around.
 2. **MVO/MVG is the right migration cadence.** Do not attempt a big-bang UAF ontology in OWL. Stand up the smallest useful T-Box (Strategic + Operational), project the existing LPG via OBDA, iterate per use case.
-3. **Composite AI is the destination.** Graph analytics (Neo4j GDS) + reasoning (OWL via OBDA or native) + Claude (LLM) is exactly the composite AI pattern Gartner identifies as more robust than any single technique.
+3. **Composite AI is the destination.** Graph analytics (Neo4j GDS) + reasoning (OWL via OBDA or native) + an LLM is exactly the composite AI pattern Gartner identifies as more robust than any single technique.
 
 Gartner does **not** take a strong position on RDF Native versus property graph at the technology layer — the note is deliberately ontology-and-application-led, not vendor-led. That neutrality is itself useful: it lets this programme defer the RDF Native commitment until use-case pressure justifies it, rather than treating the technology choice as the strategic question.
 
@@ -155,7 +155,7 @@ For BPMN integration: every UAF `OperationalActivity` maps to a `bpmn:Task`; eve
 
 ### 4.6 Risks and pitfalls (UAF-specific)
 
-- **Tooling shift.** The Java plugin must emit RDF rather than Cypher. The Claude MCP server (currently Cypher-only) needs a SPARQL counterpart. Neither is intrinsically difficult, but both are real engineering work.
+- **Tooling shift.** The Java plugin must emit RDF rather than Cypher. The MCP server (currently Cypher-only) needs a SPARQL counterpart. Neither is intrinsically difficult, but both are real engineering work.
 - **Reasoner scalability.** Full OWL 2 DL reasoning over tens of thousands of UAF individuals can be slow. Practical programmes choose their OWL profile carefully — OWL 2 EL for scalable subsumption, OWL 2 RL for rule-based inference, full DL only for offline correctness analyses.
 - **T-Box governance.** Every MSOSA profile change (new stereotypes, renamed associations) requires a versioned ontology release with regression testing of consistency. This is a real recurring cost that the LPG model does not have — the LPG simply edits `UAFStereotypeRegistry.java` and re-deploys.
 - **Query-language barrier.** SPARQL is harder for non-specialists than Cypher. Without investment in training or a query-abstraction layer, productivity drops.
@@ -185,7 +185,7 @@ For programmes whose primary need is **vocabulary alignment and SPARQL-accessibi
 
 ### 5.5 Enterprise integration
 
-This is OBDA's strongest argument in the UAF context. The Neo4j graph remains the operational system of record. The existing Java plugin and Docker stack are unchanged. The Claude MCP server continues to query Cypher directly. An OBDA layer provides a **standards-based SPARQL endpoint** for consumption by adjacent systems (GRC platforms, capability management tools, SPARQL-native BI, DoDAF/MODAF reporting) without duplicating data or migrating storage.
+This is OBDA's strongest argument in the UAF context. The Neo4j graph remains the operational system of record. The existing Java plugin and Docker stack are unchanged. The MCP server continues to query Cypher directly. An OBDA layer provides a **standards-based SPARQL endpoint** for consumption by adjacent systems (GRC platforms, capability management tools, SPARQL-native BI, DoDAF/MODAF reporting) without duplicating data or migrating storage.
 
 For data architects managing canonical ERDs alongside the UAF model, Ontop or Stardog Virtual Graphs can expose the UAF graph and the canonical data model through one SPARQL endpoint, federated logically without a physical move.
 
@@ -220,7 +220,7 @@ Essentially none in the formal sense. What the LPG offers instead is **procedura
 
 ### 6.5 Enterprise integration
 
-LPG integrates naturally with developer-facing tooling (Spring Data Neo4j, py2neo, the existing MCP server) but poorly with standards-based enterprise infrastructure (data catalogues, GRC, SPARQL endpoints expected by DoDAF/MODAF tools). The Claude MCP interface is a pragmatic, valuable integration for AI-augmented architecture analysis but is not yet a standards-based federation point.
+LPG integrates naturally with developer-facing tooling (Spring Data Neo4j, py2neo, the existing MCP server) but poorly with standards-based enterprise infrastructure (data catalogues, GRC, SPARQL endpoints expected by DoDAF/MODAF tools). The MCP interface is a pragmatic, valuable integration for AI-augmented architecture analysis but is not yet a standards-based federation point.
 
 ---
 
@@ -238,7 +238,7 @@ LPG integrates naturally with developer-facing tooling (Spring Data Neo4j, py2ne
 | Query accessibility | Low — SPARQL learning curve | Low — same barrier | **High** — Cypher widely known |
 | Governance overhead | High — versioned OWL T-Box, profile mgmt | Medium — mapping rules | Low — registry file |
 | Migration cost from current | High — new export, new MCP path | Low–Medium — overlay only | Zero — already here |
-| Claude MCP fit (today) | Requires SPARQL-MCP bridge | Unchanged | **Native** |
+| MCP fit (today) | Requires SPARQL-MCP bridge | Unchanged | **Native** |
 | Best for | Compliance, accreditation, cross-tool federation | Strong LPG investment + SPARQL interop need | Concept/dev phase, AI-augmented analysis |
 
 ---
@@ -246,7 +246,7 @@ LPG integrates naturally with developer-facing tooling (Spring Data Neo4j, py2ne
 ## 8. Stakeholder Fit Analysis
 
 ### Decision makers
-Cv-1 capability taxonomy views, Cv-3/Pv-2 roadmap gap summaries, and risk-weighted impact assessments are needed at this level. All three approaches can support dashboard-level reporting. **RDF Native** has the edge where enterprise GRC or portfolio platforms expect SPARQL. **LPG** has the edge where the primary consumption interface is conversational AI (Claude via MCP) — an increasingly compelling model for strategic narrative generation.
+Cv-1 capability taxonomy views, Cv-3/Pv-2 roadmap gap summaries, and risk-weighted impact assessments are needed at this level. All three approaches can support dashboard-level reporting. **RDF Native** has the edge where enterprise GRC or portfolio platforms expect SPARQL. **LPG** has the edge where the primary consumption interface is conversational AI (an LLM via MCP) — an increasingly compelling model for strategic narrative generation.
 
 ### Enterprise and solution architects
 **RDF Native** decisively supports impact analysis: "if I remove this OperationalActivity, what Capabilities are degraded, what Services lose their basis, what ResourceFunctions are stranded?" — a single SPARQL statement with OWL inverses and role chains. In LPG the same query requires careful multi-direction Cypher that the architect must construct without type-system help. The cognitive load delta is significant at scale.
@@ -271,7 +271,7 @@ ISO/IEC/IEEE 15288 Section 6.4 (Architecture Definition Process) requires that a
 
 | Lifecycle Stage | Best Approach | Rationale |
 |---|---|---|
-| Concept | **LPG** | Rapid modelling, iteration, Claude MCP for exploration; formal governance overhead unjustified |
+| Concept | **LPG** | Rapid modelling, iteration, MCP for exploration; formal governance overhead unjustified |
 | Development | **LPG** or **OBDA** | Capability gap analysis emerging; OBDA adds SPARQL accessibility without migration |
 | Production / Integration | **OBDA** or **RDF Native** | Cross-tool federation, compliance reporting, formal consistency checking needed at scale |
 | Utilisation | **RDF Native** | Security accreditation, operational readiness, configuration management benefit from OWL inference |
@@ -297,8 +297,8 @@ The INCOSE SE Handbook 5th Edition (2023) emphasises **digital engineering conti
 - The programme cannot yet absorb the governance overhead of a fully managed OWL ontology.
 
 ### Stay with LPG when
-- The programme is in **concept or early development** — pragmatic benefits of Cypher and the Claude MCP interface outweigh OWL rigour at this stage.
-- The primary use case is **AI-augmented architectural analysis** (Claude querying the graph) rather than formal compliance or cross-tool federation.
+- The programme is in **concept or early development** — pragmatic benefits of Cypher and the MCP interface outweigh OWL rigour at this stage.
+- The primary use case is **AI-augmented architectural analysis** (an LLM querying the graph) rather than formal compliance or cross-tool federation.
 - The team lacks ontology expertise and cannot realistically govern an OWL T-Box.
 - **Rapid iteration on model structure is expected** — schema changes in LPG are dramatically cheaper than ontology versioning.
 
@@ -312,7 +312,7 @@ Three risks attend acting on this preference now:
 
 **Risk 1 — Premature formalisation.** MSOSA-Toolbox is at v1.0.1-Preview. The stereotype registry is the single source of truth and is still evolving as MSOSA profile names are verified and new stereotypes are added. Migrating to RDF Native before the vocabulary is stable means versioning an OWL T-Box against a moving target. *Stabilise the LPG schema first, then generate the OWL T-Box from the stabilised registry as a one-time transformation.*
 
-**Risk 2 — The Claude MCP integration is a genuine competitive advantage.** The Python MCP server lets architects interrogate the full UAF model in natural language, generate Cypher, and receive AI-synthesised architectural narratives. Migrating to RDF Native without a working SPARQL-to-Claude bridge would degrade this capability. The migration must be paced to preserve the MCP interface — either by maintaining a Cypher read replica or by building a SPARQL MCP server (Apache Jena Fuseki with an MCP wrapper is feasible).
+**Risk 2 — The MCP integration is a genuine competitive advantage.** The Python MCP server lets architects interrogate the full UAF model in natural language, generate Cypher, and receive AI-synthesised architectural narratives. Migrating to RDF Native without a working SPARQL-side MCP tool would degrade this capability. The migration must be paced to preserve the MCP interface — either by maintaining a Cypher read replica or by building a SPARQL MCP server (Apache Jena Fuseki with an MCP wrapper is feasible).
 
 **Risk 3 — Reasoning correctness depends on ontology-competent operators.** OWL 2 DL reasoning produces results that can be subtly wrong in ways that are hard to detect without deep expertise — particularly because of the Open World Assumption. Programmes that treat OWL as a black-box oracle will eventually make incorrect architecture decisions based on silent inference failures. This is not a reason to avoid RDF Native; it is a reason to **invest in ontology training before migrating**.
 
@@ -327,7 +327,7 @@ A staged migration is materially safer than a big-bang replacement, and it direc
 - Stabilise `UAFStereotypeRegistry` — verify every name against MSOSA scripting console output.
 - Ensure all 28 relationship types are applied consistently.
 - Add post-export Cypher validation scripts that check structural invariants (every `REALISES` targets a `:Capability`; every `InformationExchange` has both source and target performers; every node has `domain` and `layer` properties from the registry).
-- **Pick the first AI use case** from Gartner's three archetypes — semantic search, knowledge discovery, or recommendation. The natural first target is **Claude-fronted semantic search** over the UAF model, which is already partially in place via the MCP server.
+- **Pick the first AI use case** from Gartner's three archetypes — semantic search, knowledge discovery, or recommendation. The natural first target is **LLM-fronted semantic search** over the UAF model, which is already partially in place via the MCP server.
 - *Outcome:* The discipline that will translate directly into OWL axioms at Stage 3, plus a named business-value driver for stakeholder buy-in.
 
 ### Stage 2 — MVO + MVG + OBDA overlay (next 1–2 quarters)
@@ -335,7 +335,7 @@ A staged migration is materially safer than a big-bang replacement, and it direc
 - **Project the existing graph as the MVG** — stand up an Ontop (or Ontop-Neo4j) layer mapping Neo4j labels and relationship types to OWL classes and properties.
 - Expose a SPARQL endpoint alongside the existing Cypher/Bolt endpoint.
 - Expand the MVO **per use case** — when Personnel competence analysis is wanted, extend to the Personnel domain; when security accreditation arrives, extend to Security; not before.
-- *Outcome:* SPARQL interoperability with enterprise tooling. T-Box reasoning (subsumption, classification hierarchies). The Java plugin and Claude MCP server are unchanged.
+- *Outcome:* SPARQL interoperability with enterprise tooling. T-Box reasoning (subsumption, classification hierarchies). The Java plugin and MCP server are unchanged.
 
 ### Stage 3 — Native triplestore for governed sub-domains (when accreditation or federation pressure arrives)
 - Identify the subset of the UAF model that requires formal A-Box reasoning — typically Strategic (Capabilities, Capability Configurations, Strategic Parameters) and Security (classification hierarchies, clearance requirements).
@@ -346,7 +346,7 @@ A staged migration is materially safer than a big-bang replacement, and it direc
 ### Stage 4 — Full migration (programme-dependent, possibly never)
 - When the programme reaches production/utilisation (ISO 15288 Stage 5–6) and formal accreditation or cross-tool federation is mandatory, complete the migration.
 - The Java plugin gains a new export target (Apache Jena/RDF4J writer alongside or replacing `Neo4jCypherBuilder`).
-- The Claude MCP server gains a SPARQL query tool alongside its Cypher tool — or migrates fully to SPARQL — preserving the conversational AI delivery channel that Gartner identifies as a key accelerator of knowledge graph value.
+- The MCP server gains a SPARQL query tool alongside its Cypher tool — or migrates fully to SPARQL — preserving the conversational AI delivery channel that Gartner identifies as a key accelerator of knowledge graph value.
 - *Outcome:* Standards-aligned, federation-ready, reasoning-complete UAF knowledge graph.
 
 This path **preserves every existing investment**, delivers SPARQL interoperability cheaply at Stage 2, and positions the programme for full formal ontology at a point where governance infrastructure and team skills are ready. It is **reversible at every stage** — the LPG remains the system of record until Stage 4, so no architectural decisions are irreversible before the programme is ready for them. It is also **Gartner-endorsed in shape**: agile, use-case-led, ontology-reuse-first, persona-aware.
@@ -357,7 +357,7 @@ This path **preserves every existing investment**, delivers SPARQL interoperabil
 
 The choice between RDF Native, RDF Virtual, and LPG is a choice about **how much semantic rigour the UAF programme is ready to demand**, and from whom. RDF Native delivers the highest fidelity to the UAF DMM and the highest analytic ceiling — formal reasoning, cross-organisation federation, accreditation-grade consistency checking. It comes with real governance, tooling, and skill costs that a programme in concept or early development is unlikely to absorb productively.
 
-The current LPG implementation is not a wrong answer — it is the **right answer for the current programme phase**, delivering pragmatic graph analysis, Claude-augmented querying, and a working operational pipeline at low governance cost. RDF Virtual (OBDA) is the **correct bridge** from here toward RDF Native: it preserves the LPG investment, delivers SPARQL interoperability immediately, and lets the programme adopt formal reasoning incrementally for the sub-domains where it pays off most.
+The current LPG implementation is not a wrong answer — it is the **right answer for the current programme phase**, delivering pragmatic graph analysis, LLM-augmented querying, and a working operational pipeline at low governance cost. RDF Virtual (OBDA) is the **correct bridge** from here toward RDF Native: it preserves the LPG investment, delivers SPARQL interoperability immediately, and lets the programme adopt formal reasoning incrementally for the sub-domains where it pays off most.
 
 The recommendation is therefore: **honour the RDF Native preference as the long-term target, adopt OBDA as the next concrete step under a Gartner-style MVO/MVG cadence, and let the LPG continue to serve the programme until the governance maturity and stakeholder demand justify a fuller move.** Anchored in Jaffri's May 2025 Gartner note — that knowledge graph initiatives succeed when they lead with named AI use cases, when ontology development is agile and reuse-led, when composite AI (graph + ML + reasoning + LLM) is the design target, and when delivery is shaped per persona — this trajectory is defensible to enterprise architecture review boards and to programme decision makers, while remaining technically honest about where each approach pays off.
 

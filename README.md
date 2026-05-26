@@ -13,7 +13,7 @@
 > [!IMPORTANT]
 > All plugins in this toolbox target **No Magic MSOSA 2022x Hotfix 2** (MagicDraw). They are not tested against earlier or later MSOSA releases.
 
-A curated collection of open-source plugins and tooling that extend **MSOSA 2022x HF2** for teams working with **UAF 1.2**, **SysML 1.6**, and **BPMN 2.0** in MSOSA. The toolbox builds a **hybrid knowledge graph** — Neo4j is the system of record (labelled property graph + Cypher), and Apache Jena Fuseki adds a SPARQL 1.1 endpoint with RDFS reasoning over a UAF Minimum Viable Ontology. The two stores are kept in step by a Python dump script that runs after each MSOSA export.
+A curated collection of open-source plugins and tooling that extend **MSOSA 2022x HF2** for teams working with **UAF 1.2**, **SysML 1.6**, and **BPMN 2.0** in MSOSA. The toolbox builds a **hybrid knowledge graph** — Neo4j is the system of record (labelled property graph + Cypher), and Apache Jena Fuseki adds a SPARQL 1.1 endpoint with **OWL FB reasoning** (Stage 3) over a UAF Minimum Viable Ontology with SHACL governance shapes across all 7 UAF domains. The two stores are kept in step by the Java plugin's RDF emitter, which writes Turtle and PUTs to Fuseki via SPARQL 1.1 Graph Store Protocol in the same export action; `ontology/codegen/dump_to_rdf.py` remains as the recovery path.
 
 References:
 - [UAF 1.2 specification](https://www.omg.org/spec/UAF/) — OMG
@@ -27,15 +27,21 @@ References:
 | Component | Description | Status |
 |---|---|---|
 | [msosa-model-exporter](msosa-model-exporter/) | MSOSA plugin — exports UAF 1.2 / SysML 1.6 / BPMN 2.0 elements and relationships to a Neo4j knowledge graph over Bolt | [![Build](https://github.com/steveb93/UAF-Repo/actions/workflows/msosa-model-exporter-build.yml/badge.svg)](https://github.com/steveb93/UAF-Repo/actions/workflows/msosa-model-exporter-build.yml) |
-| [neo4j_mcp_driver](neo4j_mcp_driver/) | Python MCP server — exposes `run_cypher` and `run_sparql` tools to Claude Desktop | — |
+| [graph_mcp_driver](graph_mcp_driver/) | Python MCP server — exposes `run_cypher` (Neo4j) and `run_sparql` (Fuseki) tools to MCP-capable LLM hosts | — |
 | [ontology](ontology/) | Generated OWL T-Box, Fuseki configuration, dump script, anchor SPARQL queries | — |
-| [docker-compose](docker-compose/) | Neo4j stack + optional overlays — `docker-compose.fuseki.yml` (SPARQL endpoint) and `docker-compose.graphdb.yml` (visual graph browser, requires a free Ontotext licence). Copy `docker-compose/.env.example` to `docker-compose/.env` and set passwords + `NEO4J_DATA_DIR` before first run. | — |
+| [docker-compose](docker-compose/) | Neo4j stack + `docker-compose.fuseki.yml` SPARQL overlay. Copy `docker-compose/.env.example` to `docker-compose/.env` and set passwords + `NEO4J_DATA_DIR` before first run. | — |
 
 > New plugins can be added as subdirectories following the conventions in [Contributing](#contributing).
 
-## Stage 2 ontology overlay (SPARQL) — and Stage 4 in-plugin RDF emitter
+## Ontology overlay — Stages 2, 3, 4 status
 
-Stage 2 of the migration described in `Ontology-Approach-to-Knowledge.md` is live: Apache Jena Fuseki provides a real SPARQL 1.1 endpoint with RDFS reasoning over a UAF Minimum Viable Ontology (MVO) covering **all 8 UAF domains plus SysML and BPMN** — 103 OWL classes, 31 ObjectProperties, code-generated from the seeded `:Stereotype` metamodel in Neo4j.
+Per the staged migration in `Ontology-Approach-to-Knowledge.md`:
+
+- **Stage 2 (live)** — Apache Jena Fuseki provides a real SPARQL 1.1 endpoint with **OWL FB reasoning** over a UAF Minimum Viable Ontology covering the **7 UAF domains plus Shared + SysML 1.6 + BPMN 2.0** — **193 OWL classes, 35 ObjectProperties**, code-generated from the seeded `:Stereotype` metamodel in Neo4j.
+- **Stage 3 (whole-ontology complete)** — Stage-3 governance now spans all 7 UAF domains: **24 SHACL NodeShapes**, **12 `owl:someValuesFrom` restrictions**, **16 `owl:inverseOf` pairs**, pairwise domain disjointness, `uaf:dominates` transitivity wired to the `<<Dominates>>` UML Dependency stereotype for architectural Security domain reasoning, an ERD→Resource bridge (`uaf:Entity rdfs:subClassOf uaf:ResourceInformation`) so ERD content participates in resource-exchange traversals, and a separate UML data-marking slice (`ontology/uml-data-marking.ttl`) with `dm:dominates` over the DoD TS/S/C/U lattice — joins via `skos:notation` against `uaftv:securityClassification` literals on ERD Entities. Validator at `ontology/codegen/validate_shacl.py`; MCP server exposes the live conformance report.
+- **Stage 4 emitter-side (live)** — Java plugin emits RDF directly via `RDFExportService` alongside the Cypher path, and optionally PUTs to Fuseki's Graph Store Protocol. `dump_to_rdf.py` retained as recovery path.
+
+Remaining: outbound `SERVICE` federation templates and the ExportSummaryDialog SHACL row. See `ontology/NEXT-STEPS.md` for the open backlog and decision log.
 
 **Endpoints**:
 - Bolt (system of record): `bolt://localhost:7687`
@@ -68,7 +74,7 @@ The post-export summary dialog has a **Copy SPARQL Refresh Cmd** button that cop
 
 See [`ontology/NEXT-STEPS.md`](ontology/NEXT-STEPS.md) for Stage 3 (native triplestore, OWL 2 RL reasoning, SHACL validation) and Stage 5 (composite AI / decision intelligence) gating criteria.
 
-**Optional — visual graph browser**: Fuseki only exposes SPARQL; for clickable graph exploration there's a parallel **GraphDB Free** overlay (`docker-compose/docker-compose.graphdb.yml`) that loads the same T-Box and A-Box into a separate store with its own Workbench UI at <http://localhost:7200>. GraphDB 11.x needs a (free) Ontotext licence file mounted from `secrets/graphdb.license` — `msosa-model-exporter/README.md` Step 6 has the registration + base64-decode walkthrough. A pre-built **UAF Overview** graph config that opens directly on the 8 UAF domain anchors is in [`ontology/graphdb/graph-configs/uaf-overview.md`](ontology/graphdb/graph-configs/uaf-overview.md).
+**Visualisation**: Fuseki only exposes SPARQL. For browsing the OWL T-Box (classes, properties, restrictions) use the upstream-blessed hosted instance at <https://service.tib.eu/webvowl/> — choose **Ontology → Select ontology file** and upload `ontology/uaf-mvo.ttl` (and optionally `uaf-mvo-axioms.ttl`). The ontology is already public in this repo, so a third-party upload is fine. Self-hosting was explored and rejected: the upstream Docker image is broken, and a from-source rebuild needs WebVOWL (JS frontend) **and** OWL2VOWL (Java backend) plus an nginx proxy — more intermediary steps than the GraphML pipeline this stack already dropped. See `ontology/NEXT-STEPS.md` for the decision log.
 
 ---
 
@@ -81,23 +87,22 @@ MSOSA-Toolbox/
 │   └── pom.xml
 ├── cypher/                          # Graph schema + metamodel seed (init_uaf_graph.cypher) + query cookbook
 ├── msosa-sdk/                       # MSOSA 2022x SDK jars (shared build classpath for any plugin)
-├── neo4j_mcp_driver/                # Python MCP server — run_cypher + run_sparql tools
+├── graph_mcp_driver/                # Python MCP server — run_cypher + run_sparql tools
 ├── docker-compose/
 │   ├── docker-compose.yml           # Neo4j 5.26 + n10s + APOC + GDS
-│   ├── docker-compose.fuseki.yml    # Fuseki SPARQL overlay (Stage 2)
-│   └── docker-compose.graphdb.yml   # GraphDB Free overlay — Visual Graph browser (optional)
+│   └── docker-compose.fuseki.yml    # Fuseki SPARQL overlay (Stage 2)
 ├── ontology/
 │   ├── uaf-mvo.ttl                  # AUTO-GENERATED T-Box (UAF + SysML + BPMN)
+│   ├── uaf-mvo-axioms.ttl           # Hand-authored OWL axioms (Stage 3: inverses, disjointness, restrictions)
+│   ├── shapes/uaf-shapes.ttl        # SHACL governance shapes (Stage 3, all 7 UAF domains)
 │   ├── codegen/
 │   │   ├── generate_mvo.py          # T-Box codegen from the seeded :Stereotype metamodel
-│   │   └── dump_to_rdf.py           # Neo4j → Turtle A-Box dump (rdflib)
-│   ├── fuseki/configuration/uaf.ttl # Fuseki assembler config (in-mem dataset + RDFS reasoner)
-│   ├── graphdb/
-│   │   ├── repository-config.ttl    # GraphDB repository definition (RDFS-Plus ruleset)
-│   │   └── graph-configs/           # Saved Visual Graph configs (uaf-overview.md = 8 anchors hub)
+│   │   ├── dump_to_rdf.py           # Neo4j → Turtle A-Box dump (rdflib) — recovery path
+│   │   └── validate_shacl.py        # pyshacl validator against the live Fuseki dataset
+│   ├── fuseki/configuration/uaf.ttl # Fuseki assembler config (in-mem dataset + OWL FB reasoner)
 │   ├── queries/                     # Anchor SPARQL queries grounding semantic-search use case
 │   ├── dump/                        # (gitignored) latest A-Box dump
-│   └── NEXT-STEPS.md                # Stage 3+ roadmap (decision log records n10s/Ontop rejection)
+│   └── NEXT-STEPS.md                # Stage 3+ roadmap (decision log records n10s/Ontop/GraphDB rejection)
 ├── Test/                            # Python tests (connection, MCP tools, SPARQL endpoint)
 ├── Ontology-Approach-to-Knowledge.md # Strategy doc — Gartner-anchored, ISO 15288 aligned
 └── CLAUDE.md                        # End-to-end stand-up + architectural decisions

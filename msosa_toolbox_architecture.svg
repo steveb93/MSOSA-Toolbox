@@ -99,20 +99,9 @@
 <text x="640" y="808" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">  T-Box (uaf-mvo.ttl)</text>
 <text x="640" y="830" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">  + A-Box (instance triples)</text>
 <text x="640" y="852" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">/uaf/sparql · /uaf/update</text>
-<rect x="1170" y="690" width="360" height="196" rx="11" fill="#161F29" stroke="#2B3A48" stroke-width="1.3" stroke-dasharray="7 5"/>
-<rect x="1170" y="690" width="5" height="196" rx="2.5" fill="#9B7BE8"/>
-<text x="1190" y="717" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="15" font-weight="600" fill="#E8EFF5">GraphDB Free</text>
-<rect x="1444.8" y="702" width="71.2" height="22" rx="11" fill="#9B7BE8" fill-opacity="0.14" stroke="#9B7BE8" stroke-opacity="0.55" stroke-width="1"/>
-<text x="1480.3999999999999" y="717" text-anchor="middle" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11.5" fill="#9B7BE8">:7200 UI</text>
-<text x="1190" y="742" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">optional visual graph browser</text>
-<text x="1190" y="764" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">  (read-only)</text>
-<text x="1190" y="786" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">loads same T-Box + A-Box</text>
-<text x="1190" y="808" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">graphdb-loader sidecar</text>
-<text x="1190" y="830" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">UAF Overview — 8 domain anchors</text>
-<text x="1190" y="852" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">needs Ontotext licence</text>
 <rect x="420" y="980" width="440" height="168" rx="11" fill="#161F29" stroke="#2B3A48" stroke-width="1.3" />
 <rect x="420" y="980" width="5" height="168" rx="2.5" fill="#D97757"/>
-<text x="440" y="1007" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="15" font-weight="600" fill="#E8EFF5">neo4j_mcp_driver</text>
+<text x="440" y="1007" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="15" font-weight="600" fill="#E8EFF5">graph_mcp_driver</text>
 <rect x="782.2" y="992" width="63.800000000000004" height="22" rx="11" fill="#D97757" fill-opacity="0.14" stroke="#D97757" stroke-opacity="0.55" stroke-width="1"/>
 <text x="814.1" y="1007" text-anchor="middle" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11.5" fill="#D97757">FastMCP</text>
 <text x="440" y="1032" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="12.5" fill="#9DABB8">Python MCP server — exposes two tools:</text>
@@ -161,9 +150,6 @@
 <path d="M 1539.7 494.0 L 1540.0 600.0 L 944.0 600.0 L 944.0 690.0" fill="none" stroke="#5FB98C" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#ah)" stroke-linejoin="round" stroke-opacity="0.65"/>
 <rect x="1073.4" y="587.0" width="93.2" height="20" rx="6" fill="#0E141B" stroke="#2B3A48" stroke-width="1"/>
 <text x="1120.0" y="601.0" text-anchor="middle" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11" fill="#9DABB8">A-Box reload</text>
-<path d="M 1580.0 416.6 L 1626.0 418.0 L 1626.0 612.0 L 1453.0 612.0 L 1450.8 690.0" fill="none" stroke="#9B7BE8" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#ah)" stroke-linejoin="round" stroke-opacity="0.65"/>
-<rect x="1490.1" y="599.0" width="99.8" height="20" rx="6" fill="#0E141B" stroke="#2B3A48" stroke-width="1"/>
-<text x="1540.0" y="613.0" text-anchor="middle" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11" fill="#9DABB8">T-Box + A-Box</text>
 <path d="M 508.0 980.0 L 508.0 932.0 L 286.0 932.0 L 286.0 886.0" fill="none" stroke="#D97757" stroke-width="1.6"  marker-end="url(#ah)" stroke-linejoin="round" stroke-opacity="0.92"/>
 <rect x="358.0" y="919.0" width="80.0" height="20" rx="6" fill="#0E141B" stroke="#2B3A48" stroke-width="1"/>
 <text x="398.0" y="933.0" text-anchor="middle" font-family="'IBM Plex Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace" font-size="11" fill="#9DABB8">run_cypher</text>
