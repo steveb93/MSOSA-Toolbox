@@ -11,8 +11,8 @@ import java.util.Objects;
  */
 public final class UAFRelationshipDTO {
 
-    // Covers 35 relationship types (UAF 1.2, SysML 1.6, BPMN 2.0, plus ERD/data-flow);
-    // stored as the Neo4j type string.
+    // Covers 36 relationship types (UAF 1.2, SysML 1.6, BPMN 2.0, plus ERD/data-flow,
+    // plus the UAF Security dominance edge); stored as the Neo4j type string.
     public static final String REL_REALISES          = "REALISES";
     public static final String REL_TRACES_TO         = "TRACES_TO";
     public static final String REL_ASSIGNED_TO       = "ASSIGNED_TO";
@@ -44,6 +44,20 @@ public final class UAFRelationshipDTO {
     public static final String REL_CONTROL_FLOW      = "CONTROL_FLOW";
     public static final String REL_SEQUENCE_FLOW     = "SEQUENCE_FLOW";
     public static final String REL_MESSAGE_FLOW      = "MESSAGE_FLOW";
+
+    // --- UAF Security domain ------------------------------------------------
+    /**
+     * Architectural Security domain dominance. Applied by the modeller as the
+     * "Dominates" UML Dependency stereotype between two UAF SecurityElements
+     * (typically SecurityEnclave ↔ SecurityEnclave). Materialises uaf:dominates
+     * triples in Fuseki, where the owl:TransitiveProperty axiom in
+     * ontology/uaf-mvo-axioms.ttl closes the lattice automatically.
+     *
+     * Distinct from data-level classification dominance (TS/S/C/U on ERD Entities
+     * via the DoD Data Marking Plugin), which lives in the UML slice at
+     * ontology/uml-data-marking.ttl under the dm: namespace.
+     */
+    public static final String REL_DOMINATES         = "DOMINATES";
 
     // --- ERD / data-flow (#76) -----------------------------------------------
     /** BPMN DataInputAssociation — wires a Task to a DataInput it consumes. */

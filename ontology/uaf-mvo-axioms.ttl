@@ -19,6 +19,9 @@
 #      (extending Stage 3 governance coverage beyond Strategic + Security)
 #   6. owl:someValuesFrom restrictions on key Service + Personnel + Acquisition
 #      classes — completes Stage 3 coverage across all 7 UAF domains
+#   7. uaf:Entity rdfs:subClassOf uaf:ResourceInformation — ERD entities
+#      generalise to ResourceInformation so they participate in Resource
+#      domain traversals (resource exchanges between systems)
 #
 # What this file does NOT do, by design:
 #   - Coin inverses for every ObjectProperty in the MVO. Only the ones that
@@ -175,17 +178,27 @@ uaf:AcquisitionElement owl:disjointWith uaf:SecurityElement .
 # Note: uaf:SharedElement is intentionally NOT in the disjointness web —
 # anything shared can carry a domain-specific stereotype as well.
 
-# --- 3. Security classification dominance -----------------------------------
+# --- 3. Security classification dominance (UAF SecurityElement) -------------
 #
 # Per ontology/NEXT-STEPS.md Stage 3: "Property chains for security
 # classification dominance: :dominates o :dominates ⊑ :dominates".
 #
-# A new ObjectProperty `uaf:dominates` is declared here (the registry has
-# no DOMINATES relationship today — see comment block at end of file for
-# what would need to land on the Java side to emit it). The transitive
-# closure makes "TOP SECRET dominates SECRET dominates CONFIDENTIAL" imply
-# "TOP SECRET dominates CONFIDENTIAL" — the canonical accreditation
-# reasoning pattern.
+# Scope. `uaf:dominates` here applies to UAF SecurityElements (SecurityAsset,
+# SecurityEnclave, SecurityControl, etc.) — the architectural Security domain.
+# Data-level classification (TS/S/C/U markings the DoD Data Marking Plugin
+# applies to ERD Entities) sits in UML, not UAF, and lives in a separate
+# slice: `ontology/uml-data-marking.ttl` (namespace
+# http://msosa-toolbox.local/datamarking#, prefix `dm:`). See that file for
+# the DoD lattice; the property there is `dm:dominates`, deliberately not the
+# same IRI as `uaf:dominates`.
+#
+# Emission path. UAFRelationshipDTO declares REL_DOMINATES = "DOMINATES";
+# UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP maps the "Dominates" UML
+# Dependency stereotype to it. The modeller applies <<Dominates>> to a UML
+# Dependency between two UAF SecurityElements (typically SecurityEnclave ↔
+# SecurityEnclave); the Java plugin emits :DOMINATES edges, dump_to_rdf.py /
+# RDFTripleBuilder translate those to uaf:dominates triples, and OWL FB
+# closes the lattice in Fuseki.
 #
 # Expressed as owl:TransitiveProperty (idiomatic) rather than the equivalent
 # property-chain form, which would be:
@@ -197,7 +210,7 @@ uaf:AcquisitionElement owl:disjointWith uaf:SecurityElement .
 
 uaf:dominates a owl:ObjectProperty , owl:TransitiveProperty ;
     rdfs:label "dominates" ;
-    rdfs:comment "Security classification dominance. TOP_SECRET dominates SECRET dominates CONFIDENTIAL → TOP_SECRET dominates CONFIDENTIAL by transitivity. Declared here as scaffolding; the Java plugin does not yet emit DOMINATES edges, so this axiom currently has nothing to chain over." ;
+    rdfs:comment "Dominance between UAF SecurityElements (architectural Security domain). Emitted by the MSOSA plugin from the <<Dominates>> stereotype on a UML Dependency between two SecurityElements. For data-level classification dominance on ERD Entities and other UML elements, see dm:dominates in ontology/uml-data-marking.ttl." ;
     rdfs:domain uaf:SecurityElement ;
     rdfs:range uaf:SecurityElement .
 
@@ -322,12 +335,43 @@ uaf:Project rdfs:subClassOf
       owl:someValuesFrom uaf:AcquisitionElement ;
       rdfs:comment "Every Project composes at least one AcquisitionElement (milestone / activity / theme / role)." ] .
 
+# --- 7. ERD Entity → ResourceInformation bridge -----------------------------
+#
+# UAF 1.2 keeps ERD modelling in the Shared domain: uaf:Entity is generated
+# as rdfs:subClassOf uaf:SharedElement by codegen, mirroring the registry.
+# That's correct for the modelling-language taxonomy but it misses the
+# semantic reality of physical (crow's-foot) ERDs as used in real programmes:
+#
+#   - An Entity describes a record that belongs to a system back-end.
+#   - Its attributes carry data types (Oracle VARCHAR2/NUMBER/DATE, SysML
+#     ValueType, UML PrimitiveType/Enumeration/DataType — whatever the
+#     modelled system uses). These are already materialised as first-class
+#     :Attribute nodes via UAFModelTraverser.extractAttributes, linked by
+#     HAS_ATTRIBUTE, with :DataType targets via OF_TYPE.
+#   - Entities are *generalised to ResourceInformation*: the records flow
+#     in resource exchanges between systems (uaf:ResourceExchange). Without
+#     this bridge, ERD content is unreachable from any Resource-view query
+#     that walks the Resource domain hierarchy.
+#
+# Asserting uaf:Entity rdfs:subClassOf uaf:ResourceInformation makes every
+# Entity instance automatically a ResourceInformation, a ResourceElement,
+# and therefore a candidate for resource-exchange traversals. uaf:Entity
+# remains a SharedElement via its MVO-generated parent (SharedElement is
+# intentionally outside the domain-disjointness web, so the dual parent is
+# OK — see §2). The bridge is asserted here rather than in uaf-mvo.ttl so
+# that MVO regeneration (generate_mvo.py) does not overwrite it.
+
+uaf:Entity rdfs:subClassOf uaf:ResourceInformation .
+
 # --- Notes for follow-up work ----------------------------------------------
 #
-# When the Java plugin gains DOMINATES emission (UAFRelationshipDTO.REL_DOMINATES
-# and a registry entry), the uaf:dominates declaration above will start
-# materialising transitive closures over real Security model data. Until
-# then it's harmless scaffolding.
+# Data-level classification dominance (DoD Data Marking on ERD Entities) is
+# handled separately in `ontology/uml-data-marking.ttl` — different namespace,
+# different scope. uaf:dominates above covers the architectural case (one
+# SecurityEnclave dominating another); the Java plugin's <<Dominates>> UML
+# Dependency stereotype mapping (UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP)
+# emits :DOMINATES edges that become uaf:dominates triples in Fuseki, where
+# the TransitiveProperty closes the lattice.
 #
 # When more shapes need inverse paths, add the corresponding inverseOf
 # pair here rather than relying on sh:inversePath in the shapes file —
