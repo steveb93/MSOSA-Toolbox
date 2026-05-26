@@ -189,13 +189,13 @@ uaf:AcquisitionElement owl:disjointWith uaf:SecurityElement .
 # the DoD lattice; the property there is `dm:dominates`, deliberately not the
 # same IRI as `uaf:dominates`.
 #
-# As of 2026-05-26 the UAF stereotype registry still does not emit a
-# DOMINATES edge between UAF SecurityElements — UAF 1.2 has no canonical
-# relationship for architectural-element classification dominance, and the
-# real-world dominance reasoning the toolbox needs is already covered by the
-# UML slice. This declaration is retained for completeness / future use
-# (e.g. SecurityEnclave A dominates SecurityEnclave B) and as a paired
-# example alongside the UML slice.
+# Emission path. UAFRelationshipDTO declares REL_DOMINATES = "DOMINATES";
+# UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP maps the "Dominates" UML
+# Dependency stereotype to it. The modeller applies <<Dominates>> to a UML
+# Dependency between two UAF SecurityElements (typically SecurityEnclave ↔
+# SecurityEnclave); the Java plugin emits :DOMINATES edges, dump_to_rdf.py /
+# RDFTripleBuilder translate those to uaf:dominates triples, and OWL FB
+# closes the lattice in Fuseki.
 #
 # Expressed as owl:TransitiveProperty (idiomatic) rather than the equivalent
 # property-chain form, which would be:
@@ -207,7 +207,7 @@ uaf:AcquisitionElement owl:disjointWith uaf:SecurityElement .
 
 uaf:dominates a owl:ObjectProperty , owl:TransitiveProperty ;
     rdfs:label "dominates" ;
-    rdfs:comment "Dominance between UAF SecurityElements (architectural Security domain). For data-level classification dominance on ERD Entities and other UML elements, see dm:dominates in ontology/uml-data-marking.ttl." ;
+    rdfs:comment "Dominance between UAF SecurityElements (architectural Security domain). Emitted by the MSOSA plugin from the <<Dominates>> stereotype on a UML Dependency between two SecurityElements. For data-level classification dominance on ERD Entities and other UML elements, see dm:dominates in ontology/uml-data-marking.ttl." ;
     rdfs:domain uaf:SecurityElement ;
     rdfs:range uaf:SecurityElement .
 
@@ -336,10 +336,11 @@ uaf:Project rdfs:subClassOf
 #
 # Data-level classification dominance (DoD Data Marking on ERD Entities) is
 # handled separately in `ontology/uml-data-marking.ttl` — different namespace,
-# different scope. uaf:dominates above is retained for the architectural
-# case (one SecurityEnclave dominating another, etc.) and will start firing
-# the day a UAF stereotype emits an edge between SecurityElements. Until
-# then it's a paired example next to the active UML slice.
+# different scope. uaf:dominates above covers the architectural case (one
+# SecurityEnclave dominating another); the Java plugin's <<Dominates>> UML
+# Dependency stereotype mapping (UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP)
+# emits :DOMINATES edges that become uaf:dominates triples in Fuseki, where
+# the TransitiveProperty closes the lattice.
 #
 # When more shapes need inverse paths, add the corresponding inverseOf
 # pair here rather than relying on sh:inversePath in the shapes file —
