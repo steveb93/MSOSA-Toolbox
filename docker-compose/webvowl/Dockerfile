@@ -27,9 +27,24 @@ WORKDIR /src
 RUN git clone https://github.com/VisualDataWeb/WebVOWL.git . \
  && git checkout ${WEBVOWL_REF}
 
-# package.json declares `"postinstall": "grunt release"` — `npm install`
-# both fetches deps AND runs the grunt build, producing /src/deploy.
-RUN npm install --no-audit --no-fund
+# Two npm pitfalls with the 2019-vintage upstream package.json:
+#   1. Loose semver resolves `grunt: ^1.0.1` → `grunt@1.6.2` (needs Node 16+)
+#      and `grunt-cli: ^1.3.2` → `grunt-cli@1.5.0` (needs Node 10+), so the
+#      build would crash on Node 8. Pin both to the latest releases that
+#      still support Node 8 before installing.
+#   2. npm 6 refuses to run lifecycle scripts ("cannot run in wd") when the
+#      process user differs from the package owner — which is always the
+#      case inside a container running as root. `--unsafe-perm` bypasses
+#      that guard.
+#
+# Install with `--ignore-scripts` so the upstream `postinstall: grunt release`
+# does not fire with the wrong grunt (and so phantomjs/iltorb install
+# scripts are skipped — neither is needed for the release build). Then
+# invoke `grunt release` explicitly to produce /src/deploy.
+RUN sed -i 's|"grunt": "\^1\.0\.1"|"grunt": "1.4.1"|' package.json \
+ && sed -i 's|"grunt-cli": "\^1\.3\.2"|"grunt-cli": "1.3.2"|' package.json \
+ && npm install --no-audit --no-fund --unsafe-perm --ignore-scripts \
+ && ./node_modules/.bin/grunt release
 
 # Serve the static build with nginx.
 FROM nginx:alpine
