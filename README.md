@@ -41,7 +41,7 @@ Per the staged migration in `Ontology-Approach-to-Knowledge.md`:
 - **Stage 3 (whole-ontology complete)** — Stage-3 governance now spans all 7 UAF domains: **24 SHACL NodeShapes**, **12 `owl:someValuesFrom` restrictions**, **16 `owl:inverseOf` pairs**, pairwise domain disjointness, and `uaf:dominates` transitivity. Validator at `ontology/codegen/validate_shacl.py`; MCP server exposes the live conformance report.
 - **Stage 4 emitter-side (live)** — Java plugin emits RDF directly via `RDFExportService` alongside the Cypher path, and optionally PUTs to Fuseki's Graph Store Protocol. `dump_to_rdf.py` retained as recovery path.
 
-Remaining: outbound `SERVICE` federation templates, ExportSummaryDialog SHACL row, and the NetworkX bridge for Stage 5 graph algorithms. See `ontology/NEXT-STEPS.md` for the open backlog and decision log.
+Remaining: outbound `SERVICE` federation templates and the ExportSummaryDialog SHACL row. See `ontology/NEXT-STEPS.md` for the open backlog and decision log.
 
 **Endpoints**:
 - Bolt (system of record): `bolt://localhost:7687`
@@ -74,7 +74,7 @@ The post-export summary dialog has a **Copy SPARQL Refresh Cmd** button that cop
 
 See [`ontology/NEXT-STEPS.md`](ontology/NEXT-STEPS.md) for Stage 3 (native triplestore, OWL 2 RL reasoning, SHACL validation) and Stage 5 (composite AI / decision intelligence) gating criteria.
 
-**Visualisation**: Fuseki only exposes SPARQL; for clickable graph exploration use `ontology/codegen/sparql_to_graphml.py` to export any SPARQL `CONSTRUCT` result as GraphML, then open in Cytoscape Desktop / yEd / Gephi. For the T-Box itself (class hierarchy, properties, restrictions) open `ontology/uaf-mvo.ttl` in Protégé Desktop or upload to <https://service.visualdataweb.de/webvowl/>. Walkthroughs in [`ontology/visualisations/README.md`](ontology/visualisations/README.md).
+**Visualisation**: Fuseki only exposes SPARQL. For browsing the OWL T-Box (classes, properties, restrictions) the Fuseki overlay runs a self-hosted **WebVOWL** container alongside Fuseki — set `WEBVOWL_IMAGE` in `docker-compose/.env`, bring the overlay up, then open `http://localhost:8080/` and upload `ontology/uaf-mvo.ttl` (and optionally `uaf-mvo-axioms.ttl`).
 
 ---
 
@@ -90,7 +90,7 @@ MSOSA-Toolbox/
 ├── graph_mcp_driver/                # Python MCP server — run_cypher + run_sparql tools
 ├── docker-compose/
 │   ├── docker-compose.yml           # Neo4j 5.26 + n10s + APOC + GDS
-│   └── docker-compose.fuseki.yml    # Fuseki SPARQL overlay (Stage 2)
+│   └── docker-compose.fuseki.yml    # Fuseki SPARQL overlay (Stage 2) + WebVOWL T-Box viewer
 ├── ontology/
 │   ├── uaf-mvo.ttl                  # AUTO-GENERATED T-Box (UAF + SysML + BPMN)
 │   ├── uaf-mvo-axioms.ttl           # Hand-authored OWL axioms (Stage 3: inverses, disjointness, restrictions)
@@ -98,11 +98,9 @@ MSOSA-Toolbox/
 │   ├── codegen/
 │   │   ├── generate_mvo.py          # T-Box codegen from the seeded :Stereotype metamodel
 │   │   ├── dump_to_rdf.py           # Neo4j → Turtle A-Box dump (rdflib) — recovery path
-│   │   ├── sparql_to_graphml.py     # SPARQL CONSTRUCT → GraphML for Cytoscape / yEd / Gephi
 │   │   └── validate_shacl.py        # pyshacl validator against the live Fuseki dataset
 │   ├── fuseki/configuration/uaf.ttl # Fuseki assembler config (in-mem dataset + OWL FB reasoner)
 │   ├── queries/                     # Anchor SPARQL queries grounding semantic-search use case
-│   ├── visualisations/              # GraphML preset CONSTRUCT queries + README
 │   ├── dump/                        # (gitignored) latest A-Box dump
 │   └── NEXT-STEPS.md                # Stage 3+ roadmap (decision log records n10s/Ontop/GraphDB rejection)
 ├── Test/                            # Python tests (connection, MCP tools, SPARQL endpoint)
