@@ -9,6 +9,19 @@
 #   bpmn:     http://msosa-toolbox.local/bpmn#
 
 # -----------------------------------------------------------------------------
+#  Generate a combined Turtle file for Visualisation 
+
+#  Get-Content ontology\uaf-mvo.ttl, ontology\uaf-mvo-axioms.ttl | Set-Content ontology\uaf-mvo-combined.ttl
+
+#  Then in https://service.tib.eu/webvowl/ choose Ontology → Select ontology file → uaf-mvo-combined.ttl. The class diagram will
+#  show all the MVO classes from uaf-mvo.ttl plus the Stage-3 axioms from uaf-mvo-axioms.ttl rendered on the class cards:
+
+#  - owl:inverseOf arrows (e.g. realises ↔ realisedBy)
+#  - owl:disjointWith markers between domain superclasses
+#  - owl:TransitiveProperty annotation on uaf:dominates
+#  - owl:someValuesFrom cardinality restrictions on CapabilityConfiguration and the other 11 governed classes
+
+# -----------------------------------------------------------------------------
 # 1. All Capabilities by name
 # Smoke test — confirms the endpoint reaches the MVG.
 # -----------------------------------------------------------------------------
