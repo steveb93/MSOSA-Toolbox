@@ -20,7 +20,7 @@ This document describes what comes next, in the order the staging in `Ontology-A
 | **Traverser coverage** | Full UAF 1.2 + SysML 1.6 + BPMN 2.0; UAF>BPMN>SysML stereotype ranking; inherited-stereotype lookup; classifier-owned content (parts, ports, actions); attached project modules. Unmatched stereotypes surface in the post-export dialog. (#75) |
 | **Data/ERD coverage** | DataObject/Input/Output/Store + Entity/EntityRelationship/EntityRelation registered. Attributes are first-class `:Attribute` nodes via `HAS_ATTRIBUTE`; primitive/enum/datatype targets emit `:DataType` via `OF_TYPE`. Association edges carry srcMult/tgtMult/srcRole/tgtRole. (#76) |
 
-**What Stage 2 does well.** Subsumption queries (`?x a/rdfs:subClassOf* uaf:StrategicElement`), cross-language traceability (UAF Capability → SysML Requirement), orphan/gap detection via `FILTER NOT EXISTS`, semantic search backed by AI via the Claude MCP server.
+**What Stage 2 does well.** Subsumption queries (`?x a/rdfs:subClassOf* uaf:StrategicElement`), cross-language traceability (UAF Capability → SysML Requirement), orphan/gap detection via `FILTER NOT EXISTS`, semantic search backed by AI via the MCP server.
 
 **What Stage 2 does not do, by design.** OWL 2 DL consistency checking. A-Box reasoning over property chains (e.g. "if A inherits from B and B has property P, then A has P at the individual level"). Cross-tool federation via SPARQL `SERVICE`. Sub-second freshness against Neo4j writes.
 
@@ -86,7 +86,7 @@ This document describes what comes next, in the order the staging in `Ontology-A
 
 **Trigger.** When the SPARQL view has been live long enough that pattern-recognition tasks can be retrained on graph-derived features.
 
-**What changes.** Adds the third leg of Gartner's "composite AI" pattern (graph + ML + reasoning + LLM, per Jaffri G00768041 §3.3): a model layer that consumes the SPARQL graph as feature input. The Claude MCP server already provides the LLM leg; the reasoner leg lives in Fuseki/triplestore; the missing leg is supervised or graph-native ML.
+**What changes.** Adds the third leg of Gartner's "composite AI" pattern (graph + ML + reasoning + LLM, per Jaffri G00768041 §3.3): a model layer that consumes the SPARQL graph as feature input. The MCP server already provides the LLM leg; the reasoner leg lives in Fuseki/triplestore; the missing leg is supervised or graph-native ML.
 
 **Concrete tasks.**
 
