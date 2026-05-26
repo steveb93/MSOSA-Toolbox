@@ -118,6 +118,13 @@ public class UAFModelTraverser {
         RELATIONSHIP_STEREOTYPE_MAP.put("ServiceAssociation",     UAFRelationshipDTO.REL_ASSOCIATED_WITH);
         RELATIONSHIP_STEREOTYPE_MAP.put("OperationalAssociation", UAFRelationshipDTO.REL_ASSOCIATED_WITH);
         RELATIONSHIP_STEREOTYPE_MAP.put("ResourceAssociation",    UAFRelationshipDTO.REL_ASSOCIATED_WITH);
+        // UAF Security domain — applied to a UML Dependency between two
+        // SecurityElements (typically SecurityEnclave ↔ SecurityEnclave). The
+        // owl:TransitiveProperty axiom on uaf:dominates in uaf-mvo-axioms.ttl
+        // closes the architectural-Security dominance lattice automatically.
+        // Distinct from data-level (TS/S/C/U) Data Marking which lives in
+        // ontology/uml-data-marking.ttl and is layered on tv_securityClassification.
+        RELATIONSHIP_STEREOTYPE_MAP.put("Dominates",              UAFRelationshipDTO.REL_DOMINATES);
         // SysML relationship stereotypes
         RELATIONSHIP_STEREOTYPE_MAP.put("Allocate",      UAFRelationshipDTO.REL_ALLOCATED_TO);
         RELATIONSHIP_STEREOTYPE_MAP.put("DeriveReqt",    UAFRelationshipDTO.REL_INFLUENCES);
