@@ -313,3 +313,55 @@ def test_provides_inverseOf_provided_by_via_closure():
     g = _close(ttl)
     assert (UAFINST.sv, UAF.providedBy, UAFINST.sp) in g, \
         "uaf:provides should infer uaf:providedBy under owl:inverseOf"
+
+
+# --- §7 Entity → ResourceInformation bridge ---------------------------------
+
+def test_entity_is_subclass_of_resource_information():
+    """Direct subClassOf declaration is present in the axioms file."""
+    g = Graph()
+    g.parse(MVO_FILE, format="turtle")
+    g.parse(AXIOMS_FILE, format="turtle")
+    RDFS_SUBCLASS = URIRef("http://www.w3.org/2000/01/rdf-schema#subClassOf")
+    parents = set(g.objects(subject=UAF.Entity, predicate=RDFS_SUBCLASS))
+    assert UAF.ResourceInformation in parents, \
+        "uaf:Entity must be rdfs:subClassOf uaf:ResourceInformation (axioms §7)"
+
+
+def test_entity_instance_classifies_as_resource_information_under_closure():
+    """An ERD Entity instance is automatically a ResourceInformation, a
+    ResourceElement, and a SharedElement — letting Resource-view SPARQL queries
+    reach ERD content without the caller knowing it came from the Shared
+    domain."""
+    ttl = """
+    uafinst:CustomerRecord a uaf:Entity ;
+        uaf:domain "SHARED" .
+    """
+    g = _close(ttl)
+    rdf_type = URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#type")
+    types = set(g.objects(subject=UAFINST.CustomerRecord, predicate=rdf_type))
+    assert UAF.Entity in types
+    assert UAF.ResourceInformation in types, \
+        "Bridge §7 should make every Entity a ResourceInformation"
+    assert UAF.ResourceElement in types, \
+        "ResourceInformation inheritance should reach ResourceElement"
+    assert UAF.SharedElement in types, \
+        "Entity's original SharedElement parent must still resolve too"
+
+
+def test_entity_and_resource_information_coexist_without_disjointness_clash():
+    """SharedElement is intentionally outside the domain-disjointness web,
+    so an Entity carrying both SharedElement (via MVO) and ResourceElement
+    (via the §7 bridge) does NOT trigger an inconsistency. Regression guard
+    for the §2 disjointness comment block."""
+    ttl = """
+    uafinst:Ledger a uaf:Entity ;
+        uaf:domain "SHARED" .
+    """
+    g = _close(ttl)
+    rdf_type = URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#type")
+    types = set(g.objects(subject=UAFINST.Ledger, predicate=rdf_type))
+    # owlrl flags disjointness violations by adding owl:Nothing membership.
+    OWL_NOTHING = URIRef("http://www.w3.org/2002/07/owl#Nothing")
+    assert OWL_NOTHING not in types, \
+        "Entity being both SharedElement and ResourceElement must not violate disjointness"

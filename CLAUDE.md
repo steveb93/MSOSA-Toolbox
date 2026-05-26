@@ -67,7 +67,7 @@ MSOSA Project
     └── UAFModelTraverser          walks packages, finds UAF-stereotyped elements
             ├── UAFStereotypeRegistry   resolves stereotype → {Neo4j label, domain, layer}
             ├── UAFElementDTO           immutable node DTO (builder pattern)
-            └── UAFRelationshipDTO      immutable edge DTO (28 type constants)
+            └── UAFRelationshipDTO      immutable edge DTO (36 type constants)
 
 UAFElementDTO list + UAFRelationshipDTO list
     └── Neo4jExportService         manages Bolt driver, batched MERGE writes
