@@ -19,6 +19,9 @@
 #      (extending Stage 3 governance coverage beyond Strategic + Security)
 #   6. owl:someValuesFrom restrictions on key Service + Personnel + Acquisition
 #      classes — completes Stage 3 coverage across all 7 UAF domains
+#   7. uaf:Entity rdfs:subClassOf uaf:ResourceInformation — ERD entities
+#      generalise to ResourceInformation so they participate in Resource
+#      domain traversals (resource exchanges between systems)
 #
 # What this file does NOT do, by design:
 #   - Coin inverses for every ObjectProperty in the MVO. Only the ones that
@@ -331,6 +334,34 @@ uaf:Project rdfs:subClassOf
       owl:onProperty uaf:composedOf ;
       owl:someValuesFrom uaf:AcquisitionElement ;
       rdfs:comment "Every Project composes at least one AcquisitionElement (milestone / activity / theme / role)." ] .
+
+# --- 7. ERD Entity → ResourceInformation bridge -----------------------------
+#
+# UAF 1.2 keeps ERD modelling in the Shared domain: uaf:Entity is generated
+# as rdfs:subClassOf uaf:SharedElement by codegen, mirroring the registry.
+# That's correct for the modelling-language taxonomy but it misses the
+# semantic reality of physical (crow's-foot) ERDs as used in real programmes:
+#
+#   - An Entity describes a record that belongs to a system back-end.
+#   - Its attributes carry data types (Oracle VARCHAR2/NUMBER/DATE, SysML
+#     ValueType, UML PrimitiveType/Enumeration/DataType — whatever the
+#     modelled system uses). These are already materialised as first-class
+#     :Attribute nodes via UAFModelTraverser.extractAttributes, linked by
+#     HAS_ATTRIBUTE, with :DataType targets via OF_TYPE.
+#   - Entities are *generalised to ResourceInformation*: the records flow
+#     in resource exchanges between systems (uaf:ResourceExchange). Without
+#     this bridge, ERD content is unreachable from any Resource-view query
+#     that walks the Resource domain hierarchy.
+#
+# Asserting uaf:Entity rdfs:subClassOf uaf:ResourceInformation makes every
+# Entity instance automatically a ResourceInformation, a ResourceElement,
+# and therefore a candidate for resource-exchange traversals. uaf:Entity
+# remains a SharedElement via its MVO-generated parent (SharedElement is
+# intentionally outside the domain-disjointness web, so the dual parent is
+# OK — see §2). The bridge is asserted here rather than in uaf-mvo.ttl so
+# that MVO regeneration (generate_mvo.py) does not overwrite it.
+
+uaf:Entity rdfs:subClassOf uaf:ResourceInformation .
 
 # --- Notes for follow-up work ----------------------------------------------
 #
