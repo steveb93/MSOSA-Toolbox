@@ -1,0 +1,122 @@
+# UML Data Marking — classification levels and dominance lattice
+#
+# This file is INTENTIONALLY separate from the UAF MVO (ontology/uaf-mvo.ttl)
+# and its axioms (ontology/uaf-mvo-axioms.ttl). Data Marking sits outside the
+# UAF metamodel and is treated as a UML-side concern, layered on ERD Entities
+# (and any other UML element) via the DoD Data Marking Plugin's
+# `securityClassification` stereotype. The MSOSA traverser already captures
+# that stereotype's value as `tv_securityClassification` on the exported node;
+# no plugin change is required to use this ontology slice.
+#
+# What this slice provides:
+#   - A `dm:ClassificationLevel` class with four named DoD individuals:
+#     dm:TopSecret, dm:Secret, dm:Confidential, dm:Unclassified.
+#   - A `dm:dominates` ObjectProperty declared `owl:TransitiveProperty`,
+#     wired into a linear lattice:
+#       dm:TopSecret dominates dm:Secret dominates dm:Confidential dominates dm:Unclassified
+#     OWL FB then materialises the closure (TS dominates Confidential, etc.).
+#   - rdfs:label and skos:notation on each level matching the canonical string
+#     forms the DoD Data Marking Plugin emits ("TOP SECRET", "SECRET", ...),
+#     so SPARQL queries can JOIN the literal value of tv_securityClassification
+#     against the lattice individuals at query time without a materialisation
+#     step on the Java side.
+#
+# Why a separate namespace (http://msosa-toolbox.local/datamarking#):
+#   - Keeps the UAF/UML boundary honest. `uaf:dominates` in uaf-mvo-axioms.ttl
+#     applies to uaf:SecurityElement (architectural Security domain entities:
+#     SecurityAsset, SecurityEnclave, SecurityControl, etc.) and is unrelated
+#     to data classification on ERD entities.
+#   - Lets us extend later (compartments, UK markings, NATO) without touching
+#     the UAF MVO.
+#
+#
+#  Generate a combined Turtle file for Visualisation 
+#
+#  Get-Content ontology\uaf-mvo.ttl, ontology\uaf-mvo-axioms.ttl, ontology\uml-data-marking.ttl | Set-Content ontology\uaf-mvo-combined.ttl
+#
+#  Then in https://service.tib.eu/webvowl/ choose Ontology → Select ontology file → uaf-mvo-combined.ttl. The class diagram will
+#  show all the MVO classes from uaf-mvo.ttl plus the Stage-3 axioms from uaf-mvo-axioms.ttl rendered on the class cards:
+#
+#  - owl:inverseOf arrows (e.g. realises ↔ realisedBy)
+#  - owl:disjointWith markers between domain superclasses
+#  - owl:TransitiveProperty annotation on uaf:dominates
+#  - owl:someValuesFrom cardinality restrictions on CapabilityConfiguration and the other 11 governed classes
+#
+# -----------------------------------------------------------------------------
+# Example query — entities classified at TOP SECRET or anything it dominates:
+#
+#   PREFIX uaf:   <http://msosa-toolbox.local/uaf#>
+#   PREFIX uaftv: <http://msosa-toolbox.local/uaf/tag#>
+#   PREFIX dm:    <http://msosa-toolbox.local/datamarking#>
+#   PREFIX skos:  <http://www.w3.org/2004/02/skos/core#>
+#   SELECT ?entity ?marking WHERE {
+#     ?entity a uaf:Entity ;
+#             uaftv:securityClassification ?marking .
+#     ?level skos:notation ?marking .
+#     dm:TopSecret dm:dominates* ?level .
+#   }
+
+# -----------------------------------------------------------------------------
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix dm:      <http://msosa-toolbox.local/datamarking#> .
+
+<http://msosa-toolbox.local/datamarking> a owl:Ontology ;
+    rdfs:label "UML Data Marking — DoD classification lattice" ;
+    rdfs:comment "Classification-level individuals and transitive dominance, layered on UML model elements (ERD Entities and others) carrying the DoD Data Marking Plugin's securityClassification stereotype. Separate from uaf:dominates (UAF Security domain)." ;
+    owl:versionInfo "0.1.0" ;
+    dcterms:created "2026-05-26"^^xsd:date .
+
+# --- Class -------------------------------------------------------------------
+
+dm:ClassificationLevel a owl:Class ;
+    rdfs:label "ClassificationLevel" ;
+    rdfs:comment "A node in the data-marking dominance lattice. Instances are the discrete classification levels recognised by the DoD Data Marking Plugin." .
+
+# --- Property ----------------------------------------------------------------
+
+dm:dominates a owl:ObjectProperty , owl:TransitiveProperty ;
+    rdfs:label "dominates" ;
+    rdfs:comment "Classification-level dominance. TopSecret dominates Secret dominates Confidential dominates Unclassified; closure makes TopSecret dominates Confidential (etc.) automatic." ;
+    rdfs:domain dm:ClassificationLevel ;
+    rdfs:range  dm:ClassificationLevel .
+
+# --- Named individuals (DoD core) -------------------------------------------
+#
+# skos:notation values match the canonical strings the DoD Data Marking
+# Plugin emits as the value of the `securityClassification` stereotype.
+# SPARQL queries JOIN tv_securityClassification literals against these.
+
+dm:TopSecret a dm:ClassificationLevel , owl:NamedIndividual ;
+    rdfs:label "Top Secret" ;
+    skos:notation "TOP SECRET" ;
+    skos:altLabel "TS" .
+
+dm:Secret a dm:ClassificationLevel , owl:NamedIndividual ;
+    rdfs:label "Secret" ;
+    skos:notation "SECRET" ;
+    skos:altLabel "S" .
+
+dm:Confidential a dm:ClassificationLevel , owl:NamedIndividual ;
+    rdfs:label "Confidential" ;
+    skos:notation "CONFIDENTIAL" ;
+    skos:altLabel "C" .
+
+dm:Unclassified a dm:ClassificationLevel , owl:NamedIndividual ;
+    rdfs:label "Unclassified" ;
+    skos:notation "UNCLASSIFIED" ;
+    skos:altLabel "U" .
+
+# --- Lattice assertions -----------------------------------------------------
+#
+# Linear chain. owl:TransitiveProperty on dm:dominates closes the rest:
+#   TS dominates Confidential, TS dominates Unclassified,
+#   S  dominates Unclassified.
+
+dm:TopSecret    dm:dominates dm:Secret .
+dm:Secret       dm:dominates dm:Confidential .
+dm:Confidential dm:dominates dm:Unclassified .

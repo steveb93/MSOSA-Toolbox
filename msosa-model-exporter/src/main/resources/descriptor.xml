@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!--
+    MSOSA / MagicDraw Resource Manager descriptor.
+
+    Schema reference (working production examples):
+      - https://github.com/Open-MBEE/md-cst-montecarlo  (Monte Carlo Tools, id 8573)
+      - https://github.com/JPL-IMCE/gov.nasa.jpl.magicdraw.projectUsageIntegrityChecker  (id 75319)
+
+    Hard requirements enforced by the Resource/Plugin Manager:
+      * id MUST be a positive integer >= 3000.
+      * <version>, <provider>, <edition> are child elements (not attributes).
+      * <installation> takes no attributes — only nested <file from="..." to="..."/>.
+      * In the zip, this descriptor lives at:
+            data/resourcemanager/MDR_Plugin_MSOSA_Model_Exporter_30086_descriptor.xml
+        and the payload mirrors the install tree at plugins/com.uaf.neo4j.plugin/.
+      * `from` paths are zip-relative; `to` paths are install-dir-relative.
+-->
+<resourceDescriptor critical="false"
+                    date="2026-05-25"
+                    description="MSOSA 2022x Hotfix 2 plugin that exports UAF 1.2 / SysML 1.6 / BPMN 2.0 models to Neo4j (LPG via Cypher)."
+                    group="UAF Tools"
+                    homePage="https://github.com/steveb93/MSOSA-Toolbox"
+                    id="30086"
+                    mdVersionMax="higher"
+                    mdVersionMin="19.0"
+                    name="MSOSA Model Exporter"
+                    product="MSOSA Model Exporter"
+                    restartMagicdraw="true"
+                    type="Plugin">
+    <version human="${project.version}" internal="1" resource="10"/>
+    <provider email="" homePage="https://github.com/steveb93/MSOSA-Toolbox" name="UAF Tools"/>
+    <edition>Reader</edition>
+    <edition>Community</edition>
+    <edition>Standard</edition>
+    <edition>Professional</edition>
+    <edition>Architect</edition>
+    <edition>Enterprise</edition>
+    <installation>
+        <file from="plugins/com.uaf.neo4j.plugin/plugin.xml"
+              to="plugins/com.uaf.neo4j.plugin/plugin.xml"/>
+        <file from="plugins/com.uaf.neo4j.plugin/${project.artifactId}-${project.version}.jar"
+              to="plugins/com.uaf.neo4j.plugin/${project.artifactId}-${project.version}.jar"/>
+        <file from="plugins/com.uaf.neo4j.plugin/neo4j-connection.properties"
+              to="plugins/com.uaf.neo4j.plugin/neo4j-connection.properties"/>
+    </installation>
+</resourceDescriptor>
