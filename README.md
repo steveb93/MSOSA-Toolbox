@@ -74,7 +74,7 @@ The post-export summary dialog has a **Copy SPARQL Refresh Cmd** button that cop
 
 See [`ontology/NEXT-STEPS.md`](ontology/NEXT-STEPS.md) for Stage 3 (native triplestore, OWL 2 RL reasoning, SHACL validation) and Stage 5 (composite AI / decision intelligence) gating criteria.
 
-**Visualisation**: Fuseki only exposes SPARQL. For browsing the OWL T-Box (classes, properties, restrictions) the Fuseki overlay runs a self-hosted **WebVOWL** container alongside Fuseki — set `WEBVOWL_IMAGE` in `docker-compose/.env`, bring the overlay up, then open `http://localhost:8080/` and upload `ontology/uaf-mvo.ttl` (and optionally `uaf-mvo-axioms.ttl`).
+**Visualisation**: Fuseki only exposes SPARQL. For browsing the OWL T-Box (classes, properties, restrictions) the Fuseki overlay runs a self-hosted **WebVOWL** container alongside Fuseki — built from the upstream repo at <https://github.com/VisualDataWeb/WebVOWL> on first `docker compose up` (there is no published Docker Hub image; `WEBVOWL_REF` in `.env` pins the git ref). Open `http://localhost:8080/` and upload `ontology/uaf-mvo.ttl` (and optionally `uaf-mvo-axioms.ttl`).
 
 ---
 
