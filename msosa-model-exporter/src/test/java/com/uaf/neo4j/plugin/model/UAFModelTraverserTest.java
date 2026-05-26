@@ -147,6 +147,15 @@ class UAFModelTraverserTest {
                      UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP.get("ResourceAssociation"));
     }
 
+    @Test
+    void relationshipStereotypeMap_includesDominates() {
+        // UAF Security domain dominance — applied to a UML Dependency between two
+        // SecurityElements. The owl:TransitiveProperty axiom on uaf:dominates in
+        // ontology/uaf-mvo-axioms.ttl closes the lattice in Fuseki automatically.
+        assertEquals(UAFRelationshipDTO.REL_DOMINATES,
+                     UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP.get("Dominates"));
+    }
+
     // ── Module / attached-project traversal (#75 RC #4) ───────────────────────
 
     @Test

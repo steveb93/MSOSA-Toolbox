@@ -6,6 +6,10 @@
 ##   - uaf-mvo-axioms.ttl  (Stage 3 OWL axioms — inverses, disjointness,
 ##                          dominance transitivity, CapabilityConfiguration
 ##                          restrictions; hand-authored, sibling to MVO)
+##   - uml-data-marking.ttl (DoD classification levels + dominance lattice for
+##                          UML-side data marking on ERD Entities. Layered on
+##                          tv_securityClassification literals from the
+##                          MSOSA traverser; separate namespace from uaf:.)
 ##   - dump/uaf-instance.ttl (A-Box, dumped from Neo4j by dump_to_rdf.py)
 ##
 ## Reasoner: OWL FB rule reasoner (OWLFBRuleReasoner). Stage 3 upgraded this
@@ -40,4 +44,5 @@
 :base_model a ja:MemoryModel ;
     ja:content [ ja:externalContent <file:///staging/uaf-mvo.ttl> ] ;
     ja:content [ ja:externalContent <file:///staging/uaf-mvo-axioms.ttl> ] ;
+    ja:content [ ja:externalContent <file:///staging/uml-data-marking.ttl> ] ;
     ja:content [ ja:externalContent <file:///staging/dump/uaf-instance.ttl> ] .

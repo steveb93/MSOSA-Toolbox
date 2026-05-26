@@ -38,8 +38,8 @@ mvn clean package
 ```
 
 Outputs:
-- `target/msosa-model-exporter-1.5.1-Preview.jar` — fat jar (Neo4j driver bundled + relocated)
-- `target/msosa-model-exporter-1.5.1-Preview-plugin.zip` — drop into `<MSOSA_HOME>/plugins/`
+- `target/msosa-model-exporter-1.6.0-Preview.jar` — fat jar (Neo4j driver bundled + relocated)
+- `target/msosa-model-exporter-1.6.0-Preview-plugin.zip` — drop into `<MSOSA_HOME>/plugins/`
 
 ### 3. Deploy to MSOSA
 
@@ -47,7 +47,7 @@ Either use **Help → Resource/Plugin Manager → Install Plugin from File**, or
 
 ```
 <MSOSA_HOME>/plugins/msosa-model-exporter/
-    msosa-model-exporter-1.5.1-Preview.jar
+    msosa-model-exporter-1.6.0-Preview.jar
     plugin.xml
     neo4j-connection.properties
 ```
@@ -85,7 +85,7 @@ com.uaf.neo4j.plugin.model
     UAFStereotypeRegistry             single source of truth: stereotype → {label, domain, language}
     UAFModelTraverser                 walks MSOSA project tree, extracts DTOs
     UAFElementDTO                     immutable node DTO (builder pattern)
-    UAFRelationshipDTO                immutable edge DTO (28 type constants)
+    UAFRelationshipDTO                immutable edge DTO (36 type constants)
 
 com.uaf.neo4j.plugin.neo4j
     Neo4jCypherBuilder                parameterised MERGE Cypher (no string interpolation)
@@ -142,9 +142,9 @@ All UAF tagged values are flattened as `tv_<tagName>` properties (special charac
 
 Relationships carry: `id`, `uafType` (UML metaclass), `name`, `domain`.
 
-**Supported Neo4j relationship types** (28):
+**Supported Neo4j relationship types** (36):
 
-`REALISES` · `TRACES_TO` · `ASSIGNED_TO` · `SATISFIES` · `REFINES` · `INFLUENCES` · `DEPENDS_ON` · `COMPOSED_OF` · `SPECIALISES` · `EXHIBITS` · `CONTRIBUTES_TO` · `EXPOSES` · `PROVIDES` · `PERFORMS` · `CONNECTED_TO` · `FLOWS_TO` · `TRIGGERS` · `PRECEDES` · `ENABLES` · `SUPPORTS` · `IMPLEMENTS` · `ALLOCATED_TO` · `INSTANCE_OF` · `CONTAINED_IN` · `ASSOCIATED_WITH` · `DEPENDENCY` · `GENERALIZATION` · `INFORMATION_FLOW` · `CONTROL_FLOW`
+`REALISES` · `TRACES_TO` · `ASSIGNED_TO` · `SATISFIES` · `REFINES` · `INFLUENCES` · `DEPENDS_ON` · `COMPOSED_OF` · `SPECIALISES` · `EXHIBITS` · `CONTRIBUTES_TO` · `EXPOSES` · `PROVIDES` · `PERFORMS` · `CONNECTED_TO` · `FLOWS_TO` · `TRIGGERS` · `PRECEDES` · `ENABLES` · `SUPPORTS` · `IMPLEMENTS` · `ALLOCATED_TO` · `INSTANCE_OF` · `CONTAINED_IN` · `ASSOCIATED_WITH` · `DEPENDENCY` · `GENERALIZATION` · `INFORMATION_FLOW` · `CONTROL_FLOW` · `SEQUENCE_FLOW` · `MESSAGE_FLOW` · `DATA_INPUT` · `DATA_OUTPUT` · `HAS_ATTRIBUTE` · `OF_TYPE` · `DOMINATES`
 
 ---
 
