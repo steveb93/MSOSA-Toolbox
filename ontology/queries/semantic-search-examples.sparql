@@ -1,4 +1,4 @@
-# Semantic-search anchor queries for the Claude-fronted UAF use case.
+# Semantic-search anchor queries for the LLM-fronted UAF use case.
 # Each query is independent; copy one into run_sparql via the MCP tool.
 #
 # Each query declares its own PREFIX lines because Fuseki does not inject
