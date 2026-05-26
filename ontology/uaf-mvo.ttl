@@ -16,7 +16,7 @@
 <http://msosa-toolbox.local/uaf/mvo> a owl:Ontology ;
     rdfs:label "UAF + SysML + BPMN MVO" ;
     rdfs:comment "Minimum Viable Ontology covering UAF 1.2 (all 8 domains), SysML 1.6 and BPMN 2.0 stereotypes, generated from UAFStereotypeRegistry." ;
-    owl:versionInfo "0.2.0" ;
+    owl:versionInfo "0.3.0" ;
     dcterms:created "2026-05-20"^^xsd:date .
 
 # --- Annotation properties ---------------------------------------------------
