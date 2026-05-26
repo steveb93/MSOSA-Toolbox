@@ -197,7 +197,7 @@ See `../ontology/queries/semantic-search-examples.sparql` for anchor queries and
 
 ### Step 6 — Browse the OWL T-Box Visually (optional)
 
-Fuseki only exposes SPARQL. For the T-Box (ontology classes, properties, OWL restrictions) the Fuseki overlay also runs a self-hosted **WebVOWL** container — built from the upstream repo at <https://github.com/VisualDataWeb/WebVOWL> on first `docker compose up` (per the upstream README; there is no published Docker Hub image). `WEBVOWL_REF` in `../docker-compose/.env` pins the git ref — leave it as `master` to track upstream, or set to a tag / commit SHA to lock the build. After the overlay is up, open:
+Fuseki only exposes SPARQL. For the T-Box (ontology classes, properties, OWL restrictions) the Fuseki overlay also runs a self-hosted **WebVOWL** container — built from source via `../docker-compose/webvowl/Dockerfile` on first `docker compose up` (the upstream pre-built WAR is no longer served, so we rebuild from the upstream git repo). `WEBVOWL_REF` in `../docker-compose/.env` pins the upstream git ref — leave it as `master` to track upstream, or set to a tag / commit SHA to lock the build. After the overlay is up, open:
 
 ```
 http://localhost:8080/

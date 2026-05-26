@@ -8,8 +8,8 @@
 #   SPARQL query : http://localhost:3030/uaf/sparql
 #   SPARQL update: http://localhost:3030/uaf/update
 #   Fuseki UI    : http://localhost:3030/
-#   WebVOWL UI   : http://localhost:${WEBVOWL_PORT:-8080}/  (built from upstream
-#                  https://github.com/VisualDataWeb/WebVOWL on first `up`).
+#   WebVOWL UI   : http://localhost:${WEBVOWL_PORT:-8080}/  (built from source
+#                  via the multi-stage Dockerfile in ./webvowl/ on first `up`).
 #                  Upload ontology/uaf-mvo.ttl (and optionally uaf-mvo-axioms.ttl)
 #                  via the WebVOWL "Ontology" menu to render the T-Box.
 #
@@ -43,15 +43,21 @@ services:
     # Visual Notation for OWL Ontologies. Replaces the previous SPARQL→GraphML
     # exporter — no intermediary steps, point a browser at the container.
     #
-    # Built from the upstream repo per https://github.com/VisualDataWeb/WebVOWL
-    # README ("docker build . -t webvowl:v1"). There is no published Docker Hub
-    # image. WEBVOWL_REF pins the build to a git ref (branch / tag / commit) —
-    # default `master` matches the upstream README; set to a tag like `1.1.6`
+    # Built from source via a local multi-stage Dockerfile in ./webvowl/
+    # because the upstream Docker image (https://github.com/VisualDataWeb/WebVOWL)
+    # downloads a WAR from a host that no longer serves it. See the comment
+    # block in ./webvowl/Dockerfile for the full background.
+    #
+    # WEBVOWL_REF pins the upstream git ref (branch / tag / commit) used as
+    # the source. Default `master` tracks upstream; set to a tag like `1.1.6`
     # in .env to lock to a release. First `up` does the build; cached after.
     build:
-      context: https://github.com/VisualDataWeb/WebVOWL.git#${WEBVOWL_REF:-master}
+      context: ./webvowl
+      args:
+        WEBVOWL_REF: ${WEBVOWL_REF:-master}
     image: webvowl-uaf:local
     container_name: webvowl-uaf
     restart: unless-stopped
     ports:
-      - "${WEBVOWL_PORT:-8080}:8080"
+      # nginx listens on 80 inside the container; ${WEBVOWL_PORT} on the host.
+      - "${WEBVOWL_PORT:-8080}:80"
