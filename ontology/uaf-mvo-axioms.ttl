@@ -1,0 +1,384 @@
+# UAF MVO axioms — Stage 3 scaffolding (speculative)
+#
+# Sibling file to ontology/uaf-mvo.ttl. The MVO is generated from
+# UAFStereotypeRegistry by generate_mvo.py; this file is hand-authored and
+# loaded alongside the MVO by Fuseki. Keeping the two separate means the
+# codegen output stays mechanical and these richer axioms stay legible.
+#
+# Loaded by:  ontology/fuseki/configuration/uaf.ttl (alongside uaf-mvo.ttl)
+# Reasoner:   OWL FB rule reasoner (jena OWLFBRuleReasoner) — required for
+#             property chains and full inverseOf materialisation. The
+#             previous RDFS-Exp reasoner ignored every axiom in this file.
+#
+# Scope (Stage 3, per ontology/NEXT-STEPS.md):
+#   1. owl:inverseOf for canonical UAF traceability pairs
+#   2. owl:disjointWith between domain superclasses
+#   3. uaf:dominates as owl:TransitiveProperty for security classification
+#   4. owl:someValuesFrom restrictions on CapabilityConfiguration
+#   5. owl:someValuesFrom restrictions on key Operational + Resource classes
+#      (extending Stage 3 governance coverage beyond Strategic + Security)
+#   6. owl:someValuesFrom restrictions on key Service + Personnel + Acquisition
+#      classes — completes Stage 3 coverage across all 7 UAF domains
+#   7. uaf:Entity rdfs:subClassOf uaf:ResourceInformation — ERD entities
+#      generalise to ResourceInformation so they participate in Resource
+#      domain traversals (resource exchanges between systems)
+#
+# What this file does NOT do, by design:
+#   - Coin inverses for every ObjectProperty in the MVO. Only the ones that
+#     appear in shapes today or in canonical UAF traceability are declared
+#     here. Add more as queries/shapes need them.
+#   - Replace SHACL shapes. OWL someValuesFrom is open-world (says "there
+#     exists" without flagging absence); SHACL shapes are closed-world
+#     constraints. Both are useful for different purposes, both stay.
+
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix uaf:     <http://msosa-toolbox.local/uaf#> .
+
+<http://msosa-toolbox.local/uaf/axioms> a owl:Ontology ;
+    rdfs:label "UAF MVO axioms (Stage 3)" ;
+    rdfs:comment "Hand-authored OWL axioms layered over the generated MVO. Inverses, domain disjointness, classification dominance, capability-configuration restrictions." ;
+    owl:imports <http://msosa-toolbox.local/uaf/mvo> ;
+    owl:versionInfo "0.2.0" ;
+    dcterms:created "2026-05-22"^^xsd:date .
+
+# --- 1. owl:inverseOf for canonical UAF traceability pairs ------------------
+#
+# The MVO declares one direction of each pair (e.g. uaf:realises). The dump
+# emits whichever direction the model authors used. Declaring the inverse
+# lets the reasoner materialise the reverse triples — so SHACL shapes and
+# SPARQL queries can use forward paths regardless of which way the model
+# happens to write them.
+#
+# Each inverse property is declared as a new ObjectProperty here (it has to
+# be — the MVO doesn't include it) and tied to its forward partner with
+# owl:inverseOf.
+
+uaf:realisedBy a owl:ObjectProperty ;
+    rdfs:label "realisedBy" ;
+    rdfs:comment "Inverse of uaf:realises. realiser uaf:realises realised → realised uaf:realisedBy realiser." ;
+    owl:inverseOf uaf:realises .
+
+uaf:tracedBy a owl:ObjectProperty ;
+    rdfs:label "tracedBy" ;
+    rdfs:comment "Inverse of uaf:tracesTo. Useful for `risk ^tracesTo control` queries that become `risk tracedBy control` under the reasoner." ;
+    owl:inverseOf uaf:tracesTo .
+
+uaf:exhibitedBy a owl:ObjectProperty ;
+    rdfs:label "exhibitedBy" ;
+    rdfs:comment "Inverse of uaf:exhibits. Capability uaf:exhibits DesiredEffect → DesiredEffect uaf:exhibitedBy Capability." ;
+    owl:inverseOf uaf:exhibits .
+
+uaf:contributedToBy a owl:ObjectProperty ;
+    rdfs:label "contributedToBy" ;
+    rdfs:comment "Inverse of uaf:contributesTo. SecurityControl uaf:contributesTo SecurityAsset → asset contributedToBy control." ;
+    owl:inverseOf uaf:contributesTo .
+
+uaf:partOf a owl:ObjectProperty ;
+    rdfs:label "partOf" ;
+    rdfs:comment "Inverse of uaf:composedOf. Vision uaf:composedOf VisionStatement → statement partOf vision." ;
+    owl:inverseOf uaf:composedOf .
+
+uaf:contains a owl:ObjectProperty ;
+    rdfs:label "contains" ;
+    rdfs:comment "Inverse of uaf:containedIn. ControlFamily uaf:contains SecurityControl ← SecurityControl uaf:containedIn ControlFamily." ;
+    owl:inverseOf uaf:containedIn .
+
+uaf:performedBy a owl:ObjectProperty ;
+    rdfs:label "performedBy" ;
+    rdfs:comment "Inverse of uaf:performs. Activity uaf:performedBy Performer ← Performer uaf:performs Activity." ;
+    owl:inverseOf uaf:performs .
+
+uaf:allocationOf a owl:ObjectProperty ;
+    rdfs:label "allocationOf" ;
+    rdfs:comment "Inverse of uaf:allocatedTo. Useful for tracing what's allocated where without inversePath." ;
+    owl:inverseOf uaf:allocatedTo .
+
+uaf:assigneeOf a owl:ObjectProperty ;
+    rdfs:label "assigneeOf" ;
+    rdfs:comment "Inverse of uaf:assignedTo." ;
+    owl:inverseOf uaf:assignedTo .
+
+uaf:satisfiedBy a owl:ObjectProperty ;
+    rdfs:label "satisfiedBy" ;
+    rdfs:comment "Inverse of uaf:satisfies. Requirement uaf:satisfiedBy Element ← Element uaf:satisfies Requirement." ;
+    owl:inverseOf uaf:satisfies .
+
+uaf:refinedBy a owl:ObjectProperty ;
+    rdfs:label "refinedBy" ;
+    rdfs:comment "Inverse of uaf:refines." ;
+    owl:inverseOf uaf:refines .
+
+uaf:enabledBy a owl:ObjectProperty ;
+    rdfs:label "enabledBy" ;
+    rdfs:comment "Inverse of uaf:enables. Capability uaf:enabledBy Activity ← Activity uaf:enables Capability." ;
+    owl:inverseOf uaf:enables .
+
+uaf:supportedBy a owl:ObjectProperty ;
+    rdfs:label "supportedBy" ;
+    rdfs:comment "Inverse of uaf:supports." ;
+    owl:inverseOf uaf:supports .
+
+uaf:implementedBy a owl:ObjectProperty ;
+    rdfs:label "implementedBy" ;
+    rdfs:comment "Inverse of uaf:implements." ;
+    owl:inverseOf uaf:implements .
+
+uaf:requiredBy a owl:ObjectProperty ;
+    rdfs:label "requiredBy" ;
+    rdfs:comment "Inverse of uaf:dependsOn." ;
+    owl:inverseOf uaf:dependsOn .
+
+uaf:providedBy a owl:ObjectProperty ;
+    rdfs:label "providedBy" ;
+    rdfs:comment "Inverse of uaf:provides. ServicePerformer uaf:provides Service → Service uaf:providedBy ServicePerformer. Added in §6 work so the Service SHACL shape can use a forward path." ;
+    owl:inverseOf uaf:provides .
+
+# --- 2. Disjointness between UAF domain superclasses ------------------------
+#
+# A UAF element should belong to exactly one domain. If a model element ends
+# up typed as both Strategic and Operational (e.g. via stereotype mis-applied)
+# the reasoner will flag the dataset as inconsistent. This is a real OWL
+# constraint, not a SHACL one — it's the reasoner's responsibility.
+#
+# Pairwise disjointness expressed via owl:disjointWith. Could be expressed
+# more compactly with owl:AllDisjointClasses, but pairwise reads clearer
+# in the rule reasoner trace when a violation fires.
+
+uaf:StrategicElement owl:disjointWith uaf:OperationalElement ,
+                                      uaf:ResourceElement ,
+                                      uaf:ServiceElement ,
+                                      uaf:PersonnelElement ,
+                                      uaf:AcquisitionElement ,
+                                      uaf:SecurityElement .
+
+uaf:OperationalElement owl:disjointWith uaf:ResourceElement ,
+                                        uaf:ServiceElement ,
+                                        uaf:PersonnelElement ,
+                                        uaf:AcquisitionElement ,
+                                        uaf:SecurityElement .
+
+uaf:ResourceElement owl:disjointWith uaf:ServiceElement ,
+                                     uaf:PersonnelElement ,
+                                     uaf:AcquisitionElement ,
+                                     uaf:SecurityElement .
+
+uaf:ServiceElement owl:disjointWith uaf:PersonnelElement ,
+                                    uaf:AcquisitionElement ,
+                                    uaf:SecurityElement .
+
+uaf:PersonnelElement owl:disjointWith uaf:AcquisitionElement ,
+                                      uaf:SecurityElement .
+
+uaf:AcquisitionElement owl:disjointWith uaf:SecurityElement .
+
+# Note: uaf:SharedElement is intentionally NOT in the disjointness web —
+# anything shared can carry a domain-specific stereotype as well.
+
+# --- 3. Security classification dominance (UAF SecurityElement) -------------
+#
+# Per ontology/NEXT-STEPS.md Stage 3: "Property chains for security
+# classification dominance: :dominates o :dominates ⊑ :dominates".
+#
+# Scope. `uaf:dominates` here applies to UAF SecurityElements (SecurityAsset,
+# SecurityEnclave, SecurityControl, etc.) — the architectural Security domain.
+# Data-level classification (TS/S/C/U markings the DoD Data Marking Plugin
+# applies to ERD Entities) sits in UML, not UAF, and lives in a separate
+# slice: `ontology/uml-data-marking.ttl` (namespace
+# http://msosa-toolbox.local/datamarking#, prefix `dm:`). See that file for
+# the DoD lattice; the property there is `dm:dominates`, deliberately not the
+# same IRI as `uaf:dominates`.
+#
+# Emission path. UAFRelationshipDTO declares REL_DOMINATES = "DOMINATES";
+# UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP maps the "Dominates" UML
+# Dependency stereotype to it. The modeller applies <<Dominates>> to a UML
+# Dependency between two UAF SecurityElements (typically SecurityEnclave ↔
+# SecurityEnclave); the Java plugin emits :DOMINATES edges, dump_to_rdf.py /
+# RDFTripleBuilder translate those to uaf:dominates triples, and OWL FB
+# closes the lattice in Fuseki.
+#
+# Expressed as owl:TransitiveProperty (idiomatic) rather than the equivalent
+# property-chain form, which would be:
+#
+#   uaf:dominates owl:propertyChainAxiom ( uaf:dominates uaf:dominates ) .
+#
+# Both forms are computed by OWL FB; the TransitiveProperty form is shorter
+# and matches how OWL textbooks express this.
+
+uaf:dominates a owl:ObjectProperty , owl:TransitiveProperty ;
+    rdfs:label "dominates" ;
+    rdfs:comment "Dominance between UAF SecurityElements (architectural Security domain). Emitted by the MSOSA plugin from the <<Dominates>> stereotype on a UML Dependency between two SecurityElements. For data-level classification dominance on ERD Entities and other UML elements, see dm:dominates in ontology/uml-data-marking.ttl." ;
+    rdfs:domain uaf:SecurityElement ;
+    rdfs:range uaf:SecurityElement .
+
+# --- 4. owl:someValuesFrom restrictions on CapabilityConfiguration ----------
+#
+# Per ontology/NEXT-STEPS.md: "every config must have ≥1 realising activity,
+# ≥1 resource, ≥1 role". The SHACL shape uafsh:CapabilityConfigurationShape
+# already enforces this as a hard constraint; these OWL axioms add a
+# definitional layer.
+#
+# IMPORTANT semantic difference from SHACL:
+#   - SHACL is closed-world: "if there is no realising element, flag it."
+#   - OWL someValuesFrom is open-world: "if X is a CapabilityConfiguration,
+#     there exists some realiser somewhere in the world." It does NOT flag
+#     missing data — it asserts existence.
+#
+# So why bother? Two reasons:
+#   1. Documentation. The OWL axiom formalises the constraint in a way that
+#      tooling (Protégé, WebVOWL, etc.) renders nicely on the class card.
+#   2. Class-membership inference. If we later add owl:equivalentClass
+#      (instead of subClassOf), the reasoner could derive that any element
+#      with realisedBy of an OperationalActivity etc. IS a
+#      CapabilityConfiguration. We don't do that here — subClassOf only —
+#      to avoid surprising the dump.
+
+uaf:CapabilityConfiguration rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty uaf:realisedBy ;
+      owl:someValuesFrom uaf:OperationalActivity ;
+      rdfs:comment "Every CapabilityConfiguration is realised by at least one OperationalActivity." ] ,
+    [ a owl:Restriction ;
+      owl:onProperty uaf:realisedBy ;
+      owl:someValuesFrom uaf:ResourcePerformer ;
+      rdfs:comment "Every CapabilityConfiguration is realised by at least one ResourcePerformer." ] ,
+    [ a owl:Restriction ;
+      owl:onProperty uaf:realisedBy ;
+      owl:someValuesFrom uaf:ResourceRole ;
+      rdfs:comment "Every CapabilityConfiguration is realised by at least one ResourceRole." ] .
+
+# --- 5. owl:someValuesFrom restrictions — Operational + Resource -----------
+#
+# Parallel to §4, but for the Operational and Resource domains. Same
+# open-world semantics: these axioms assert existence ("there is some
+# performer for this activity"), not absence-flagging — SHACL shapes in
+# ontology/shapes/uaf-shapes.ttl handle absence under closed-world.
+#
+# Class choices match the seven SHACL shapes added alongside this section;
+# only the four with a clear class-definitional constraint get an OWL
+# restriction here. The other three (OperationalPerformer "performs",
+# ResourceRole "assignedTo", ResourceArtifact "allocatedTo") are governance
+# expectations rather than definitions, so SHACL-only is the right level.
+
+uaf:OperationalActivity rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty uaf:performedBy ;
+      owl:someValuesFrom uaf:OperationalPerformer ;
+      rdfs:comment "Every OperationalActivity is performed by at least one OperationalPerformer." ] .
+
+uaf:OperationalProcess rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty uaf:composedOf ;
+      owl:someValuesFrom uaf:OperationalActivity ;
+      rdfs:comment "Every OperationalProcess composes at least one OperationalActivity." ] .
+
+uaf:ResourcePerformer rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty uaf:performs ;
+      owl:someValuesFrom uaf:ResourceElement ;
+      rdfs:comment "Every ResourcePerformer performs at least one ResourceElement (function / action / service)." ] .
+
+uaf:ResourceArchitecture rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty uaf:composedOf ;
+      owl:someValuesFrom uaf:ResourceElement ;
+      rdfs:comment "Every ResourceArchitecture composes at least one ResourceElement." ] .
+
+# --- 6. owl:someValuesFrom restrictions — Service, Personnel, Acquisition ---
+#
+# Completes Stage 3 OWL restriction coverage across all 7 UAF domains.
+# Same open-world semantics as §4 and §5 — these axioms assert existence
+# at the class-definitional level; SHACL shapes in
+# ontology/shapes/uaf-shapes.ttl handle absence under closed-world.
+#
+# Service: a Service is something provided by a ServicePerformer; a
+# ServiceArchitecture composes service elements. (ServicePerformer
+# "provides" and ServiceRole "assignedTo" are SHACL-only — they're
+# governance expectations rather than class definitions.)
+#
+# Personnel: a Post is definitionally a position within an Organization
+# (uaf:partOf, inverse of uaf:composedOf). UAF has no "Person" class in
+# the registered set — Post is the canonical role-bearing element. The
+# sketch invariant "Post ⊑ ∃ heldBy . Person" that appeared in earlier
+# NEXT-STEPS bullets was incorrect; the actual canonical relation is
+# Post partOf Organization.
+#
+# Acquisition: a Project is definitionally a composition of acquisition
+# elements (milestones, activities, themes). ProjectMilestone is shaped
+# in SHACL only — "milestone belongs to a project" is a governance
+# expectation that's frequently violated during early planning.
+
+uaf:Service rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty uaf:providedBy ;
+      owl:someValuesFrom uaf:ServicePerformer ;
+      rdfs:comment "Every Service is provided by at least one ServicePerformer." ] .
+
+uaf:ServiceArchitecture rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty uaf:composedOf ;
+      owl:someValuesFrom uaf:ServiceElement ;
+      rdfs:comment "Every ServiceArchitecture composes at least one ServiceElement." ] .
+
+uaf:Post rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty uaf:partOf ;
+      owl:someValuesFrom uaf:Organization ;
+      rdfs:comment "Every Post is part of at least one Organization (uaf:partOf, inverse of uaf:composedOf)." ] .
+
+uaf:Project rdfs:subClassOf
+    [ a owl:Restriction ;
+      owl:onProperty uaf:composedOf ;
+      owl:someValuesFrom uaf:AcquisitionElement ;
+      rdfs:comment "Every Project composes at least one AcquisitionElement (milestone / activity / theme / role)." ] .
+
+# --- 7. ERD Entity → ResourceInformation bridge -----------------------------
+#
+# UAF 1.2 keeps ERD modelling in the Shared domain: uaf:Entity is generated
+# as rdfs:subClassOf uaf:SharedElement by codegen, mirroring the registry.
+# That's correct for the modelling-language taxonomy but it misses the
+# semantic reality of physical (crow's-foot) ERDs as used in real programmes:
+#
+#   - An Entity describes a record that belongs to a system back-end.
+#   - Its attributes carry data types (Oracle VARCHAR2/NUMBER/DATE, SysML
+#     ValueType, UML PrimitiveType/Enumeration/DataType — whatever the
+#     modelled system uses). These are already materialised as first-class
+#     :Attribute nodes via UAFModelTraverser.extractAttributes, linked by
+#     HAS_ATTRIBUTE, with :DataType targets via OF_TYPE.
+#   - Entities are *generalised to ResourceInformation*: the records flow
+#     in resource exchanges between systems (uaf:ResourceExchange). Without
+#     this bridge, ERD content is unreachable from any Resource-view query
+#     that walks the Resource domain hierarchy.
+#
+# Asserting uaf:Entity rdfs:subClassOf uaf:ResourceInformation makes every
+# Entity instance automatically a ResourceInformation, a ResourceElement,
+# and therefore a candidate for resource-exchange traversals. uaf:Entity
+# remains a SharedElement via its MVO-generated parent (SharedElement is
+# intentionally outside the domain-disjointness web, so the dual parent is
+# OK — see §2). The bridge is asserted here rather than in uaf-mvo.ttl so
+# that MVO regeneration (generate_mvo.py) does not overwrite it.
+
+uaf:Entity rdfs:subClassOf uaf:ResourceInformation .
+
+# --- Notes for follow-up work ----------------------------------------------
+#
+# Data-level classification dominance (DoD Data Marking on ERD Entities) is
+# handled separately in `ontology/uml-data-marking.ttl` — different namespace,
+# different scope. uaf:dominates above covers the architectural case (one
+# SecurityEnclave dominating another); the Java plugin's <<Dominates>> UML
+# Dependency stereotype mapping (UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP)
+# emits :DOMINATES edges that become uaf:dominates triples in Fuseki, where
+# the TransitiveProperty closes the lattice.
+#
+# When more shapes need inverse paths, add the corresponding inverseOf
+# pair here rather than relying on sh:inversePath in the shapes file —
+# under OWL FB, the reasoner pre-materialises both directions and queries
+# become symmetric.
+#
+# Stage 3 OWL + SHACL coverage now spans all 7 UAF domains (Strategic,
+# Operational, Resource, Service, Personnel, Acquisition, Security).
+# Further axiom additions should be driven by specific governance / query
+# requirements rather than uniform coverage of the class space.

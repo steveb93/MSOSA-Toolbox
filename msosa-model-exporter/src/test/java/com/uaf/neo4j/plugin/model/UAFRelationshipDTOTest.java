@@ -123,6 +123,7 @@ class UAFRelationshipDTOTest {
         assertNotNull(UAFRelationshipDTO.REL_CONTROL_FLOW);
         assertNotNull(UAFRelationshipDTO.REL_SEQUENCE_FLOW);
         assertNotNull(UAFRelationshipDTO.REL_MESSAGE_FLOW);
+        assertNotNull(UAFRelationshipDTO.REL_DOMINATES);
     }
 
     @Test
@@ -132,5 +133,6 @@ class UAFRelationshipDTOTest {
         assertEquals("INSTANCE_OF", UAFRelationshipDTO.REL_INSTANCE_OF);
         assertEquals("CONTROL_FLOW", UAFRelationshipDTO.REL_CONTROL_FLOW);
         assertEquals("INFORMATION_FLOW", UAFRelationshipDTO.REL_INFORMATION_FLOW);
+        assertEquals("DOMINATES", UAFRelationshipDTO.REL_DOMINATES);
     }
 }
