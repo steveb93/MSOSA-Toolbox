@@ -52,16 +52,9 @@ public class ExportSummaryDialog extends JDialog {
             buttons.add(openLogBtn);
         }
 
-        JButton browseBtn = new JButton("Browse Graph…");
-        browseBtn.setToolTipText("Open the Graph Inspector to explore exported nodes in Neo4j");
-        browseBtn.addActionListener(e -> {
-            dispose(); // close summary before opening inspector
-            UAFNeo4jPlugin plugin = UAFNeo4jPlugin.getInstance();
-            if (plugin != null) {
-                plugin.showGraphInspector();
-            }
-        });
-        buttons.add(browseBtn);
+        // "Browse Graph…" used to launch a separate inspector; the workbench's
+        // Inspect rail now hosts the same view, so users navigate via the rail
+        // after dismissing this summary.
 
         JButton copyRefreshBtn = new JButton("Copy SPARQL Refresh Cmd");
         copyRefreshBtn.setToolTipText(

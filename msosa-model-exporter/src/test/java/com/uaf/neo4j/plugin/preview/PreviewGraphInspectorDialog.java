@@ -20,8 +20,8 @@ import java.util.Properties;
  */
 public class PreviewGraphInspectorDialog extends GraphInspectorDialog {
 
-    public PreviewGraphInspectorDialog(Frame parent, Properties config) {
-        super(parent, config, null); // null project — sample data via the overrides below
+    public PreviewGraphInspectorDialog(Properties config) {
+        super(config, null); // null project — sample data via the overrides below
     }
 
     // Static so it is safe to reference from methods invoked by the superclass

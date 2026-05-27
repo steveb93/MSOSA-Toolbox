@@ -11,7 +11,7 @@ import java.util.Properties;
 import java.util.logging.Logger;
 
 /**
- * Tools → UAF 1.2 → Neo4j Graph Exporter → Open SPARQL Endpoint
+ * Tools → UAF Knowledge Graph → Open SPARQL Endpoint
  *
  * Opens the Fuseki <b>UI</b> dataset query page in the system default browser.
  *
@@ -28,7 +28,7 @@ public class OpenSparqlEndpointAction extends MDAction {
     private static final String DEFAULT_URL = "http://localhost:3030/uaf";
 
     public OpenSparqlEndpointAction() {
-        super("UAF_NEO4J_OPEN_SPARQL", "Open SPARQL Endpoint...", null, null);
+        super("UAF_KG_OPEN_SPARQL", "Open SPARQL Endpoint…", null, null);
     }
 
     @Override
@@ -41,7 +41,7 @@ public class OpenSparqlEndpointAction extends MDAction {
             JOptionPane.showMessageDialog(null,
                 "Desktop browsing is not supported on this JVM.\n" +
                 "Open the SPARQL endpoint manually at:\n" + browseUrl,
-                "UAF Neo4j — SPARQL",
+                "UAF Knowledge Graph — SPARQL",
                 JOptionPane.INFORMATION_MESSAGE);
             return;
         }
@@ -50,7 +50,7 @@ public class OpenSparqlEndpointAction extends MDAction {
         } catch (Exception ex) {
             LOG.warning("Could not open SPARQL endpoint: " + ex.getMessage());
             Application.getInstance().getGUILog()
-                .showError("UAF Neo4j Plugin: could not open " + browseUrl + " — " + ex.getMessage());
+                .showError("UAF Knowledge Graph: could not open " + browseUrl + " — " + ex.getMessage());
         }
     }
 }
