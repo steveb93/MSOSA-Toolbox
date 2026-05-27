@@ -1,14 +1,11 @@
 # MSOSA-Toolbox
 
 ![MSOSA](https://img.shields.io/badge/MSOSA-2022x%20HF2-0076A8)
-![UAF](https://img.shields.io/badge/UAF-1.2-orange)
-![SysML](https://img.shields.io/badge/SysML-1.6-blueviolet)
-![BPMN](https://img.shields.io/badge/BPMN-2.0-yellow)
 ![Java](https://img.shields.io/badge/Java-11-yellowgreen?logo=openjdk&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![Neo4j](https://img.shields.io/badge/Neo4j-5.26-008CC1?logo=neo4j&logoColor=white)
 ![Fuseki](https://img.shields.io/badge/Fuseki-SPARQL%201.1-d22128)
-![Ontology](https://img.shields.io/badge/Ontology-MVO%20v0.2-5b8fb9)
+![License](https://img.shields.io/badge/License-Apache%202.0-blue)
 
 > [!IMPORTANT]
 > All plugins in this toolbox target **No Magic MSOSA 2022x Hotfix 2** (MagicDraw). They are not tested against earlier or later MSOSA releases.

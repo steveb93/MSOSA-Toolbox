@@ -13,7 +13,7 @@
     <description>MSOSA 2022x Hotfix 2 plugin that exports UAF 1.2 / SysML 1.6 / BPMN 2.0 models to Neo4j (LPG via Cypher). RDF emitter planned per ontology/NEXT-STEPS.md Stage 4.</description>
  
     <properties>
-        <revision>1.6.0-Preview</revision>
+        <revision>1.6.0</revision>
         <java.version>11</java.version>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
@@ -243,4 +243,33 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!--
+            UI preview harness — launches the Swing export wizard off-MSOSA with
+            sample data (see src/test/java/.../preview/UiPreview.java) for fast
+            visual iteration without rebuilding/redeploying the plugin.
+
+            Interactive (needs a display):
+              mvn -Pui-preview test-compile exec:java
+            Headless PNG render (run under xvfb-run on Linux/CI):
+              mvn -Pui-preview test-compile exec:java -Dpreview.screenshot=target/ui-preview
+        -->
+        <profile>
+            <id>ui-preview</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <configuration>
+                            <mainClass>com.uaf.neo4j.plugin.preview.UiPreview</mainClass>
+                            <classpathScope>test</classpathScope>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
