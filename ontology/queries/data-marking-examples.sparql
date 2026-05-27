@@ -1,0 +1,95 @@
+# Data Marking — example SPARQL queries.
+#
+# The DoD Data Marking Plugin applies the `securityClassification` stereotype
+# to UML elements (commonly ERD Entities). The MSOSA traverser flattens that
+# stereotype's value onto the exported node as `tv_securityClassification`,
+# which becomes the literal `uaftv:securityClassification "TOP SECRET"` in
+# Fuseki.
+#
+# `ontology/uml-data-marking.ttl` declares the four DoD classification levels
+# as named individuals (dm:TopSecret / dm:Secret / dm:Confidential /
+# dm:Unclassified) with `dm:dominates` between them as an
+# owl:TransitiveProperty. OWL FB closes the lattice transitively.
+#
+# These queries demonstrate the canonical JOIN pattern: literal
+# `uaftv:securityClassification` value → `skos:notation` on the lattice
+# individual → transitive `dm:dominates` traversal. No Java plugin change is
+# required.
+#
+# Each query is independent; copy one into run_sparql via the MCP tool.
+
+# -----------------------------------------------------------------------------
+# 1. Every entity that carries a classification marking
+# Smoke test — confirms tv_securityClassification literals reach Fuseki.
+# -----------------------------------------------------------------------------
+PREFIX uaf:   <http://msosa-toolbox.local/uaf#>
+PREFIX uaftv: <http://msosa-toolbox.local/uaf/tag#>
+PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?entity ?name ?marking WHERE {
+  ?entity a uaf:Entity ;
+          uaftv:securityClassification ?marking .
+  OPTIONAL { ?entity rdfs:label ?name }
+}
+ORDER BY ?marking ?name
+
+# -----------------------------------------------------------------------------
+# 2. Resolve marking literals to lattice individuals
+# Joins the literal value against skos:notation on each level individual.
+# If an entity carries an unrecognised marking string, it's absent from the
+# results — useful for surfacing typos or non-DoD markings.
+# -----------------------------------------------------------------------------
+PREFIX uaf:   <http://msosa-toolbox.local/uaf#>
+PREFIX uaftv: <http://msosa-toolbox.local/uaf/tag#>
+PREFIX dm:    <http://msosa-toolbox.local/datamarking#>
+PREFIX skos:  <http://www.w3.org/2004/02/skos/core#>
+PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?entity ?level ?levelLabel WHERE {
+  ?entity uaftv:securityClassification ?marking .
+  ?level a dm:ClassificationLevel ;
+         skos:notation ?marking ;
+         rdfs:label    ?levelLabel .
+}
+
+# -----------------------------------------------------------------------------
+# 3. Entities at TOP SECRET or any level it dominates
+# Uses dm:dominates* (zero-or-more) so the level itself is included alongside
+# everything strictly below it. Replace dm:TopSecret with dm:Secret /
+# dm:Confidential / dm:Unclassified to scope to other ceilings.
+# -----------------------------------------------------------------------------
+PREFIX uaf:   <http://msosa-toolbox.local/uaf#>
+PREFIX uaftv: <http://msosa-toolbox.local/uaf/tag#>
+PREFIX dm:    <http://msosa-toolbox.local/datamarking#>
+PREFIX skos:  <http://www.w3.org/2004/02/skos/core#>
+SELECT ?entity ?marking WHERE {
+  ?entity uaftv:securityClassification ?marking .
+  ?level  skos:notation ?marking .
+  dm:TopSecret dm:dominates* ?level .
+}
+
+# -----------------------------------------------------------------------------
+# 4. Find entities classified strictly higher than CONFIDENTIAL
+# Strict dominance: drop the * so the ceiling level itself is excluded.
+# -----------------------------------------------------------------------------
+PREFIX uaftv: <http://msosa-toolbox.local/uaf/tag#>
+PREFIX dm:    <http://msosa-toolbox.local/datamarking#>
+PREFIX skos:  <http://www.w3.org/2004/02/skos/core#>
+SELECT ?entity ?marking WHERE {
+  ?entity uaftv:securityClassification ?marking .
+  ?level  skos:notation ?marking .
+  ?level  dm:dominates dm:Confidential .   # one-or-more steps above Confidential
+}
+
+# -----------------------------------------------------------------------------
+# 5. Entities whose marking is NOT a recognised DoD level
+# Negative join — surfaces typos, custom markings, or DMP profile drift.
+# -----------------------------------------------------------------------------
+PREFIX uaftv: <http://msosa-toolbox.local/uaf/tag#>
+PREFIX dm:    <http://msosa-toolbox.local/datamarking#>
+PREFIX skos:  <http://www.w3.org/2004/02/skos/core#>
+SELECT ?entity ?marking WHERE {
+  ?entity uaftv:securityClassification ?marking .
+  FILTER NOT EXISTS {
+    ?level a dm:ClassificationLevel ;
+           skos:notation ?marking .
+  }
+}

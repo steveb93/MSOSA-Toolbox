@@ -1,12 +1,12 @@
 ﻿# UAF 1.2 → Neo4j Knowledge Graph Exporter
-## Catia Magic MSOSA 2022x Refresh2 Plugin
+## Catia Magic MSOSA 2022x Hotfix 2 Plugin
 
 ---
 
 ## Overview
 
 This plugin exports architectural elements and relationships from a Catia Magic MSOSA
-2022x Refresh2 project into a Neo4j graph database running in Docker. It supports
+2022x Hotfix 2 project into a Neo4j graph database running in Docker. It supports
 hybrid models combining **UAF 1.2**, **SysML 1.6**, and **BPMN 2.0** — each element
 and relationship is tagged with its modelling language so cross-language queries are
 possible from day one.
@@ -41,7 +41,7 @@ Neo4j (Docker :7687)
 
 | Component | Version |
 |---|---|
-| Catia Magic MSOSA | 2022x Refresh2 |
+| Catia Magic MSOSA | 2022x Hotfix 2 |
 | Java (plugin compile) | JDK 11+ |
 | Neo4j | 4.4.x or 5.x |
 | Docker | 20.10+ |
@@ -69,7 +69,7 @@ msosa-model-exporter/
 │   │   │   │   ├── UAFStereotypeRegistry.java   ← Single source of truth: stereotype → label/domain/language
 │   │   │   │   ├── UAFModelTraverser.java        ← Walks MSOSA project, extracts DTOs (UAF + SysML + BPMN)
 │   │   │   │   ├── UAFElementDTO.java            ← Immutable node DTO (builder pattern)
-│   │   │   │   └── UAFRelationshipDTO.java       ← Immutable edge DTO (31 type constants)
+│   │   │   │   └── UAFRelationshipDTO.java       ← Immutable edge DTO (35 type constants)
 │   │   │   ├── neo4j/
 │   │   │   │   ├── Neo4jCypherBuilder.java       ← Parameterised MERGE Cypher
 │   │   │   │   └── Neo4jExportService.java       ← Bolt driver lifecycle; batched writes; graph queries
@@ -77,7 +77,7 @@ msosa-model-exporter/
 │   │   │       ├── ExportConfigDialog.java       ← Screen 1: package selection, options, connection
 │   │   │       ├── ExportSummaryDialog.java      ← Post-export counts, errors, Browse Graph button
 │   │   │       ├── GraphInspectorDialog.java     ← Screen 2: searchable node table + inspector tabs
-│   │   │       ├── GraphPanel.java               ← JGraphX neighbourhood graph (Phase 2b)
+│   │   │       ├── GraphPanel.java               ← JGraphX neighbourhood graph (1-hop, domain-coloured)
 │   │   │       └── ConnectionDialog.java         ← Edit URI / credentials / batch size
 │   │   └── resources/
 │   │       ├── plugin.xml                  ← MagicDraw plugin descriptor
@@ -101,21 +101,24 @@ msosa-model-exporter/
 
 **Option A — Plugin Manager:**
 1. In MSOSA: **Help → Resource/Plugin Manager → Install Plugin from File**
-2. Select `target/msosa-model-exporter-1.4.2-plugin.zip`
+2. Select `target/msosa-model-exporter-1.6.0-plugin.zip`
 3. Restart MSOSA when prompted
 
 **Option B — Manual:**
 
-Unzip `target/msosa-model-exporter-1.4.2-plugin.zip` into `<MSOSA_HOME>/plugins/`:
+The zip is a Resource Manager bundle that mirrors the MSOSA install tree, so its contents drop straight into `<MSOSA_HOME>`:
 
 ```
-<MSOSA_HOME>/plugins/msosa-model-exporter/
-    msosa-model-exporter-1.4.2.jar
-    plugin.xml
-    neo4j-connection.properties
+<MSOSA_HOME>/
+├── data/resourcemanager/
+│   └── MDR_Plugin_MSOSA_Model_Exporter_30086_descriptor.xml
+└── plugins/com.uaf.neo4j.plugin/
+    ├── plugin.xml
+    ├── neo4j-connection.properties
+    └── msosa-model-exporter-1.6.0.jar
 ```
 
-Restart MSOSA. The plugin appears under **Tools → UAF Neo4j Export**.
+Unzip `target/msosa-model-exporter-1.6.0-plugin.zip` directly into `<MSOSA_HOME>`. Restart MSOSA. The plugin appears under **Tools → UAF Neo4j Export**.
 
 ---
 
@@ -168,7 +171,7 @@ The **Graph Inspector** provides two ways to explore:
 
 ### Step 5 — Query via SPARQL (optional, Stage 2 overlay)
 
-The plugin writes to Neo4j as the **system of record**, but a **SPARQL endpoint** is available as an overlay via Apache Jena Fuseki. The overlay is loaded from a periodic RDF dump of the Neo4j graph plus an OWL T-Box generated from `UAFStereotypeRegistry`. RDFS subsumption reasoning is on, so queries like "all uaf:StrategicElement instances" resolve without manual property paths.
+The plugin writes to Neo4j as the **system of record**, but a **SPARQL endpoint** is available as an overlay via Apache Jena Fuseki. The overlay is loaded either directly by the plugin's RDF emitter (PUT to Graph Store Protocol) or via the recovery path `python ontology/codegen/dump_to_rdf.py`. **OWL FB reasoning** is on (Stage 3), so inverseOf, transitivity, disjointness and someValuesFrom restrictions all materialise — queries like "all uaf:StrategicElement instances" or "what dominates this Risk?" resolve without manual property paths.
 
 Start the overlay:
 
@@ -192,60 +195,11 @@ See `../ontology/queries/semantic-search-examples.sparql` for anchor queries and
 
 ---
 
-### Step 6 — Browse the RDF Graph Visually (optional)
+### Step 6 — Browse the OWL T-Box Visually (optional)
 
-Fuseki gives you SPARQL but no interactive graph view. **GraphDB Free** can run alongside Fuseki as a read-only visual browser, loading the same T-Box and A-Box so the two stay aligned. Its Workbench renders instance triples, `rdf:type` links, and the `rdfs:subClassOf` class hierarchy as one connected, clickable graph.
+Fuseki only exposes SPARQL. For the T-Box (ontology classes, properties, OWL restrictions) use the upstream-blessed hosted **WebVOWL** at <https://service.tib.eu/webvowl/>. Choose **Ontology → Select ontology file** and upload `../ontology/uaf-mvo.ttl` (and optionally `../ontology/uaf-mvo-axioms.ttl` for the Stage-3 inverses, disjointness, and `someValuesFrom` restrictions). The ontology is already public in this repo, so a third-party upload is fine.
 
-GraphDB 11.x requires a (free) licence file even for the Free tier. One-off setup:
-
-1. Register at <https://www.ontotext.com/products/graphdb/download/> → choose **GraphDB Free** → you'll receive a licence by email.
-2. If the email contains a base64 block (rather than an attached binary file), decode it once:
-
-   ```powershell
-   # PowerShell — paste the base64 block into base64.txt first, then:
-   [IO.File]::WriteAllBytes(
-       "secrets/graphdb.license",
-       [Convert]::FromBase64String((Get-Content base64.txt -Raw) -replace '\s',''))
-   ```
-
-   The container needs the decoded binary at `secrets/graphdb.license`; GraphDB rejects the base64-armored form with "Failed to read license". The `secrets/` directory is already in `.gitignore`.
-3. Bring the stack up — the compose file mounts `secrets/graphdb.license` read-only and passes its path to GraphDB via `GDB_JAVA_OPTS=-Dgraphdb.license.file=...`:
-
-```powershell
-# Make sure the A-Box dump exists first (the loader expects it).
-python ontology/codegen/dump_to_rdf.py
-
-# Neo4j + GraphDB only:
-docker compose -f docker-compose/docker-compose.yml `
-               -f docker-compose/docker-compose.graphdb.yml up -d
-
-# Neo4j + Fuseki + GraphDB together:
-docker compose -f docker-compose/docker-compose.yml `
-               -f docker-compose/docker-compose.fuseki.yml `
-               -f docker-compose/docker-compose.graphdb.yml up -d
-```
-
-After ~30s the `graphdb-loader` sidecar creates the `uaf` repository and loads both TTLs. Tail the loader to confirm it finished — `>> Done.` on the last line means the visual graph is ready to use:
-
-```powershell
-docker logs graphdb-uaf-loader
-```
-
-If the loader logs `Failed to read license`, the licence file is still in its base64-armored form — rerun step 2 to decode it, then `docker compose … restart graphdb graphdb-loader`.
-
-Open <http://localhost:7200>, select the `uaf` repository, then **Explore → Visual graph** and start from any element name.
-
-To skip the name search, build the **UAF Overview** Graph Config once — it opens directly on the 8 UAF domain-anchor classes and expands through subclasses and instances on click. Step-by-step queries and UI walkthrough: `../ontology/graphdb/graph-configs/uaf-overview.md`.
-
-Refresh after a new MSOSA export:
-
-```powershell
-python ontology/codegen/dump_to_rdf.py
-docker compose -f docker-compose/docker-compose.yml `
-               -f docker-compose/docker-compose.graphdb.yml restart graphdb-loader
-```
-
-The loader clears and reloads the repo on each restart, so this single command resyncs the visual graph with Neo4j. Fuseki remains the SPARQL endpoint the MCP server queries; GraphDB is purely a browser.
+Self-hosting WebVOWL was explored and rejected — the upstream Docker image is broken (the pre-built WAR host returns 403), and a from-source rebuild needs WebVOWL (JS frontend) **and** OWL2VOWL (Java backend) plus an nginx proxy. See `../ontology/NEXT-STEPS.md` for the decision log.
 
 ---
 
