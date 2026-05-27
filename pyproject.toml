@@ -1,6 +1,6 @@
 [project]
 name = "graph-mcp-driver"
-version = "1.0.0"
+version = "1.1.0"
 description = "MCP server that exposes Neo4j (Cypher) and Apache Jena Fuseki (SPARQL) tools to MCP-capable LLM hosts for querying UAF 1.2 / SysML 1.6 / BPMN 2.0 knowledge graphs."
 readme = "README.md"
 requires-python = ">=3.10"

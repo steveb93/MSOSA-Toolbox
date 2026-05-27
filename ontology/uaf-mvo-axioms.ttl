@@ -42,7 +42,7 @@
     rdfs:label "UAF MVO axioms (Stage 3)" ;
     rdfs:comment "Hand-authored OWL axioms layered over the generated MVO. Inverses, domain disjointness, classification dominance, capability-configuration restrictions." ;
     owl:imports <http://msosa-toolbox.local/uaf/mvo> ;
-    owl:versionInfo "0.1.0" ;
+    owl:versionInfo "0.2.0" ;
     dcterms:created "2026-05-22"^^xsd:date .
 
 # --- 1. owl:inverseOf for canonical UAF traceability pairs ------------------

@@ -6,31 +6,31 @@ import javax.swing.*;
 import java.awt.event.ActionEvent;
 
 /**
- * Tools → UAF Neo4j Export → About
+ * Tools → UAF Knowledge Graph → About
  */
 public class AboutAction extends MDAction {
 
     public AboutAction() {
-        super("UAF_NEO4J_ABOUT", "About...", null, null);
+        super("UAF_KG_ABOUT", "About…", null, null);
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
         JOptionPane.showMessageDialog(
             null,
-            "<html><b>UAF Neo4j Export Plugin v0.5.0</b><br><br>" +
+            "<html><b>UAF Knowledge Graph</b><br><br>" +
             "Exports UAF 1.2, SysML 1.6 and BPMN 2.0 elements and relationships<br>" +
-            "from MSOSA 2022x into a Neo4j knowledge graph via the Bolt protocol.<br><br>" +
+            "from MSOSA 2022x into a Neo4j knowledge graph (LPG via Bolt) and an<br>" +
+            "Apache Jena Fuseki SPARQL endpoint.<br><br>" +
             "<b>Neo4j (system of record):</b> bolt://localhost:7687 (Docker)<br>" +
-            "<b>SPARQL overlay (Stage 2):</b> Apache Jena Fuseki at http://localhost:3030/uaf<br>" +
+            "<b>SPARQL overlay:</b> Apache Jena Fuseki at http://localhost:3030/uaf<br>" +
             "<br>" +
-            "Refresh the SPARQL view after each export by running<br>" +
-            "<code>python ontology/codegen/dump_to_rdf.py</code> from the repo root,<br>" +
-            "then restart the <code>fuseki-uaf</code> container.<br>" +
+            "The plugin writes RDF Turtle directly and optionally PUTs to Fuseki's<br>" +
+            "Graph Store Protocol endpoint, removing the manual restart step.<br>" +
             "<br>" +
             "See <code>Ontology-Approach-to-Knowledge.md</code> for the strategy<br>" +
             "and <code>ontology/NEXT-STEPS.md</code> for the migration roadmap.</html>",
-            "UAF Neo4j Export Plugin",
+            "About — UAF Knowledge Graph",
             JOptionPane.INFORMATION_MESSAGE);
     }
 }

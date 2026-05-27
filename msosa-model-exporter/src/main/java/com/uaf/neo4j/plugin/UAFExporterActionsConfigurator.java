@@ -5,7 +5,12 @@ import com.nomagic.actions.ActionsManager;
 import com.nomagic.magicdraw.actions.MDActionsCategory;
 
 /**
- * Injects the "UAF 1.2 → Neo4j Graph Exporter" sub-menu into the MSOSA Tools menu.
+ * Injects the "UAF Knowledge Graph" sub-menu into the MSOSA Tools menu.
+ *
+ * <p>Post-refresh menu shape: a single Workbench entry that opens the unified
+ * window, plus the external SPARQL launcher and About. The legacy per-feature
+ * dialogs (Export wizard, Configure Connection, Graph Inspector) now live as
+ * embedded panels inside the workbench and are no longer reached via the menu.
  */
 public class UAFExporterActionsConfigurator implements AMConfigurator {
 
@@ -19,12 +24,10 @@ public class UAFExporterActionsConfigurator implements AMConfigurator {
         }
 
         MDActionsCategory uafMenu = new MDActionsCategory(
-            "UAF_NEO4J_MENU", "UAF 1.2 → Neo4j Graph Exporter");
+            "UAF_KG_MENU", "UAF Knowledge Graph");
         uafMenu.setNested(true);
 
-        uafMenu.addAction(new ExportAction());
-        uafMenu.addAction(new ConfigureAction());
-        uafMenu.addAction(new GraphInspectorAction());
+        uafMenu.addAction(new OpenWorkbenchAction());
         uafMenu.addAction(new OpenSparqlEndpointAction());
         uafMenu.addAction(new AboutAction());
 

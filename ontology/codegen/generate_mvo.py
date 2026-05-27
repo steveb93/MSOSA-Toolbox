@@ -134,7 +134,7 @@ def render_turtle(stereotypes: list[dict], rel_types: list[str]) -> str:
     lines.append(f"<{ONTOLOGY_IRI}> a owl:Ontology ;")
     lines.append('    rdfs:label "UAF + SysML + BPMN MVO" ;')
     lines.append('    rdfs:comment "Minimum Viable Ontology covering UAF 1.2 (all 8 domains), SysML 1.6 and BPMN 2.0 stereotypes, generated from UAFStereotypeRegistry." ;')
-    lines.append('    owl:versionInfo "0.2.0" ;')
+    lines.append('    owl:versionInfo "0.3.0" ;')
     lines.append(f'    dcterms:created "{today}"^^xsd:date .')
     lines.append("")
 
