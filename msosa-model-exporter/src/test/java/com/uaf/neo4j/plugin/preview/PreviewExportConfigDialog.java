@@ -3,7 +3,6 @@ package com.uaf.neo4j.plugin.preview;
 import com.uaf.neo4j.plugin.model.UAFElementDTO;
 import com.uaf.neo4j.plugin.ui.ExportConfigDialog;
 
-import java.awt.Frame;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -16,8 +15,8 @@ import java.util.List;
  */
 public class PreviewExportConfigDialog extends ExportConfigDialog {
 
-    public PreviewExportConfigDialog(Frame parent) {
-        super(parent, null); // null Project — sample data supplied by the overrides below
+    public PreviewExportConfigDialog() {
+        super(null); // null Project — sample data supplied by the overrides below
     }
 
     @Override

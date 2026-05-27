@@ -1,12 +1,12 @@
 package com.uaf.neo4j.plugin.preview;
 
 import com.uaf.neo4j.plugin.UAFNeo4jPlugin;
+import com.uaf.neo4j.plugin.ui.workbench.WorkbenchMode;
 
 import javax.imageio.ImageIO;
 import javax.swing.JComponent;
-import javax.swing.JDialog;
-import javax.swing.JTable;
-import javax.swing.JTabbedPane;
+import javax.swing.JFrame;
+import javax.swing.JList;
 import javax.swing.SwingUtilities;
 import java.awt.Component;
 import java.awt.Container;
@@ -18,186 +18,134 @@ import java.lang.reflect.Field;
 import java.util.Properties;
 
 /**
- * Standalone launcher for previewing the plugin's Swing dialogs off-MSOSA.
+ * Standalone launcher for previewing the workbench off-MSOSA.
  *
- * <p>Which dialog(s): {@code -Dpreview.dialog=export|graph|all} (default {@code all}).
+ * <p>Modes:
+ * <ul>
+ *   <li><b>Interactive</b> (needs a display) — opens the workbench window, samples
+ *       are wired through {@link PreviewUAFWorkbench}, and a {@link UiInspector}
+ *       overlay is installed so hovering shows the field/class/source behind
+ *       each widget.
+ *       <pre>mvn -Pui-preview test-compile exec:java</pre></li>
+ *   <li><b>Headless screenshot</b> — writes one PNG per rail item.
+ *       <pre>mvn -Pui-preview test-compile exec:java "-Dpreview.screenshot=target/ui-preview"</pre></li>
+ *   <li><b>Inspector field demo</b> — highlights one named widget and writes
+ *       a single PNG of the workbench.
+ *       <pre>mvn -Pui-preview test-compile exec:java "-Dpreview.inspect=exportBtn" "-Dpreview.screenshot=target/ui-preview"</pre></li>
+ * </ul>
  *
- * <p>Interactive (needs a display) — the window carries a {@link UiInspector}
- * overlay: hover a widget to see the field/class/source line behind it.
- * <pre>mvn -Pui-preview test-compile exec:java -Dpreview.dialog=graph</pre>
- *
- * <p>Headless screenshot render (e.g. CI / cloud, run under xvfb-run):
- * <pre>mvn -Pui-preview test-compile exec:java -Dpreview.screenshot=target/ui-preview</pre>
- *
- * <p>Headless demo of the inspector overlay highlighting one named field:
- * <pre>mvn -Pui-preview test-compile exec:java -Dpreview.dialog=export \
- *     -Dpreview.inspect=exportBtn -Dpreview.screenshot=target/ui-preview</pre>
+ * <p>Debug flags forwarded to {@link UiInspector}:
+ * {@code -Dpreview.inspect.verbose=true} (print every hover),
+ * {@code -Dpreview.inspect.dump=true} (print the full component tree at start).
  *
  * <p>The "Export", "Test Connection", "Refresh" and "Locate in MSOSA" buttons
- * need a live MSOSA project / Neo4j and are not exercised here — this harness is
- * for visual layout iteration only.
+ * need a live MSOSA project / Neo4j and are not exercised here — this harness
+ * is for visual layout iteration only.
  */
 public final class UiPreview {
 
     public static void main(String[] args) throws Exception {
         seedPluginSingleton();
 
-        String which = System.getProperty("preview.dialog", "all").toLowerCase();
-        boolean doExport = which.equals("all") || which.equals("export");
-        boolean doGraph  = which.equals("all") || which.equals("graph");
-
         String inspectField = System.getProperty("preview.inspect");
-        String shotDir = System.getProperty("preview.screenshot");
+        String shotDir      = System.getProperty("preview.screenshot");
+
         if (shotDir != null && !shotDir.isEmpty()) {
             File outDir = new File(shotDir);
             outDir.mkdirs();
             if (inspectField != null && !inspectField.isEmpty()) {
-                if (doExport) renderInspectDemo("export", inspectField, outDir);
-                if (doGraph)  renderInspectDemo("graph",  inspectField, outDir);
+                renderInspectDemo(inspectField, outDir);
             } else {
-                if (doExport) renderExportWizard(outDir);
-                if (doGraph)  renderGraphInspector(outDir);
+                renderWorkbench(outDir);
             }
             System.out.println("UI preview screenshots written to " + outDir.getAbsolutePath());
             System.exit(0);
         } else {
-            final boolean fExport = doExport, fGraph = doGraph;
             SwingUtilities.invokeLater(() -> {
-                if (fExport) {
-                    PreviewExportConfigDialog d = new PreviewExportConfigDialog(null);
-                    d.setModal(false);
-                    d.setDefaultCloseOperation(JDialog.EXIT_ON_CLOSE);
-                    d.setVisible(true);
-                    UiInspector.install(d);
-                }
-                if (fGraph) {
-                    PreviewGraphInspectorDialog g = new PreviewGraphInspectorDialog(null, defaultConfig());
-                    g.setDefaultCloseOperation(JDialog.EXIT_ON_CLOSE);
-                    g.setVisible(true);
-                    UiInspector.install(g);
-                }
+                PreviewUAFWorkbench wb = new PreviewUAFWorkbench();
+                wb.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+                wb.addWindowListener(new java.awt.event.WindowAdapter() {
+                    @Override public void windowClosed(java.awt.event.WindowEvent e) { System.exit(0); }
+                });
+                wb.setVisible(true);
+                UiInspector.install(wb);
             });
         }
     }
 
-    // ── Headless demo of the UI inspector overlay on a named field ──────────────
+    // ── Workbench — one PNG per rail item ───────────────────────────────────────
 
-    private static void renderInspectDemo(String which, String field, File outDir) throws Exception {
-        final JDialog[] holder = new JDialog[1];
-        SwingUtilities.invokeAndWait(() -> {
-            JDialog d = which.equals("graph")
-                ? new PreviewGraphInspectorDialog(null, defaultConfig())
-                : new PreviewExportConfigDialog(null);
-            d.pack();
-            holder[0] = d;
-        });
-        Thread.sleep(1200); // background data load
+    private static void renderWorkbench(File outDir) throws Exception {
+        PreviewUAFWorkbench wb = newRealisedWorkbench();
+        // Let StatusStrip's probes settle (they're SwingWorkers — they paint regardless of result).
+        Thread.sleep(800);
 
-        if (which.equals("graph")) {
+        WorkbenchMode[] modes = WorkbenchMode.values();
+        JList<?> rail = findRailList(wb.getContentPane());
+        for (int i = 0; i < modes.length; i++) {
+            final int idx = i;
             SwingUtilities.invokeAndWait(() -> {
-                JTable main = findMainTable(holder[0].getContentPane());
-                if (main != null && main.getRowCount() > 0) main.setRowSelectionInterval(0, 0);
+                if (rail != null) rail.setSelectedIndex(idx);
+                wb.validate();
+                wb.getContentPane().doLayout();
             });
-            Thread.sleep(1200); // neighbourhood load
+            Thread.sleep(150);
+            final WorkbenchMode mode = modes[i];
+            SwingUtilities.invokeAndWait(() -> {
+                try {
+                    writePng((JComponent) wb.getContentPane(),
+                        new File(outDir, "workbench-" + mode.name().toLowerCase() + ".png"));
+                } catch (Exception e) { throw new RuntimeException(e); }
+            });
         }
+    }
+
+    // ── Inspector field demo — highlight one named widget on the workbench ──────
+
+    private static void renderInspectDemo(String field, File outDir) throws Exception {
+        PreviewUAFWorkbench wb = newRealisedWorkbench();
+        Thread.sleep(1500); // background workers (status probes, element counts, table fill)
 
         SwingUtilities.invokeAndWait(() -> {
             try {
-                UiInspector insp = UiInspector.install(holder[0]);
-                JComponent root = holder[0].getRootPane();
+                UiInspector insp = UiInspector.install(wb);
+                JComponent root = wb.getRootPane();
                 root.validate();
                 root.doLayout();
                 if (!insp.highlightField(field)) {
-                    System.out.println("[ui-inspector] no field named '" + field + "' on the " + which + " dialog");
+                    System.out.println("[ui-inspector] no field or text matching '" + field + "' on the workbench");
                 }
-                holder[0].getGlassPane().setSize(root.getSize());
-                writePng(root, new File(outDir, "inspect-demo-" + which + ".png"));
+                wb.getGlassPane().setSize(root.getSize());
+                writePng(root, new File(outDir, "inspect-demo-workbench.png"));
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         });
     }
 
-    // ── Export wizard — one PNG per tab ─────────────────────────────────────────
+    // ── Helpers ─────────────────────────────────────────────────────────────────
 
-    private static void renderExportWizard(File outDir) throws Exception {
-        final String[] tabFile = {"connection", "options", "preview"};
-        final PreviewExportConfigDialog[] holder = new PreviewExportConfigDialog[1];
-
+    private static PreviewUAFWorkbench newRealisedWorkbench() throws Exception {
+        final PreviewUAFWorkbench[] holder = new PreviewUAFWorkbench[1];
         SwingUtilities.invokeAndWait(() -> {
-            PreviewExportConfigDialog d = new PreviewExportConfigDialog(null);
-            d.pack();
-            holder[0] = d;
+            PreviewUAFWorkbench wb = new PreviewUAFWorkbench();
+            wb.pack();
+            wb.setSize(1280, 800);
+            holder[0] = wb;
         });
-        // Let the background element-count SwingWorker finish and post to the EDT.
-        Thread.sleep(1200);
-
-        SwingUtilities.invokeAndWait(() -> {
-            try {
-                JComponent content = (JComponent) holder[0].getContentPane();
-                JTabbedPane tabs = findTabbedPane(content);
-                if (tabs == null) {
-                    writePng(content, new File(outDir, "export-wizard.png"));
-                    return;
-                }
-                for (int i = 0; i < tabs.getTabCount(); i++) {
-                    tabs.setSelectedIndex(i);
-                    content.validate();
-                    content.doLayout();
-                    String name = i < tabFile.length ? tabFile[i] : ("tab" + i);
-                    writePng(content, new File(outDir, "export-wizard-" + name + ".png"));
-                }
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        });
+        return holder[0];
     }
 
-    // ── Graph inspector — Properties tab (node selected) + Graph tab ────────────
-
-    private static void renderGraphInspector(File outDir) throws Exception {
-        final PreviewGraphInspectorDialog[] holder = new PreviewGraphInspectorDialog[1];
-
-        SwingUtilities.invokeAndWait(() -> {
-            PreviewGraphInspectorDialog g = new PreviewGraphInspectorDialog(null, defaultConfig());
-            g.pack();
-            holder[0] = g;
-        });
-        // Let the node-loading SwingWorker post rows to the table.
-        Thread.sleep(1200);
-
-        // Select the first row so the property inspector + neighbourhood populate.
-        SwingUtilities.invokeAndWait(() -> {
-            JTable main = findMainTable(holder[0].getContentPane());
-            if (main != null && main.getRowCount() > 0) {
-                main.setRowSelectionInterval(0, 0);
+    private static JList<?> findRailList(Component c) {
+        if (c instanceof JList) return (JList<?>) c;
+        if (c instanceof Container) {
+            for (Component child : ((Container) c).getComponents()) {
+                JList<?> found = findRailList(child);
+                if (found != null) return found;
             }
-        });
-        // Let the neighbourhood SwingWorker render into the GraphPanel.
-        Thread.sleep(1200);
-
-        SwingUtilities.invokeAndWait(() -> {
-            try {
-                JComponent content = (JComponent) holder[0].getContentPane();
-                JTabbedPane tabs = findTabbedPane(content);
-                if (tabs == null) {
-                    writePng(content, new File(outDir, "graph-inspector.png"));
-                    return;
-                }
-                tabs.setSelectedIndex(0);
-                content.validate(); content.doLayout();
-                writePng(content, new File(outDir, "graph-inspector-properties.png"));
-
-                tabs.setSelectedIndex(1);
-                content.validate(); content.doLayout();
-                writePng(content, new File(outDir, "graph-inspector-graph.png"));
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        });
+        }
+        return null;
     }
-
-    // ── Rendering helpers ───────────────────────────────────────────────────────
 
     private static void writePng(JComponent comp, File file) throws Exception {
         Dimension size = comp.getSize();
@@ -207,30 +155,6 @@ public final class UiPreview {
         comp.printAll(g);
         g.dispose();
         ImageIO.write(img, "png", file);
-    }
-
-    private static JTabbedPane findTabbedPane(Component c) {
-        if (c instanceof JTabbedPane) return (JTabbedPane) c;
-        if (c instanceof Container) {
-            for (Component child : ((Container) c).getComponents()) {
-                JTabbedPane found = findTabbedPane(child);
-                if (found != null) return found;
-            }
-        }
-        return null;
-    }
-
-    /** The inspector's node table is the first JTable with >= 5 columns
-     *  (the 2-column property table is skipped). */
-    private static JTable findMainTable(Component c) {
-        if (c instanceof JTable && ((JTable) c).getColumnCount() >= 5) return (JTable) c;
-        if (c instanceof Container) {
-            for (Component child : ((Container) c).getComponents()) {
-                JTable found = findMainTable(child);
-                if (found != null) return found;
-            }
-        }
-        return null;
     }
 
     // ── Make UAFNeo4jPlugin.getInstance().getConfig() work off-MSOSA ────────────

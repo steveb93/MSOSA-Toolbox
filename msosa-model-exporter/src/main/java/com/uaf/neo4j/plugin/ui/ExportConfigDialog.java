@@ -72,14 +72,19 @@ public class ExportConfigDialog extends JDialog {
 
     // ── Buttons ───────────────────────────────────────────────────────────────
     private final JButton saveConfigBtn  = new JButton("Save Config");
-    private final JButton exportBtn      = new JButton("Export to Neo4j…");
-    private final JButton cancelBtn      = new JButton("Cancel");
-    private final JButton browseGraphBtn = new JButton("Browse Graph…");
+    private final JButton exportBtn      = new JButton("Export");
 
     private final Project project;
+    private final JPanel body = new JPanel(new BorderLayout());
 
-    public ExportConfigDialog(Frame parent, Project project) {
-        super(parent, "UAF Neo4j Export", true);
+    /**
+     * Build the embedded export form. The dialog object exists only as a
+     * controller (action listeners + SwingWorkers); it is never shown.
+     * {@link #getEmbeddedBody()} returns the panel hosted by the workbench's
+     * Export rail.
+     */
+    public ExportConfigDialog(Project project) {
+        super((Frame) null, "UAF Knowledge Graph — Export", false);
         this.project = project;
 
         Properties cfg = UAFNeo4jPlugin.getInstance().getConfig();
@@ -171,27 +176,18 @@ public class ExportConfigDialog extends JDialog {
         progressBar.setVisible(false);
 
         saveConfigBtn.addActionListener(e -> saveConfig());
-        cancelBtn.addActionListener(e -> dispose());
         exportBtn.addActionListener(e -> runExport());
 
-        browseGraphBtn.setToolTipText("Open the Graph Inspector to explore nodes in Neo4j");
-        browseGraphBtn.addActionListener(e -> {
-            UAFNeo4jPlugin plugin = UAFNeo4jPlugin.getInstance();
-            if (plugin != null) plugin.showGraphInspector();
-        });
-
-        setLayout(new BorderLayout());
-        add(buildHeader(),     BorderLayout.NORTH);
-        add(buildMain(),       BorderLayout.CENTER);
-        add(buildSouthPanel(), BorderLayout.SOUTH);
-
-        pack();
-        setMinimumSize(new Dimension(960, 620));
-        setPreferredSize(new Dimension(1040, 700));
-        setResizable(true);
-        setLocationRelativeTo(parent);
+        body.add(buildHeader(),     BorderLayout.NORTH);
+        body.add(buildMain(),       BorderLayout.CENTER);
+        body.add(buildSouthPanel(), BorderLayout.SOUTH);
 
         loadElementCounts();
+    }
+
+    /** The export form panel, hosted by the workbench's Export rail. */
+    public JComponent getEmbeddedBody() {
+        return body;
     }
 
     // ── Model scanning ────────────────────────────────────────────────────────
@@ -257,13 +253,13 @@ public class ExportConfigDialog extends JDialog {
             new MatteBorder(0, 0, 1, 0, new Color(65, 65, 65)),
             new EmptyBorder(16, 20, 15, 20)));
 
-        JLabel title = new JLabel("UAF Neo4j Export");
+        JLabel title = new JLabel("Export");
         title.setForeground(HDR_TITLE);
         title.setFont(title.getFont().deriveFont(Font.BOLD, 15f));
         title.setOpaque(false);
 
         JLabel subtitle = new JLabel(
-            "Select model packages, configure the Neo4j connection, and choose export options.");
+            "Select model packages, configure the connection, and choose export options.");
         subtitle.setForeground(HDR_SUBTITLE);
         subtitle.setFont(subtitle.getFont().deriveFont(Font.PLAIN, 11f));
         subtitle.setOpaque(false);
@@ -534,15 +530,10 @@ public class ExportConfigDialog extends JDialog {
     private JPanel buildButtonBar() {
         JPanel bar = new JPanel(new BorderLayout());
 
-        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 2));
-        left.add(browseGraphBtn);
-
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 2));
         right.add(saveConfigBtn);
-        right.add(cancelBtn);
         right.add(exportBtn);
 
-        bar.add(left,  BorderLayout.WEST);
         bar.add(right, BorderLayout.EAST);
         return bar;
     }
@@ -837,8 +828,6 @@ public class ExportConfigDialog extends JDialog {
     private void setButtonsEnabled(boolean enabled) {
         saveConfigBtn.setEnabled(enabled);
         exportBtn.setEnabled(enabled);
-        cancelBtn.setEnabled(enabled);
-        browseGraphBtn.setEnabled(enabled);
     }
 
     // ── Form helpers ──────────────────────────────────────────────────────────
