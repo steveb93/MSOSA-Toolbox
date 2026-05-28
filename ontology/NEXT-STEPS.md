@@ -95,6 +95,7 @@ This document describes what comes next, in the order the staging in `Ontology-A
 - [ ] Author GDS-driven recommendation algorithms (per Jaffri §3.3): content-based recommendation of ResourceArtifacts that could fill detected capability gaps, using graph-position features.
 - [ ] Wire GDS outputs back into the RDF view (write algorithm results as `uafprop:pagerank` annotations on node URIs) so SPARQL queries can sort by relevance.
 - [ ] Build a decision-intelligence dashboard (Streamlit/Dash/Grafana) consuming both the SPARQL endpoint and GDS outputs. Targets the "Decision makers" persona in `Ontology-Approach-to-Knowledge.md` §8.
+- [ ] **Agent-memory demo (#119).** UAF KG as the long-term semantic memory of an architecture-aware agent. AS-IS vs TO-BE delta + impact closure over the Dassault UAF *Way of Working* sub-package convention (`qualifiedName` substring filter — no registry extension required). Lands five SPARQL queries (phase membership, set-difference, forward impact closure via `realisedBy*`/`tracedBy*`, phase-aware capability gap, Acquisition trace) plus persona landing pages for Enterprise Architects (primary), Solution Architects, Capability Owners, and Decision Makers (secondary). Correspondence rule between AS-IS and TO-BE counterparts: `name + stereotype` within domain, with `TRACES_TO` as the disambiguating override.
 
 **Gating criteria.** No infrastructure gates — Stage 5 is incremental and additive. Realistic trigger is when Stage 2 has been in active use for ≥1 quarter and stakeholder demand for "tell me what I should do, not just what exists" emerges.
 
@@ -136,7 +137,7 @@ These are independent of stage progression. Pick up whichever pays off soonest i
 ### Documentation
 
 - [ ] Recursive cross-link: each ontology artefact (`uaf-mvo.ttl`, mapping file, dump script) should `rdfs:isDefinedBy` an IRI that resolves to a documentation anchor. Today the codegen emits `rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo>` but that IRI doesn't resolve to anything. Fix it to point at a real `ontology/README.md` anchor or a published wiki page.
-- [ ] Persona-shaped landing pages, per `Ontology-Approach-to-Knowledge.md` §8 / Gartner persona framing: `docs/personas/decision-makers.md`, `docs/personas/enterprise-architects.md`, `docs/personas/data-architects.md`, with the queries each persona is likely to want copy-pasted at the top.
+- [ ] Persona-shaped landing pages, per `Ontology-Approach-to-Knowledge.md` §8 / Gartner persona framing — the full set is established by #119: `docs/personas/business-analysts.md`, `docs/personas/capability-owners.md`, `docs/personas/data-architects.md`, `docs/personas/decision-makers.md`, `docs/personas/enterprise-architects.md`, `docs/personas/implementation-teams.md`, `docs/personas/process-owners.md`, `docs/personas/solution-architects.md`. Each carries the queries that persona is most likely to copy-paste at the top. #119 populates `enterprise-architects.md` (primary) plus `solution-architects.md`, `capability-owners.md`, and `decision-makers.md` (secondary); the other four remain stubs until their own Stage 5 demos are scoped (BPMN-process-evolution for Process Owners, ERD/canonical-data evolution for Data Architects, resource-migration for Implementation Teams, requirements-traceability for Business Analysts).
 
 ### Visualisation
 
