@@ -101,7 +101,7 @@ msosa-model-exporter/
 
 **Option A — Plugin Manager:**
 1. In MSOSA: **Help → Resource/Plugin Manager → Install Plugin from File**
-2. Select `target/msosa-model-exporter-1.6.0-plugin.zip`
+2. Select `target/msosa-model-exporter-2.0.0-plugin.zip`
 3. Restart MSOSA when prompted
 
 **Option B — Manual:**
@@ -115,10 +115,10 @@ The zip is a Resource Manager bundle that mirrors the MSOSA install tree, so its
 └── plugins/com.uaf.neo4j.plugin/
     ├── plugin.xml
     ├── neo4j-connection.properties
-    └── msosa-model-exporter-1.6.0.jar
+    └── msosa-model-exporter-2.0.0.jar
 ```
 
-Unzip `target/msosa-model-exporter-1.6.0-plugin.zip` directly into `<MSOSA_HOME>`. Restart MSOSA. The plugin appears under **Tools → UAF Neo4j Export**.
+Unzip `target/msosa-model-exporter-2.0.0-plugin.zip` directly into `<MSOSA_HOME>`. Restart MSOSA. The plugin appears under **Tools → UAF Neo4j Export**.
 
 ---
 
