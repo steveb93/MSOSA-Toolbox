@@ -33,6 +33,10 @@ ontology/uaf-mvo-combined.ttl
 # Maven build output
 msosa-model-exporter/target/
 
+# Maven Versions Plugin backup (suppressed by `bump-version.ps1` via -DgenerateBackupPoms=false,
+# but a manual `mvn versions:set-property` without that flag will produce one).
+**/pom.xml.versionsBackup
+
 # Atomic-write tempfiles from editor tools
 **/*.java.tmp.*
 **/*.py.tmp.*
