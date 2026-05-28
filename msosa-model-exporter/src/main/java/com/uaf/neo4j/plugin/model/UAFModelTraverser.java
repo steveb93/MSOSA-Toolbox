@@ -107,6 +107,7 @@ public class UAFModelTraverser {
         // applies them to a UML InformationFlow / Association / Connector the element
         // registry would silently drop the edge — they must appear here too.
         RELATIONSHIP_STEREOTYPE_MAP.put("OperationalExchange", UAFRelationshipDTO.REL_INFORMATION_FLOW);
+        RELATIONSHIP_STEREOTYPE_MAP.put("ResourceExchange",    UAFRelationshipDTO.REL_INFORMATION_FLOW);
         RELATIONSHIP_STEREOTYPE_MAP.put("ResourceInteraction", UAFRelationshipDTO.REL_CONNECTED_TO);
         RELATIONSHIP_STEREOTYPE_MAP.put("NeedLine",            UAFRelationshipDTO.REL_INFORMATION_FLOW);
         // Tier-1 #75 RC #6 — found applied to UML relationship elements in real-world profiles that extend UAF 1.2.

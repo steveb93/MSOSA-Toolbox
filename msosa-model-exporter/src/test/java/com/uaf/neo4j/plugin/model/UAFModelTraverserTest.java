@@ -72,6 +72,15 @@ class UAFModelTraverserTest {
     }
 
     @Test
+    void relationshipStereotypeMap_includesResourceExchange() {
+        assertEquals(UAFRelationshipDTO.REL_INFORMATION_FLOW,
+                     UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP.get("ResourceExchange"),
+                     "ResourceExchange on a UML InformationFlow/Connector between resource ports "
+                     + "must produce an INFORMATION_FLOW edge, not become an orphan node with only "
+                     + "DEFINES/INSTANCE_OF relationships");
+    }
+
+    @Test
     void relationshipStereotypeMap_includesNeedLine() {
         assertEquals(UAFRelationshipDTO.REL_INFORMATION_FLOW,
                      UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP.get("NeedLine"));
