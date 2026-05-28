@@ -1,0 +1,42 @@
+# NeoDash overlay — self-hosted dashboard front-end alongside Neo4j.
+# Apache-2.0, Community-edition-compatible, no licence file required.
+# Fills the slot Bloom would have occupied (see memory:
+# feedback_no_bloom_server_plugin). Connects to Neo4j over Bolt from
+# the user's browser, so this container just serves a static SPA on
+# port 5005; no inter-container network is required and no Neo4j
+# config changes are needed.
+#
+# Bring it up alongside the main stack (and optionally Fuseki):
+#
+#     docker compose -f docker-compose.yml \
+#                    -f docker-compose.neodash.yml up -d
+#
+# Open http://localhost:5005/ and fill the connection form:
+#   Protocol:  neo4j
+#   Hostname:  localhost
+#   Port:      7687
+#   Username:  neo4j
+#   Password:  ${NEO4J_PASSWORD} from .env
+#   Database:  neo4j
+#
+# Dashboards can be saved back to Neo4j (as `:_Neodash_Dashboard`
+# nodes — kept in the user DB, survive container restarts) or
+# downloaded as JSON for git tracking.
+#
+# This is a prototype overlay. If kept, pin `:latest` to a specific
+# tag and decide whether the starter UAF dashboard ships in this
+# repo or stays user-authored.
+
+services:
+  neodash:
+    image: neo4jlabs/neodash:latest
+    container_name: neodash
+    restart: unless-stopped
+    ports:
+      - "5005:5005"
+    environment:
+      # Editor mode — the user picks DB and authenticates per session.
+      # Switch to standalone=true with standaloneHost/Port/Database/
+      # DashboardName populated when you want a kiosk-style demo.
+      - ssoEnabled=false
+      - standalone=false
