@@ -264,4 +264,52 @@ class UAFStereotypeRegistryTest {
         Set<String> names = UAFStereotypeRegistry.allStereotypeNames();
         assertThrows(UnsupportedOperationException.class, () -> names.add("NewStereo"));
     }
+
+    // ── Fallback (bare-noun catch-all) flagging ───────────────────────────────
+
+    @Test
+    void isFallback_isTrueForBareNounCatchAlls() {
+        // These six entries are the ones whose general chain is routinely walked
+        // through by more specific custom stereotypes. Marking them fallback
+        // makes the traverser prefer the more specific ancestor.
+        for (String name : new String[]{"Resource", "Service", "System",
+                                        "Software", "SystemBlock", "Technology"}) {
+            Optional<UAFStereotypeRegistry.StereotypeInfo> info = UAFStereotypeRegistry.get(name);
+            assertTrue(info.isPresent(), name + " must remain registered");
+            assertTrue(info.get().isFallback,
+                name + " must be marked isFallback=true so the traverser only "
+                + "uses it when no non-fallback ancestor exists");
+        }
+    }
+
+    @Test
+    void isFallback_isFalseForSpecificUAFStereotypes() {
+        // Sample across domains — these are concrete, non-collision-prone names
+        // and must remain non-fallback so they win against bare-noun ancestors.
+        for (String name : new String[]{
+                "Capability", "OperationalPerformer", "OperationalActivity",
+                "OperationalRole", "ResourcePerformer", "ResourceRole",
+                "ResourceArchitecture", "HardwareElement", "SoftwareElement",
+                "ServicePerformer", "ServiceFunction",
+                "Organization", "Post", "SecurityEnclave"}) {
+            Optional<UAFStereotypeRegistry.StereotypeInfo> info = UAFStereotypeRegistry.get(name);
+            assertTrue(info.isPresent(), name + " must remain registered");
+            assertFalse(info.get().isFallback,
+                name + " must NOT be a fallback entry — it is a specific UAF "
+                + "stereotype and should win over bare-noun ancestors");
+        }
+    }
+
+    @Test
+    void isFallback_isFalseForSysmlAndBpmnEntries() {
+        // Fallback is a UAF-only concept (bare-noun ambiguity within UAF). SysML
+        // and BPMN entries must always be treated as concrete.
+        for (String name : new String[]{"Block", "Requirement", "Task",
+                                        "ExclusiveGateway", "StartEvent"}) {
+            Optional<UAFStereotypeRegistry.StereotypeInfo> info = UAFStereotypeRegistry.get(name);
+            assertTrue(info.isPresent(), name + " must remain registered");
+            assertFalse(info.get().isFallback,
+                name + " is " + info.get().language + " — must never be fallback");
+        }
+    }
 }

@@ -6,9 +6,16 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -229,5 +236,183 @@ class UAFModelTraverserTest {
         }
         assertEquals(boolean.class, field.getType(), "Field must be a primitive boolean");
         assertTrue(Modifier.isFinal(field.getModifiers()), "Field must be final");
+    }
+
+    // ── Fallback-aware ancestor resolution (a bare-noun-typed performer class of bug) ──────
+    //
+    // The a bare-noun-typed performer element in the real-world UAF model was being assigned :Resource
+    // (RESOURCE domain) even though its qualifiedName ended in
+    // `Operational Taxonomy::Internal Performer::a bare-noun-typed performer`. Root cause:
+    // BFS in findRegisteredAncestor returned the FIRST registered name it hit,
+    // so a custom op-side stereotype whose general chain passed through `Resource`
+    // (which IS in the registry) returned `Resource` before reaching the
+    // operational ancestor further up. The fix marks bare-noun catch-alls as
+    // fallback so the BFS prefers a non-fallback ancestor at any distance.
+    //
+    // resolveBestRegistered is the pure-function core of the new algorithm and
+    // can be exercised here with synthetic stereotype hierarchies; full traversal
+    // remains gated on the manual MSOSA regression harness.
+
+    /** Build a minimal registry of {name → StereotypeInfo} for the algorithm tests. */
+    private static Function<String, Optional<UAFStereotypeRegistry.StereotypeInfo>> registry(
+            Map<String, UAFStereotypeRegistry.StereotypeInfo> map) {
+        return name -> Optional.ofNullable(map.get(name));
+    }
+
+    /** Build a name → list-of-parents adapter from a map. Missing keys return empty. */
+    private static Function<String, List<String>> parents(Map<String, List<String>> graph) {
+        return name -> graph.getOrDefault(name, Collections.emptyList());
+    }
+
+    private static UAFStereotypeRegistry.StereotypeInfo concrete(String label,
+                                                                  UAFStereotypeRegistry.Domain d) {
+        return new UAFStereotypeRegistry.StereotypeInfo(label, d, "UAF", false);
+    }
+
+    private static UAFStereotypeRegistry.StereotypeInfo fallback(String label,
+                                                                  UAFStereotypeRegistry.Domain d) {
+        return new UAFStereotypeRegistry.StereotypeInfo(label, d, "UAF", true);
+    }
+
+    @Test
+    void resolveBestRegistered_directNonFallback_returnsImmediately() {
+        // Start name is itself a registered non-fallback entry — return it at distance 0.
+        Map<String, UAFStereotypeRegistry.StereotypeInfo> reg = new LinkedHashMap<>();
+        reg.put("OperationalPerformer", concrete("OperationalPerformer",
+                                                 UAFStereotypeRegistry.Domain.OPERATIONAL));
+        UAFModelTraverser.RegisteredHit hit = UAFModelTraverser.resolveBestRegistered(
+            "OperationalPerformer",
+            parents(Collections.emptyMap()),
+            registry(reg));
+        assertNotNull(hit);
+        assertEquals("OperationalPerformer", hit.stereotypeName);
+        assertEquals(0, hit.distance);
+        assertEquals(UAFStereotypeRegistry.Domain.OPERATIONAL, hit.info.domain);
+    }
+
+    @Test
+    void resolveBestRegistered_nonFallbackAtDistanceBeatsFallbackAtZero() {
+        // The a bare-noun-typed performer case in miniature: starting stereotype "MyInternalPerformer"
+        // is NOT registered. Its parents reach `Resource` (fallback, distance 1)
+        // and `OperationalPerformer` (non-fallback, distance 2). Expected result:
+        // OperationalPerformer wins despite being further away, because fallbacks
+        // never compete with non-fallbacks.
+        Map<String, UAFStereotypeRegistry.StereotypeInfo> reg = new LinkedHashMap<>();
+        reg.put("Resource",             fallback("Resource",
+                                                  UAFStereotypeRegistry.Domain.RESOURCE));
+        reg.put("OperationalPerformer", concrete("OperationalPerformer",
+                                                  UAFStereotypeRegistry.Domain.OPERATIONAL));
+
+        Map<String, List<String>> hierarchy = new LinkedHashMap<>();
+        hierarchy.put("MyInternalPerformer", Arrays.asList("Resource", "Performer"));
+        hierarchy.put("Performer",           Arrays.asList("OperationalPerformer"));
+
+        UAFModelTraverser.RegisteredHit hit = UAFModelTraverser.resolveBestRegistered(
+            "MyInternalPerformer", parents(hierarchy), registry(reg));
+        assertNotNull(hit);
+        assertEquals("OperationalPerformer", hit.stereotypeName,
+            "Non-fallback ancestor must win even when a fallback ancestor is closer");
+        assertEquals(UAFStereotypeRegistry.Domain.OPERATIONAL, hit.info.domain);
+    }
+
+    @Test
+    void resolveBestRegistered_fallbackUsedWhenNoNonFallbackExists() {
+        // No non-fallback ancestor anywhere in the chain. The fallback IS the
+        // correct answer in this case — a model that legitimately applies a bare
+        // `Resource` stereotype to an element with no more specific stereotype
+        // should still export as :Resource / RESOURCE domain.
+        Map<String, UAFStereotypeRegistry.StereotypeInfo> reg = new LinkedHashMap<>();
+        reg.put("Resource", fallback("Resource",
+                                      UAFStereotypeRegistry.Domain.RESOURCE));
+
+        Map<String, List<String>> hierarchy = new LinkedHashMap<>();
+        hierarchy.put("PlainResourceSubtype", Collections.singletonList("Resource"));
+
+        UAFModelTraverser.RegisteredHit hit = UAFModelTraverser.resolveBestRegistered(
+            "PlainResourceSubtype", parents(hierarchy), registry(reg));
+        assertNotNull(hit);
+        assertEquals("Resource", hit.stereotypeName);
+        assertTrue(hit.info.isFallback);
+        assertEquals(UAFStereotypeRegistry.Domain.RESOURCE, hit.info.domain);
+    }
+
+    @Test
+    void resolveBestRegistered_closestNonFallbackWinsAmongMultiple() {
+        // Two non-fallback ancestors at different distances — the closer one wins.
+        Map<String, UAFStereotypeRegistry.StereotypeInfo> reg = new LinkedHashMap<>();
+        reg.put("OperationalRole",      concrete("OperationalRole",
+                                                  UAFStereotypeRegistry.Domain.OPERATIONAL));
+        reg.put("OperationalPerformer", concrete("OperationalPerformer",
+                                                  UAFStereotypeRegistry.Domain.OPERATIONAL));
+
+        Map<String, List<String>> hierarchy = new LinkedHashMap<>();
+        hierarchy.put("CustomOpRole",  Collections.singletonList("OperationalRole"));
+        hierarchy.put("OperationalRole", Collections.singletonList("OperationalPerformer"));
+
+        UAFModelTraverser.RegisteredHit hit = UAFModelTraverser.resolveBestRegistered(
+            "CustomOpRole", parents(hierarchy), registry(reg));
+        assertNotNull(hit);
+        assertEquals("OperationalRole", hit.stereotypeName,
+            "The closer non-fallback ancestor must win over the further one");
+        assertEquals(1, hit.distance);
+    }
+
+    @Test
+    void resolveBestRegistered_unknownChainReturnsNull() {
+        // Starting stereotype is unknown and so are all its ancestors.
+        Map<String, UAFStereotypeRegistry.StereotypeInfo> reg = new LinkedHashMap<>();
+        reg.put("OperationalPerformer", concrete("OperationalPerformer",
+                                                  UAFStereotypeRegistry.Domain.OPERATIONAL));
+
+        Map<String, List<String>> hierarchy = new LinkedHashMap<>();
+        hierarchy.put("Foo", Collections.singletonList("Bar"));
+        hierarchy.put("Bar", Collections.singletonList("Baz"));
+
+        assertNull(UAFModelTraverser.resolveBestRegistered("Foo",
+            parents(hierarchy), registry(reg)));
+    }
+
+    @Test
+    void resolveBestRegistered_handlesCyclesWithoutInfiniteLoop() {
+        // Cycle in the general chain — must terminate via seen-set, not stack overflow.
+        Map<String, UAFStereotypeRegistry.StereotypeInfo> reg = new LinkedHashMap<>();
+        reg.put("CycleAnchor", concrete("CycleAnchor",
+                                         UAFStereotypeRegistry.Domain.SHARED));
+
+        Map<String, List<String>> hierarchy = new LinkedHashMap<>();
+        hierarchy.put("A", Arrays.asList("B", "CycleAnchor"));
+        hierarchy.put("B", Collections.singletonList("A"));   // cycle
+
+        UAFModelTraverser.RegisteredHit hit = UAFModelTraverser.resolveBestRegistered(
+            "A", parents(hierarchy), registry(reg));
+        assertNotNull(hit);
+        assertEquals("CycleAnchor", hit.stereotypeName);
+    }
+
+    @Test
+    void resolveBestRegistered_nullStartReturnsNull() {
+        assertNull(UAFModelTraverser.resolveBestRegistered(null,
+            parents(Collections.emptyMap()),
+            registry(Collections.emptyMap())));
+    }
+
+    @Test
+    void resolveBestRegistered_directFallback_yieldsToFurtherNonFallback() {
+        // The start name IS a registered fallback (distance 0) — but a non-fallback
+        // ancestor exists further up. Non-fallback wins regardless of distance.
+        Map<String, UAFStereotypeRegistry.StereotypeInfo> reg = new LinkedHashMap<>();
+        reg.put("Resource",             fallback("Resource",
+                                                  UAFStereotypeRegistry.Domain.RESOURCE));
+        reg.put("OperationalPerformer", concrete("OperationalPerformer",
+                                                  UAFStereotypeRegistry.Domain.OPERATIONAL));
+
+        Map<String, List<String>> hierarchy = new LinkedHashMap<>();
+        hierarchy.put("Resource", Collections.singletonList("OperationalPerformer"));
+
+        UAFModelTraverser.RegisteredHit hit = UAFModelTraverser.resolveBestRegistered(
+            "Resource", parents(hierarchy), registry(reg));
+        assertNotNull(hit);
+        assertEquals("OperationalPerformer", hit.stereotypeName,
+            "Fallback at distance 0 must yield to non-fallback further up the chain");
     }
 }
