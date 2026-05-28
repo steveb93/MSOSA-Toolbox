@@ -23,11 +23,20 @@ public class UAFStereotypeRegistry {
         public final String neo4jLabel;
         public final Domain domain;   // null for non-UAF stereotypes
         public final String language;
+        /**
+         * Bare-noun catch-all stereotypes (e.g. {@code Resource}, {@code System},
+         * {@code Service}) that are legal UAF stereotypes but routinely appear as
+         * ancestors of more specific custom stereotypes. When {@code true} the
+         * traverser only uses this entry if no non-fallback ancestor exists for
+         * the element. See UAFModelTraverser.selectStereotype.
+         */
+        public final boolean isFallback;
 
-        StereotypeInfo(String neo4jLabel, Domain domain, String language) {
+        StereotypeInfo(String neo4jLabel, Domain domain, String language, boolean isFallback) {
             this.neo4jLabel = neo4jLabel;
             this.domain     = domain;
             this.language   = language;
+            this.isFallback = isFallback;
         }
     }
 
@@ -112,16 +121,27 @@ public class UAFStereotypeRegistry {
         reg("ResourceSystem",           "ResourceSystem",          Domain.RESOURCE);
         reg("HardwareElement",          "HardwareElement",         Domain.RESOURCE);
         reg("SoftwareElement",          "SoftwareElement",         Domain.RESOURCE);
-        reg("Software",                 "Software",                Domain.RESOURCE);
+        // Bare-noun catch-alls — see StereotypeInfo.isFallback. Real-world profiles
+        // profiles apply Software/System/SystemBlock/Technology as base stereotypes
+        // to elements that carry a more specific operational/personnel stereotype
+        // as well; the traverser must prefer the specific one. Without the fallback
+        // flag a custom OperationalRole-like stereotype whose general chain passes
+        // through Software/System/Resource was being assigned to RESOURCE.
+        regFallback("Software",                 "Software",                Domain.RESOURCE);
         reg("NaturalResource",          "NaturalResource",         Domain.RESOURCE);
-        reg("SystemBlock",              "SystemBlock",             Domain.RESOURCE);
-        reg("System",                   "System",                  Domain.RESOURCE);
+        regFallback("SystemBlock",              "SystemBlock",             Domain.RESOURCE);
+        regFallback("System",                   "System",                  Domain.RESOURCE);
         reg("ActualSystem",             "ActualSystem",            Domain.RESOURCE);
-        reg("Technology",               "Technology",              Domain.RESOURCE);
+        regFallback("Technology",               "Technology",              Domain.RESOURCE);
         reg("LogicalArchitecture",      "LogicalArchitecture",     Domain.RESOURCE);
         reg("PhysicalArchitecture",     "PhysicalArchitecture",    Domain.RESOURCE);
-        // Tier-1 #75 RC #6 reconciliation — added from real-world profile diff.
-        reg("Resource",                 "Resource",                Domain.RESOURCE);
+        // Tier-1 #75 RC #6 reconciliation — added from real-world profile diff. Bare `Resource`
+        // is the most aggressive collision source: in the real-world UAF profile it was
+        // observed as the registered ancestor of operational-domain custom
+        // stereotypes (e.g. `a bare-noun-typed performer` qualifiedName ends in
+        // `Operational Taxonomy::Internal Performer` but BFS returned `Resource`).
+        // Fallback so a more specific ancestor wins.
+        regFallback("Resource",                 "Resource",                Domain.RESOURCE);
         reg("ResourceAsset",            "ResourceAsset",           Domain.RESOURCE);
         reg("ResourceAction",           "ResourceAction",          Domain.RESOURCE);
         reg("ResourceExchange",         "ResourceExchange",        Domain.RESOURCE);
@@ -147,7 +167,11 @@ public class UAFStereotypeRegistry {
         reg("ServicePoint",             "ServicePoint",            Domain.SERVICE);
         reg("ServiceConnector",         "ServiceConnector",        Domain.SERVICE);
         reg("ServiceExchange",          "ServiceExchange",         Domain.SERVICE);
-        reg("Service",                  "Service",                 Domain.SERVICE);
+        // Bare `Service` is fallback for the same reason as `Resource` — concrete
+        // service flavours (ServicePerformer, ServiceFunction, ServiceArchitecture
+        // etc.) must win when present on an element whose general chain also reaches
+        // the bare `Service` stereotype.
+        regFallback("Service",                  "Service",                 Domain.SERVICE);
         reg("ServiceArchitecture",      "ServiceArchitecture",     Domain.SERVICE);
         // Tier-1 #75 RC #6 reconciliation — added from real-world profile diff.
         reg("ServiceRole",              "ServiceRole",             Domain.SERVICE);
@@ -266,11 +290,20 @@ public class UAFStereotypeRegistry {
     }
 
     private static void reg(String stereotype, String label, Domain domain) {
-        REGISTRY.put(stereotype, new StereotypeInfo(label, domain, "UAF"));
+        REGISTRY.put(stereotype, new StereotypeInfo(label, domain, "UAF", false));
     }
 
     private static void reg(String stereotype, String label, String language) {
-        REGISTRY.put(stereotype, new StereotypeInfo(label, null, language));
+        REGISTRY.put(stereotype, new StereotypeInfo(label, null, language, false));
+    }
+
+    /**
+     * Register a bare-noun catch-all stereotype that the traverser must only use
+     * when no non-fallback ancestor of the element is registered. See
+     * {@link StereotypeInfo#isFallback}.
+     */
+    private static void regFallback(String stereotype, String label, Domain domain) {
+        REGISTRY.put(stereotype, new StereotypeInfo(label, domain, "UAF", true));
     }
 
     public static Optional<StereotypeInfo> get(String stereotypeName) {
