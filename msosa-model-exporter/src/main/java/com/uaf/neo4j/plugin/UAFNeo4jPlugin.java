@@ -4,7 +4,7 @@ import com.nomagic.magicdraw.actions.ActionsConfiguratorsManager;
 import com.nomagic.magicdraw.core.Application;
 import com.nomagic.magicdraw.core.Project;
 import com.nomagic.magicdraw.plugins.Plugin;
-import com.uaf.neo4j.plugin.ui.GraphInspectorDialog;
+import com.uaf.neo4j.plugin.ui.workbench.UAFWorkbench;
 
 import javax.swing.SwingUtilities;
 import java.io.File;
@@ -14,7 +14,7 @@ import java.util.Properties;
 import java.util.logging.Logger;
 
 /**
- * Entry point for the UAF Neo4j Export Plugin.
+ * Entry point for the UAF Knowledge Graph plugin.
  * Registered in plugin.xml; loaded by MSOSA at startup.
  */
 public class UAFNeo4jPlugin extends Plugin {
@@ -23,7 +23,7 @@ public class UAFNeo4jPlugin extends Plugin {
     private static UAFNeo4jPlugin instance;
 
     private Properties config;
-    private GraphInspectorDialog graphInspectorDialog;
+    private UAFWorkbench workbench;
 
     public static UAFNeo4jPlugin getInstance() {
         return instance;
@@ -35,7 +35,7 @@ public class UAFNeo4jPlugin extends Plugin {
         loadConfig();
         ActionsConfiguratorsManager.getInstance()
             .addMainMenuConfigurator(new UAFExporterActionsConfigurator());
-        LOG.info("UAF Neo4j Export Plugin initialised.");
+        LOG.info("UAF Knowledge Graph plugin initialised.");
     }
 
     @Override
@@ -82,7 +82,7 @@ public class UAFNeo4jPlugin extends Plugin {
                 config.load(fis);
             } catch (Exception e) {
                 Application.getInstance().getGUILog()
-                    .showError("UAF Neo4j Plugin: Failed to load config — " + e.getMessage());
+                    .showError("UAF Knowledge Graph: Failed to load config — " + e.getMessage());
             }
         }
     }
@@ -93,7 +93,7 @@ public class UAFNeo4jPlugin extends Plugin {
             updated.store(fos, "UAF Neo4j Plugin Configuration");
         } catch (Exception e) {
             Application.getInstance().getGUILog()
-                .showError("UAF Neo4j Plugin: Failed to save config — " + e.getMessage());
+                .showError("UAF Knowledge Graph: Failed to save config — " + e.getMessage());
         }
     }
 
@@ -102,34 +102,18 @@ public class UAFNeo4jPlugin extends Plugin {
     }
 
     /**
-     * Shows the Graph Inspector, reusing an existing instance if it is still open.
-     * Must be called on the EDT.
+     * Shows the single-window Workbench, reusing an existing instance if it
+     * is still open. Must be called on the EDT.
      */
-    public void showGraphInspector() {
+    public void showWorkbench() {
         SwingUtilities.invokeLater(() -> {
-            if (graphInspectorDialog == null || !graphInspectorDialog.isDisplayable()) {
+            if (workbench == null || !workbench.isDisplayable()) {
                 Project project = Application.getInstance().getProject();
-                graphInspectorDialog = new GraphInspectorDialog(null, config, project);
+                workbench = new UAFWorkbench(project);
             }
-            graphInspectorDialog.setVisible(true);
-            graphInspectorDialog.toFront();
-            graphInspectorDialog.requestFocus();
-        });
-    }
-
-    /**
-     * Opens the Export Configuration dialog. Safe to call from a non-modal context
-     * (e.g. the Graph Inspector). The dialog is modal and will block its caller.
-     */
-    public void showExportDialog() {
-        SwingUtilities.invokeLater(() -> {
-            Project project = Application.getInstance().getProject();
-            if (project == null) {
-                Application.getInstance().getGUILog()
-                    .showError("No project is open. Please open a UAF project first.");
-                return;
-            }
-            new com.uaf.neo4j.plugin.ui.ExportConfigDialog(null, project).setVisible(true);
+            workbench.setVisible(true);
+            workbench.toFront();
+            workbench.requestFocus();
         });
     }
 

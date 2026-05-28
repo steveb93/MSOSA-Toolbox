@@ -1,4 +1,4 @@
-﻿# UAF 1.2 → Neo4j Knowledge Graph Exporter
+# UAF 1.2 → Neo4j Knowledge Graph Exporter
 ## Catia Magic MSOSA 2022x Hotfix 2 Plugin
 
 ---
