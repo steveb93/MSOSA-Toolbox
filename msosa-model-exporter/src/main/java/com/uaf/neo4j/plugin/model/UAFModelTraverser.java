@@ -364,6 +364,20 @@ public class UAFModelTraverser {
         }
         if (candidates.isEmpty()) return null;
 
+        // Prefer non-fallback candidates over fallback ones. Fallback registry
+        // entries (Resource, Service, System, Software, SystemBlock, Technology)
+        // exist to cover models that legitimately apply the bare-noun stereotype
+        // directly, but they routinely appear as ancestors of more specific
+        // custom stereotypes too. When any applied stereotype resolves to a
+        // non-fallback registry entry, drop the fallbacks from consideration —
+        // otherwise the bare noun would compete with (and frequently win) the
+        // more specific semantics encoded on the same element.
+        List<StereotypeMatch> primary = new ArrayList<>();
+        for (StereotypeMatch c : candidates) {
+            if (!c.info.isFallback) primary.add(c);
+        }
+        if (!primary.isEmpty()) candidates = primary;
+
         // Best language rank wins
         int bestRank = Integer.MAX_VALUE;
         for (StereotypeMatch c : candidates) {
@@ -393,30 +407,103 @@ public class UAFModelTraverser {
     }
 
     /**
-     * Walk {@code s} and its general chain (BFS); return the first match in the
-     * UAF stereotype registry, or {@code null} if none exists. Direct match wins
-     * over ancestor match because BFS visits {@code s} first.
+     * BFS over {@code s} and its general chain, returning the best registered
+     * ancestor by distance, with non-fallback registry entries preferred over
+     * fallback ones at any distance. Direct match (distance 0) wins among
+     * non-fallbacks; the closest non-fallback wins overall; fallbacks are used
+     * only when no non-fallback ancestor exists.
+     *
+     * Production wrapper around {@link #resolveBestRegistered} — the heavy
+     * lifting is in that pure-function helper so the tests can drive it with a
+     * synthetic stereotype hierarchy and no MSOSA dependency.
      */
     private static StereotypeMatch findRegisteredAncestor(Stereotype s) {
-        Deque<Stereotype> queue = new ArrayDeque<>();
+        if (s == null || s.getName() == null) return null;
+
+        // Lazy by-name cache populated during BFS so the matched stereotype-name
+        // can be mapped back to the actual Stereotype object for the result.
+        Map<String, Stereotype> byName = new HashMap<>();
+        byName.put(s.getName(), s);
+
+        RegisteredHit hit = resolveBestRegistered(
+            s.getName(),
+            name -> {
+                Stereotype st = byName.get(name);
+                if (st == null) return Collections.emptyList();
+                List<String> parents = new ArrayList<>();
+                for (Classifier general : st.getGeneral()) {
+                    if (general instanceof Stereotype) {
+                        Stereotype gs = (Stereotype) general;
+                        String gn = gs.getName();
+                        if (gn != null) {
+                            byName.putIfAbsent(gn, gs);
+                            parents.add(gn);
+                        }
+                    }
+                }
+                return parents;
+            },
+            UAFStereotypeRegistry::get
+        );
+        if (hit == null) return null;
+        Stereotype matched = byName.get(hit.stereotypeName);
+        return new StereotypeMatch(matched != null ? matched : s, hit.info);
+    }
+
+    /**
+     * Pure-function BFS that picks the best registered ancestor without
+     * depending on MSOSA types — exposed package-private so unit tests can
+     * drive it with a synthetic parent provider.
+     *
+     * Algorithm:
+     * <ol>
+     *   <li>BFS from {@code startName} via {@code parentsOf}; track distance.</li>
+     *   <li>Every time a name resolves through {@code registry}, record it as
+     *       either a non-fallback or fallback hit with its distance.</li>
+     *   <li>Cycle / multi-parent guard via {@code seen}.</li>
+     *   <li>Return the closest non-fallback hit; if none, the closest fallback.</li>
+     * </ol>
+     */
+    static RegisteredHit resolveBestRegistered(
+            String startName,
+            java.util.function.Function<String, List<String>> parentsOf,
+            java.util.function.Function<String, Optional<UAFStereotypeRegistry.StereotypeInfo>> registry) {
+        if (startName == null) return null;
+
+        Deque<String>  nameQ = new ArrayDeque<>();
+        Deque<Integer> distQ = new ArrayDeque<>();
         Set<String> seen = new HashSet<>();
-        queue.add(s);
-        while (!queue.isEmpty()) {
-            Stereotype cur = queue.poll();
-            String curName = cur.getName();
-            if (curName == null || !seen.add(curName)) continue;
-            Optional<UAFStereotypeRegistry.StereotypeInfo> info =
-                UAFStereotypeRegistry.get(curName);
+        RegisteredHit bestNonFallback = null;
+        RegisteredHit bestFallback    = null;
+
+        nameQ.add(startName);
+        distQ.add(0);
+
+        while (!nameQ.isEmpty()) {
+            String cur  = nameQ.poll();
+            int    dist = distQ.poll();
+            if (cur == null || !seen.add(cur)) continue;
+
+            Optional<UAFStereotypeRegistry.StereotypeInfo> info = registry.apply(cur);
             if (info.isPresent()) {
-                return new StereotypeMatch(cur, info.get());
+                RegisteredHit hit = new RegisteredHit(cur, info.get(), dist);
+                if (info.get().isFallback) {
+                    if (bestFallback == null || dist < bestFallback.distance) bestFallback = hit;
+                } else {
+                    if (bestNonFallback == null || dist < bestNonFallback.distance) bestNonFallback = hit;
+                }
             }
-            for (Classifier general : cur.getGeneral()) {
-                if (general instanceof Stereotype) {
-                    queue.add((Stereotype) general);
+            List<String> parents = parentsOf.apply(cur);
+            if (parents != null) {
+                for (String p : parents) {
+                    if (p != null) {
+                        nameQ.add(p);
+                        distQ.add(dist + 1);
+                    }
                 }
             }
         }
-        return null;
+        return bestNonFallback != null ? bestNonFallback : bestFallback;
     }
 
     /** True if {@code maybeAncestor} appears in {@code s}'s general chain. */
@@ -693,6 +780,22 @@ public class UAFModelTraverser {
         StereotypeMatch(Stereotype s, UAFStereotypeRegistry.StereotypeInfo i) {
             this.stereotype = s;
             this.info       = i;
+        }
+    }
+
+    /**
+     * Output of {@link #resolveBestRegistered} — the matched stereotype name, its
+     * registry entry, and how many BFS hops from the start we found it. Package-
+     * private so unit tests can assert on it without MSOSA classes in scope.
+     */
+    static final class RegisteredHit {
+        final String stereotypeName;
+        final UAFStereotypeRegistry.StereotypeInfo info;
+        final int    distance;
+        RegisteredHit(String name, UAFStereotypeRegistry.StereotypeInfo i, int distance) {
+            this.stereotypeName = name;
+            this.info           = i;
+            this.distance       = distance;
         }
     }
 }
