@@ -42,7 +42,7 @@
         {
           "id": "p1-r3",
           "title": "Capability traceability for $neodash_capability",
-          "query": "MATCH (c:Capability {name: $neodash_capability})<-[r:REALISES|REALISED_BY|TRACES_TO|EXHIBITS|IMPLEMENTS|PERFORMS*1..4]-(n) RETURN c, r, n",
+          "query": "MATCH p = shortestPath((c:Capability {name: $neodash_capability})<-[:REALISES|EXHIBITS|IMPLEMENTS|PERFORMS*1..4]-(n)) WHERE n <> c RETURN p LIMIT 200",
           "type": "graph",
           "x": 3, "y": 4, "width": 5, "height": 5,
           "selection": {},
@@ -51,7 +51,7 @@
         {
           "id": "p1-r4",
           "title": "Performers realising $neodash_capability",
-          "query": "MATCH (c:Capability {name: $neodash_capability})<-[r:REALISES|EXHIBITS*1..3]-(rp) RETURN c, r, rp",
+          "query": "MATCH p = shortestPath((c:Capability {name: $neodash_capability})<-[:REALISES|EXHIBITS*1..3]-(rp)) WHERE rp <> c RETURN p LIMIT 200",
           "type": "graph",
           "x": 8, "y": 4, "width": 4, "height": 5,
           "selection": {},
@@ -97,7 +97,7 @@
         {
           "id": "p2-r3",
           "title": "Decommissioning impact for $neodash_element",
-          "query": "MATCH (e {name: $neodash_element})<-[r:REALISES|EXHIBITS|TRACES_TO|DEPENDS_ON*1..5]-(n) WHERE e.stereotype IS NOT NULL RETURN e, r, n",
+          "query": "MATCH (e {name: $neodash_element}) WHERE e.stereotype IS NOT NULL MATCH p = shortestPath((e)<-[:REALISES|EXHIBITS|IMPLEMENTS|PERFORMS|DEPENDENCY|RESOURCEEXCHANGE|MESSAGE_FLOW|ITEMFLOW*1..5]-(n)) WHERE n <> e RETURN p LIMIT 200",
           "type": "graph",
           "x": 3, "y": 5, "width": 9, "height": 5,
           "selection": {},
@@ -121,7 +121,7 @@
         {
           "id": "p2-r5",
           "title": "AS-IS vs TO-BE elements in $neodash_domain",
-          "query": "MATCH (n) WHERE n.stereotype IS NOT NULL AND n.qualifiedName CONTAINS $neodash_domain AND (n.qualifiedName CONTAINS 'AS-IS' OR n.qualifiedName CONTAINS 'TO-BE') RETURN n",
+          "query": "MATCH (n)-[r:REALISES|EXHIBITS|IMPLEMENTS|PERFORMS|DEPENDENCY|RESOURCEEXCHANGE|MESSAGE_FLOW|ITEMFLOW]-(m) WHERE n.stereotype IS NOT NULL AND n.qualifiedName CONTAINS $neodash_domain AND (n.qualifiedName CONTAINS 'AS-IS' OR n.qualifiedName CONTAINS 'TO-BE') RETURN n, r, m LIMIT 200",
           "type": "graph",
           "x": 3, "y": 7, "width": 9, "height": 5,
           "selection": {},
@@ -151,7 +151,7 @@
         {
           "id": "p3-r2",
           "title": "Security dominance chain from $neodash_enclave",
-          "query": "MATCH (e:SecurityEnclave {name: $neodash_enclave})-[r:DOMINATES*1..]->(d) RETURN e, r, d",
+          "query": "MATCH p = shortestPath((e:SecurityEnclave {name: $neodash_enclave})-[:DOMINATES*1..5]->(d)) WHERE d <> e RETURN p LIMIT 200",
           "type": "graph",
           "x": 3, "y": 0, "width": 9, "height": 6,
           "selection": {},

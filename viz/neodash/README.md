@@ -67,23 +67,27 @@ For each report below: in NeoDash, click the **+** to add a card, set the **Titl
    ```cypher
    MATCH (p)-[r:PERFORMS]->(a:OperationalActivity) RETURN p, r, a
    ```
-2. **Pick an element by name** — Type: `Parameter Select` — Selection Type: `Free Text` — Parameter Name: `element`
+2. **Pick an element by name** — Type: `Parameter Select` — Selection Type: `Free Text` — Parameter Name: `element`. The selector is `Free Text` rather than `Node Property` because the schema labels every node by its stereotype (no `:UAFElement` umbrella label exists). A `Node Property` selector forces a single `entityType`, which would defeat the cross-stereotype intent. Paste an exact `name` value (case- and whitespace-sensitive) — grab one from the "Operational activities and their performers" graph above, or run `MATCH (n) WHERE n.stereotype IS NOT NULL RETURN n.name LIMIT 50` in Neo4j Browser. In typical exports inbound traceability lives at the `:Capability` level, so the downstream "Decommissioning impact" graph is most useful when you paste a capability name; operational activities often have only structural edges and will render empty.
 3. **Decommissioning impact for $neodash_element** — Type: `Graph` —
    ```cypher
    MATCH (e {name: $neodash_element})
-         <-[r:REALISES|EXHIBITS|TRACES_TO|DEPENDS_ON*1..5]-(n)
+         <-[r:REALISES|EXHIBITS|IMPLEMENTS|PERFORMS|DEPENDENCY
+            |RESOURCEEXCHANGE|MESSAGE_FLOW|ITEMFLOW*1..5]-(n)
    WHERE e.stereotype IS NOT NULL
    RETURN e, r, n
    ```
+   The relationship filter covers every inbound edge type the Java exporter emits that represents a real dependency (something would break if `e` were retired). `DEFINES` and `HAS_ATTRIBUTE` are excluded — `DEFINES` is the SystemModel→element ownership edge (every element has one, so it floods the view) and `HAS_ATTRIBUTE` is structural rather than a dependency. Earlier drafts used `TRACES_TO` and `DEPENDS_ON`; neither name is actually emitted (the dependency edge is `DEPENDENCY`).
 4. **Pick a domain** — Type: `Parameter Select` — Selection Type: `Free Text` — Parameter Name: `domain` — Default value: `Operational`
 5. **AS-IS vs TO-BE elements in $neodash_domain** — Type: `Graph` —
    ```cypher
-   MATCH (n)
+   MATCH (n)-[r:REALISES|EXHIBITS|IMPLEMENTS|PERFORMS|DEPENDENCY
+             |RESOURCEEXCHANGE|MESSAGE_FLOW|ITEMFLOW]-(m)
    WHERE n.stereotype IS NOT NULL
      AND n.qualifiedName CONTAINS $neodash_domain
      AND (n.qualifiedName CONTAINS 'AS-IS' OR n.qualifiedName CONTAINS 'TO-BE')
-   RETURN n
+   RETURN n, r, m LIMIT 200
    ```
+   Earlier draft was `RETURN n` only, which renders as a disconnected starfield when the domain contains hundreds of AS-IS/TO-BE elements. The current shape returns only the connected subgraph (AS-IS/TO-BE elements participating in real traceability edges) plus their immediate neighbours, so transition stories — TO-BE performer realising the same capability as an AS-IS performer, AS-IS service being replaced by a TO-BE service via flow rewiring — are visible. Isolated AS-IS/TO-BE elements are intentionally dropped from this view; if gap analysis matters, surface them in a separate Table card with `MATCH (n) WHERE n.stereotype IS NOT NULL AND n.qualifiedName CONTAINS $neodash_domain AND (n.qualifiedName CONTAINS 'AS-IS' OR n.qualifiedName CONTAINS 'TO-BE') AND NOT EXISTS { (n)-[:REALISES|EXHIBITS|IMPLEMENTS|PERFORMS|DEPENDENCY|RESOURCEEXCHANGE|MESSAGE_FLOW|ITEMFLOW]-() } RETURN n.qualifiedName ORDER BY n.qualifiedName`.
 
 #### Page 3 — Security
 
