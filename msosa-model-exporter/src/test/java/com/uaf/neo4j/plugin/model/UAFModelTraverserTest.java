@@ -130,8 +130,8 @@ class UAFModelTraverserTest {
 
     @Test
     void relationshipStereotypeMap_includesImplementsAndCapabilityMappings() {
-        // Stereotypes applied to UML relationship elements in real-world profile that pre-#75-RC6
-        // were silently dropped because the map didn't know them.
+        // Stereotypes applied to UML relationship elements in real-world UAF profiles
+        // that pre-#75-RC6 were silently dropped because the map didn't know them.
         assertEquals(UAFRelationshipDTO.REL_IMPLEMENTS,
                      UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP.get("Implements"));
         assertEquals(UAFRelationshipDTO.REL_PERFORMS,
@@ -238,16 +238,17 @@ class UAFModelTraverserTest {
         assertTrue(Modifier.isFinal(field.getModifiers()), "Field must be final");
     }
 
-    // ── Fallback-aware ancestor resolution (a bare-noun-typed performer class of bug) ──────
+    // ── Fallback-aware ancestor resolution (bare-noun-ancestor class of bug) ──
     //
-    // The a bare-noun-typed performer element in the real-world UAF model was being assigned :Resource
-    // (RESOURCE domain) even though its qualifiedName ended in
-    // `Operational Taxonomy::Internal Performer::a bare-noun-typed performer`. Root cause:
-    // BFS in findRegisteredAncestor returned the FIRST registered name it hit,
-    // so a custom op-side stereotype whose general chain passed through `Resource`
-    // (which IS in the registry) returned `Resource` before reaching the
-    // operational ancestor further up. The fix marks bare-noun catch-alls as
-    // fallback so the BFS prefers a non-fallback ancestor at any distance.
+    // In real-world UAF profiles, operational-domain custom stereotypes have been
+    // observed being assigned :Resource (RESOURCE domain) even though their
+    // qualifiedName ended in `Operational Taxonomy::Internal Performer::<name>`.
+    // Root cause: BFS in findRegisteredAncestor returned the FIRST registered
+    // name it hit, so a custom op-side stereotype whose general chain passed
+    // through `Resource` (which IS in the registry) returned `Resource` before
+    // reaching the operational ancestor further up. The fix marks bare-noun
+    // catch-alls as fallback so the BFS prefers a non-fallback ancestor at any
+    // distance.
     //
     // resolveBestRegistered is the pure-function core of the new algorithm and
     // can be exercised here with synthetic stereotype hierarchies; full traversal
@@ -292,11 +293,11 @@ class UAFModelTraverserTest {
 
     @Test
     void resolveBestRegistered_nonFallbackAtDistanceBeatsFallbackAtZero() {
-        // The a bare-noun-typed performer case in miniature: starting stereotype "MyInternalPerformer"
-        // is NOT registered. Its parents reach `Resource` (fallback, distance 1)
-        // and `OperationalPerformer` (non-fallback, distance 2). Expected result:
-        // OperationalPerformer wins despite being further away, because fallbacks
-        // never compete with non-fallbacks.
+        // The bare-noun-ancestor case in miniature: starting stereotype
+        // "MyInternalPerformer" is NOT registered. Its parents reach `Resource`
+        // (fallback, distance 1) and `OperationalPerformer` (non-fallback,
+        // distance 2). Expected result: OperationalPerformer wins despite being
+        // further away, because fallbacks never compete with non-fallbacks.
         Map<String, UAFStereotypeRegistry.StereotypeInfo> reg = new LinkedHashMap<>();
         reg.put("Resource",             fallback("Resource",
                                                   UAFStereotypeRegistry.Domain.RESOURCE));

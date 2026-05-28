@@ -289,9 +289,9 @@ SET s.language = 'UAF';
 
 // --- Mark bare-noun fallback stereotypes (idempotent) ------------------------
 // These are legal UAF stereotypes whose simple names act as catchment ancestors
-// for more specific custom stereotypes in real profiles (notably the real-world UAF
-// profile, where bare `Resource` was applied as an ancestor of operational
-// performer subtypes). UAFStereotypeRegistry treats them as fallback during
+// for more specific custom stereotypes in real profiles — e.g. bare `Resource`
+// applied as an ancestor of operational performer subtypes in profiles that
+// extend UAF with their own stereotype hierarchy. UAFStereotypeRegistry treats them as fallback during
 // element export: the more specific ancestor wins when present. Surfacing the
 // flag on the metamodel node lets downstream consumers (ontology codegen,
 // SPARQL queries, NeoDash dashboards) reason about ambiguity without reading

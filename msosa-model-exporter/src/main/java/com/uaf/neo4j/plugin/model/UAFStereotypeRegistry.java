@@ -54,9 +54,9 @@ public class UAFStereotypeRegistry {
         reg("DesiredEffect",            "DesiredEffect",           Domain.STRATEGIC);
         reg("EnterprisePhase",          "EnterprisePhase",         Domain.STRATEGIC);
         reg("CapabilityIncrement",      "CapabilityIncrement",     Domain.STRATEGIC);
-        // Tier-1 #75 RC #6 reconciliation — added from real-world profile diff. The MSOSA UAF 1.2
-        // profile here uses EnterpriseVision / VisionStatement rather than the bare
-        // Vision; both are kept for back-compat across other UAF profile versions.
+        // Tier-1 #75 RC #6 reconciliation — added from real-world profile diff. Some
+        // MSOSA UAF 1.2 profiles use EnterpriseVision / VisionStatement rather than
+        // the bare Vision; both are kept for back-compat across profile versions.
         reg("EnterpriseVision",         "EnterpriseVision",        Domain.STRATEGIC);
         reg("VisionStatement",          "VisionStatement",         Domain.STRATEGIC);
         reg("CapabilityRole",           "CapabilityRole",          Domain.STRATEGIC);
@@ -78,7 +78,7 @@ public class UAFStereotypeRegistry {
         reg("NeedLine",                 "NeedLine",                Domain.OPERATIONAL);
         reg("PerformerPort",            "PerformerPort",           Domain.OPERATIONAL);
         reg("OperationalRole",          "OperationalRole",         Domain.OPERATIONAL);
-        // Tier-1 #75 RC #6 reconciliation — added from real-world UAF profile diff.
+        // Tier-1 #75 RC #6 reconciliation — added from a real-world profile diff.
         // Stereotypes confirmed present in the MSOSA UAF 1.2 profile and applied to
         // model elements; pre-reconciliation these were silently dropped.
         reg("OperationalAgent",         "OperationalAgent",        Domain.OPERATIONAL);
@@ -122,9 +122,9 @@ public class UAFStereotypeRegistry {
         reg("HardwareElement",          "HardwareElement",         Domain.RESOURCE);
         reg("SoftwareElement",          "SoftwareElement",         Domain.RESOURCE);
         // Bare-noun catch-alls — see StereotypeInfo.isFallback. Real-world profiles
-        // profiles apply Software/System/SystemBlock/Technology as base stereotypes
-        // to elements that carry a more specific operational/personnel stereotype
-        // as well; the traverser must prefer the specific one. Without the fallback
+        // apply Software/System/SystemBlock/Technology as base stereotypes to
+        // elements that carry a more specific operational/personnel stereotype as
+        // well; the traverser must prefer the specific one. Without the fallback
         // flag a custom OperationalRole-like stereotype whose general chain passes
         // through Software/System/Resource was being assigned to RESOURCE.
         regFallback("Software",                 "Software",                Domain.RESOURCE);
@@ -135,12 +135,12 @@ public class UAFStereotypeRegistry {
         regFallback("Technology",               "Technology",              Domain.RESOURCE);
         reg("LogicalArchitecture",      "LogicalArchitecture",     Domain.RESOURCE);
         reg("PhysicalArchitecture",     "PhysicalArchitecture",    Domain.RESOURCE);
-        // Tier-1 #75 RC #6 reconciliation — added from real-world profile diff. Bare `Resource`
-        // is the most aggressive collision source: in the real-world UAF profile it was
+        // Tier-1 #75 RC #6 reconciliation — added from a real-world profile diff.
+        // Bare `Resource` is the most aggressive collision source: it has been
         // observed as the registered ancestor of operational-domain custom
-        // stereotypes (e.g. `a bare-noun-typed performer` qualifiedName ends in
-        // `Operational Taxonomy::Internal Performer` but BFS returned `Resource`).
-        // Fallback so a more specific ancestor wins.
+        // stereotypes (e.g. a bare-noun-typed performer whose qualifiedName ends
+        // in `Operational Taxonomy::Internal Performer` but where BFS returns
+        // `Resource`). Fallback so a more specific ancestor wins.
         regFallback("Resource",                 "Resource",                Domain.RESOURCE);
         reg("ResourceAsset",            "ResourceAsset",           Domain.RESOURCE);
         reg("ResourceAction",           "ResourceAction",          Domain.RESOURCE);
@@ -173,7 +173,7 @@ public class UAFStereotypeRegistry {
         // the bare `Service` stereotype.
         regFallback("Service",                  "Service",                 Domain.SERVICE);
         reg("ServiceArchitecture",      "ServiceArchitecture",     Domain.SERVICE);
-        // Tier-1 #75 RC #6 reconciliation — added from real-world profile diff.
+        // Tier-1 #75 RC #6 reconciliation — added from a real-world profile diff.
         reg("ServiceRole",              "ServiceRole",             Domain.SERVICE);
         reg("ServiceParameter",         "ServiceParameter",        Domain.SERVICE);
         reg("ServiceMethod",            "ServiceMethod",           Domain.SERVICE);
@@ -192,7 +192,7 @@ public class UAFStereotypeRegistry {
         reg("ProjectMilestone",         "ProjectMilestone",        Domain.ACQUISITION);
         reg("ProjectBoundary",          "ProjectBoundary",         Domain.ACQUISITION);
         reg("FundingRequest",           "FundingRequest",          Domain.ACQUISITION);
-        // Tier-1 #75 RC #6 reconciliation — added from real-world profile diff.
+        // Tier-1 #75 RC #6 reconciliation — added from a real-world profile diff.
         reg("ProjectActivity",          "ProjectActivity",         Domain.ACQUISITION);
         reg("ProjectActivityAction",    "ProjectActivityAction",   Domain.ACQUISITION);
         reg("ProjectMilestoneRole",     "ProjectMilestoneRole",    Domain.ACQUISITION);
@@ -206,9 +206,9 @@ public class UAFStereotypeRegistry {
         reg("SecurityDomain",           "SecurityDomain",          Domain.SECURITY);
         reg("SecurityAsset",            "SecurityAsset",           Domain.SECURITY);
         reg("SecurityPolicy",           "SecurityPolicy",          Domain.SECURITY);
-        // Tier-1 #75 RC #6 reconciliation — added from real-world profile diff. The MSOSA UAF 1.2
-        // profile in real-world profile uses SecurityEnclave/SecurityControl/etc. rather than the
-        // older SecurityDomain/Asset/Policy; both name families coexist for back-compat.
+        // Tier-1 #75 RC #6 reconciliation — added from a real-world profile diff. Some
+        // MSOSA UAF 1.2 profiles use SecurityEnclave/SecurityControl/etc. rather than
+        // the older SecurityDomain/Asset/Policy; both name families coexist for back-compat.
         reg("SecurityEnclave",          "SecurityEnclave",         Domain.SECURITY);
         reg("SecurityConstraint",       "SecurityConstraint",      Domain.SECURITY);
         reg("SecurityControl",          "SecurityControl",         Domain.SECURITY);
@@ -274,7 +274,7 @@ public class UAFStereotypeRegistry {
         reg("CallActivity",             "CallActivity",            "BPMN");
         reg("Lane",                     "Lane",                    "BPMN");
         reg("Pool",                     "Pool",                    "BPMN");
-        // Tier-1 #75 RC #6 reconciliation — BPMN extras found applied in real-world profile.
+        // Tier-1 #75 RC #6 reconciliation — BPMN extras found applied in real-world profiles.
         reg("BPMNProcess",              "BPMNProcess",             "BPMN");
         reg("BPMNMessage",              "BPMNMessage",             "BPMN");
         reg("BusinessRuleTask",         "BusinessRuleTask",        "BPMN");
