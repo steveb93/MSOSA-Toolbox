@@ -153,20 +153,22 @@ The CI pipeline handles building and publishing. Contributors own the version nu
 git checkout <branch>
 git pull origin <branch>
 
-cd msosa-model-exporter
-mvn versions:set-property "-Dproperty=revision" "-DnewVersion=1.3.2-Preview"   # or 1.3.2 for main; quote each -D… on PowerShell
-cd ..
+# Bumps <revision> in msosa-model-exporter/pom.xml via the Maven Versions Plugin
+# AND propagates the new version into msosa-model-exporter-X.Y.Z artefact
+# references inside repo .md files. Run from the repo root.
+# Pass -DryRun first to preview the changes without writing.
+.\bump-version.ps1 -Version 1.3.2-Preview   # or 1.3.2 for main
 ```
 
 Commit and push:
 
 ```powershell
-git add msosa-model-exporter/pom.xml
+git add msosa-model-exporter/pom.xml CLAUDE.md msosa-model-exporter/CLAUDE.md msosa-model-exporter/README.md
 git commit -m "chore: bump version to 1.3.2-Preview"
 git push origin <branch>
 ```
 
-The push triggers the build workflow. As part of that run, the `sync-version-refs` job rewrites hardcoded `msosa-model-exporter-X.Y.Z` strings in `*.md` files to match the new revision, then pushes that as a follow-up commit (commit author: `github-actions[bot]`). The bot's commit does **not** re-trigger the workflow — the build and sync jobs filter on `github.event.head_commit.author.name` to break the loop.
+The push triggers the build workflow. The `sync-version-refs` CI job re-runs the same `*.md` rewrite as a safety net — because `bump-version.ps1` already did the sweep locally, that CI job is normally a no-op (no follow-up bot commit). If you ever bump `pom.xml` without the script, the bot's `chore: sync version references…` commit kicks in instead. The loop is broken either way via the `github.event.head_commit.author.name` filter on the build and sync jobs.
 
 #### Step 2 — Tag the release
 
