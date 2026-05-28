@@ -287,6 +287,20 @@ MERGE (s)-[:BELONGS_TO]->(d);
 MATCH (s:Stereotype) WHERE s.language IS NULL
 SET s.language = 'UAF';
 
+// --- Mark bare-noun fallback stereotypes (idempotent) ------------------------
+// These are legal UAF stereotypes whose simple names act as catchment ancestors
+// for more specific custom stereotypes in real profiles (notably the real-world UAF
+// profile, where bare `Resource` was applied as an ancestor of operational
+// performer subtypes). UAFStereotypeRegistry treats them as fallback during
+// element export: the more specific ancestor wins when present. Surfacing the
+// flag on the metamodel node lets downstream consumers (ontology codegen,
+// SPARQL queries, NeoDash dashboards) reason about ambiguity without reading
+// the Java registry. Unset on every other Stereotype — absent ≡ false.
+
+MATCH (s:Stereotype)
+WHERE s.name IN ['Resource', 'Service', 'System', 'Software', 'SystemBlock', 'Technology']
+SET s.isFallback = true;
+
 // --- Wire all Stereotype nodes to their ModellingLanguage --------------------
 
 MATCH (s:Stereotype), (l:ModellingLanguage {name: s.language})
