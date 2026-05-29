@@ -10,6 +10,10 @@ import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Classifier;
 import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Element;
 import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.NamedElement;
 import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Package;
+import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Property;
+import com.nomagic.uml2.ext.magicdraw.compositestructures.mdinternalstructures.Connector;
+import com.nomagic.uml2.ext.magicdraw.compositestructures.mdinternalstructures.ConnectorEnd;
+import com.nomagic.uml2.ext.magicdraw.compositestructures.mdinternalstructures.ConnectableElement;
 import com.nomagic.uml2.ext.magicdraw.mdprofiles.Stereotype;
 
 import org.eclipse.emf.ecore.EObject;
@@ -314,7 +318,7 @@ public class UAFModelTraverser {
                 .documentation(docs != null ? docs : "")
                 .modelFileName(modelFileName);
 
-            extractTaggedValues(element, matched.stereotype, eb);
+            extractTaggedValues(element, matched.stereotype, eb, id, matched.info);
 
             elements.add(eb.build());
 
@@ -323,6 +327,13 @@ public class UAFModelTraverser {
             extractAttributes(element, id, qname, matched.info.language);
 
             extractRelationships(element, matched.info);
+
+            // Resource Internal Connectivity wiring — UAF connectors, ports and
+            // exchanges become orphan nodes without these. The exporter previously
+            // walked only DirectedRelationships (Dependency/Generalization/etc.),
+            // which left the entire IBD-style structure disconnected.
+            extractConnectorEnds(element, id, matched.info);
+            extractPropertyOwnership(element, id, matched.info);
         }
 
         // Descend into containers — Packages always, Classifiers (Block, Class, Activity,
@@ -542,25 +553,153 @@ public class UAFModelTraverser {
     // ── Attribute / tag-value extraction ──────────────────────────────────────
 
     private void extractTaggedValues(Element element, Stereotype stereo,
-                                     UAFElementDTO.Builder builder) {
-        try {
-            for (com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Property prop
-                    : StereotypesHelper.getPropertiesWithDerivedOrdered(stereo)) {
-                String tag = prop.getName();
+                                     UAFElementDTO.Builder builder,
+                                     String srcId,
+                                     UAFStereotypeRegistry.StereotypeInfo srcInfo) {
+        String stereoName = stereo.getName();
+        // Per-property try/catch so a single bad property doesn't kill extraction
+        // for the rest (the prior whole-loop catch was responsible for the
+        // ResourceExchange model seeing only the alphabetically-first scalar tags).
+        for (Property prop : StereotypesHelper.getPropertiesWithDerivedOrdered(stereo)) {
+            String tag = prop.getName();
+            try {
                 Object val = StereotypesHelper.getTaggedValue(element, stereo, tag);
                 if (val instanceof Collection) {
                     StringJoiner sj = new StringJoiner(", ");
                     for (Object v : (Collection<?>) val) {
-                        if (v instanceof NamedElement) sj.add(((NamedElement) v).getName());
-                        else if (v != null) sj.add(v.toString());
+                        if (v instanceof NamedElement) {
+                            sj.add(((NamedElement) v).getName());
+                            emitReferenceEdge(srcId, (NamedElement) v, stereoName, tag, srcInfo);
+                        } else if (v != null) {
+                            sj.add(v.toString());
+                        }
                     }
                     builder.taggedValue(tag, sj.toString());
+                } else if (val instanceof NamedElement) {
+                    NamedElement ne = (NamedElement) val;
+                    builder.taggedValue(tag, ne.getName() != null ? ne.getName() : "");
+                    emitReferenceEdge(srcId, ne, stereoName, tag, srcInfo);
                 } else if (val != null) {
                     builder.taggedValue(tag, val.toString());
                 }
+            } catch (Exception e) {
+                LOG.warning("Failed to extract tag '" + tag + "' on " + srcId + ": " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Emit an {@code ASSOCIATED_WITH} edge whenever a stereotype reference property
+     * carries a NamedElement value (e.g. {@code ResourceExchange.Source/Target/conveyed},
+     * {@code ServiceInterchange.conveyed}, any custom stereotype with element-typed
+     * properties). The {@code uafType} is {@code Stereotype.property} so consumers
+     * can filter by intent; the {@code name} is the property name alone.
+     *
+     * The prior implementation only string-joined references into a lossy {@code tv_*}
+     * value, so a ResourceExchange's Source/Target/conveyed wiring was unreachable
+     * via graph traversal — exchanges were orphan nodes despite the model being
+     * complete.
+     */
+    private void emitReferenceEdge(String srcId, NamedElement target,
+                                   String stereoName, String tag,
+                                   UAFStereotypeRegistry.StereotypeInfo srcInfo) {
+        if (target == null) return;
+        String tgtId = safeId(target);
+        if (tgtId == null || tgtId.isEmpty()) return;
+        String name = target.getName() != null ? target.getName() : tag;
+        String uafType = stereoName + "." + tag;
+        String domain = srcInfo != null && srcInfo.domain != null
+                        ? srcInfo.domain.name() : "NONE";
+        String language = srcInfo != null ? srcInfo.language : "UAF";
+        relationships.add(UAFRelationshipDTO.builder(
+                "ref::" + srcId + "::" + tag + "::" + tgtId,
+                srcId, tgtId, UAFRelationshipDTO.REL_ASSOCIATED_WITH)
+            .uafType(uafType)
+            .name(name)
+            .domain(domain)
+            .language(language)
+            .build());
+    }
+
+    /**
+     * UML {@code Connector} (typically stereotyped {@code ResourceConnector} or
+     * {@code OperationalConnector}) carries the actual port-to-port wiring. Walk
+     * {@code ownedEnd[].role} → emit a {@code CONNECTED_TO} edge to each connected
+     * role/port, and walk {@code Connector.type} → emit an {@code OF_TYPE} edge to
+     * the typing classifier (the Association stereotyped as a ResourceExchange).
+     * Without this, every Connector is an orphan with only DEFINES + INSTANCE_OF.
+     */
+    private void extractConnectorEnds(Element element, String connectorId,
+                                      UAFStereotypeRegistry.StereotypeInfo srcInfo) {
+        if (!(element instanceof Connector)) return;
+        Connector conn = (Connector) element;
+        String domain = srcInfo != null && srcInfo.domain != null
+                        ? srcInfo.domain.name() : "NONE";
+        String language = srcInfo != null ? srcInfo.language : "UAF";
+        try {
+            for (ConnectorEnd end : conn.getEnd()) {
+                ConnectableElement role = end.getRole();
+                if (role == null) continue;
+                String roleId = safeId(role);
+                if (roleId == null || roleId.isEmpty()) continue;
+                relationships.add(UAFRelationshipDTO.builder(
+                        "conn_end::" + connectorId + "::" + roleId,
+                        connectorId, roleId, UAFRelationshipDTO.REL_CONNECTED_TO)
+                    .uafType("ConnectorEnd")
+                    .name(role.getName() != null ? role.getName() : "")
+                    .domain(domain)
+                    .language(language)
+                    .build());
+            }
+            Classifier connType = conn.getType();
+            if (connType != null) {
+                String typeId = safeId(connType);
+                if (typeId != null && !typeId.isEmpty()) {
+                    relationships.add(UAFRelationshipDTO.builder(
+                            "conn_type::" + connectorId + "::" + typeId,
+                            connectorId, typeId, UAFRelationshipDTO.REL_OF_TYPE)
+                        .uafType("ConnectorType")
+                        .name(connType.getName() != null ? connType.getName() : "")
+                        .domain(domain)
+                        .language(language)
+                        .build());
+                }
             }
         } catch (Exception e) {
-            LOG.warning("Failed to extract tagged values for " + safeId(element) + ": " + e.getMessage());
+            LOG.warning("Failed to extract connector ends for " + connectorId + ": " + e.getMessage());
+        }
+    }
+
+    /**
+     * Emit {@code COMPOSED_OF} from a Classifier (typically a ResourceArchitecture or
+     * OperationalArchitecture) to each of its UAF-stereotyped owned Properties
+     * (typically ResourceRole, ResourceInformationRole, OperationalRole). Gives the
+     * architecture → port navigability that the Resource page of the NeoDash starter
+     * needs in order to root any traversal at an architecture.
+     */
+    private void extractPropertyOwnership(Element element, String propertyId,
+                                          UAFStereotypeRegistry.StereotypeInfo srcInfo) {
+        if (!(element instanceof Property)) return;
+        Property prop = (Property) element;
+        String domain = srcInfo != null && srcInfo.domain != null
+                        ? srcInfo.domain.name() : "NONE";
+        String language = srcInfo != null ? srcInfo.language : "UAF";
+        try {
+            Classifier owner = prop.getUMLClass();
+            if (owner == null) owner = prop.getFeaturingClassifier();
+            if (owner == null) return;
+            String ownerId = safeId(owner);
+            if (ownerId == null || ownerId.isEmpty()) return;
+            relationships.add(UAFRelationshipDTO.builder(
+                    "owns::" + ownerId + "::" + propertyId,
+                    ownerId, propertyId, UAFRelationshipDTO.REL_COMPOSED_OF)
+                .uafType("OwnedAttribute")
+                .name(prop.getName() != null ? prop.getName() : "")
+                .domain(domain)
+                .language(language)
+                .build());
+        } catch (Exception e) {
+            LOG.warning("Failed to extract property ownership for " + propertyId + ": " + e.getMessage());
         }
     }
 
