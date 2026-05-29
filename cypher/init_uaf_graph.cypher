@@ -59,7 +59,6 @@ MERGE (:Domain {name: 'SHARED',       description: 'Cross-cutting / Shared'});
 
 // Strategic
 MERGE (:Stereotype {name: 'Capability',               domain: 'STRATEGIC'});
-MERGE (:Stereotype {name: 'CapabilityConfiguration',  domain: 'STRATEGIC'});
 MERGE (:Stereotype {name: 'CapabilityComposition',    domain: 'STRATEGIC'});
 MERGE (:Stereotype {name: 'CapabilityDependency',     domain: 'STRATEGIC'});
 MERGE (:Stereotype {name: 'CapabilitySpecialization', domain: 'STRATEGIC'});
@@ -119,6 +118,11 @@ MERGE (:Stereotype {name: 'DataStore',                domain: 'OPERATIONAL'});
 
 // Resource
 MERGE (:Stereotype {name: 'ResourcePerformer',        domain: 'RESOURCE'});
+// CapabilityConfiguration extends ResourceArchitecture in UAF 1.2 DMM —
+// moved from STRATEGIC to RESOURCE 2026-05-29. See UAFStereotypeRegistry
+// for the equivalent change on the Java side, plus the migration block on
+// the PR for patching existing exported nodes.
+MERGE (:Stereotype {name: 'CapabilityConfiguration',  domain: 'RESOURCE'});
 MERGE (:Stereotype {name: 'ResourceFunction',         domain: 'RESOURCE'});
 MERGE (:Stereotype {name: 'ResourceInteraction',      domain: 'RESOURCE'});
 MERGE (:Stereotype {name: 'ResourceArtifact',         domain: 'RESOURCE'});

@@ -79,6 +79,23 @@ class UAFStereotypeRegistryTest {
     }
 
     @Test
+    void get_capabilityConfiguration_returnsResourceDomain() {
+        // CapabilityConfiguration is RESOURCE-domain — it extends ResourceArchitecture
+        // in UAF 1.2 DMM. Pre-2026-05-29 it was registered as STRATEGIC; mis-domain
+        // validation on a real profile (PR #132) confirmed the registry was wrong.
+        // Migration consequence: existing exported nodes still carry domain:'STRATEGIC'
+        // until re-exported or patched in Cypher.
+        Optional<UAFStereotypeRegistry.StereotypeInfo> info =
+            UAFStereotypeRegistry.get("CapabilityConfiguration");
+        assertTrue(info.isPresent());
+        assertEquals(UAFStereotypeRegistry.Domain.RESOURCE, info.get().domain,
+            "CapabilityConfiguration must be RESOURCE (was STRATEGIC pre-2026-05-29)");
+        assertEquals("UAF", info.get().language);
+        assertFalse(info.get().isFallback,
+            "CapabilityConfiguration is a concrete UAF stereotype, never a bare-noun fallback");
+    }
+
+    @Test
     void get_hardwareElement_returnsResourceDomain() {
         Optional<UAFStereotypeRegistry.StereotypeInfo> info = UAFStereotypeRegistry.get("HardwareElement");
         assertTrue(info.isPresent());

@@ -116,13 +116,6 @@ uaf:CapabilityComposition a owl:Class ;
     uafprop:language "UAF" ;
     rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
 
-uaf:CapabilityConfiguration a owl:Class ;
-    rdfs:label "CapabilityConfiguration" ;
-    rdfs:subClassOf uaf:StrategicElement ;
-    uafprop:domain "STRATEGIC" ;
-    uafprop:language "UAF" ;
-    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
-
 uaf:CapabilityDependency a owl:Class ;
     rdfs:label "CapabilityDependency" ;
     rdfs:subClassOf uaf:StrategicElement ;
@@ -610,6 +603,13 @@ uaf:ResourceMethod a owl:Class ;
 
 uaf:ResourceMitigation a owl:Class ;
     rdfs:label "ResourceMitigation" ;
+    rdfs:subClassOf uaf:ResourceElement ;
+    uafprop:domain "RESOURCE" ;
+    uafprop:language "UAF" ;
+    rdfs:isDefinedBy <http://msosa-toolbox.local/uaf/mvo> .
+
+uaf:CapabilityConfiguration a owl:Class ;
+    rdfs:label "CapabilityConfiguration" ;
     rdfs:subClassOf uaf:ResourceElement ;
     uafprop:domain "RESOURCE" ;
     uafprop:language "UAF" ;
