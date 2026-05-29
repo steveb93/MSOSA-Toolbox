@@ -12,10 +12,21 @@
 # pyshacl -> violation report -> MCP), not a complete governance ruleset. Extend
 # as Stage 3 firms up.
 #
-# Reasoner alignment: the validator runs pyshacl with inference="rdfs" so that
-# rdfs:subClassOf+ paths resolve, matching Fuseki's RDFS-Exp reasoner. That means
-# sh:targetClass uaf:StrategicElement catches subclasses (uaf:Capability,
-# uaf:Vision, ...) without listing them individually.
+# Reasoner independence — Stage 3, post heap incident.
+# Earlier shape revisions used inverse predicates (uaf:performedBy, uaf:realisedBy,
+# uaf:partOf, uaf:providedBy, uaf:contributedToBy, uaf:tracedBy) that only existed
+# in-graph after Jena's OWL FB rule reasoner materialised the owl:inverseOf pairs
+# in ontology/uaf-mvo-axioms.ttl. Running OWL FB inside MSOSA's JVM materialised
+# 168 M intermediate triples and blew past 15 GB heap — see Validate rail history.
+# Fuseki itself runs RDFS-Exp, which ignores owl:inverseOf, so without an in-JVM
+# OWL reasoner those inverse predicates are NEVER in the dump.
+#
+# These shapes now address that by walking the predicates that *are* in the dump
+# (the camelCased Neo4j relationship names — REL_PERFORMS -> uaf:performs etc.)
+# and using sh:inversePath where the model authors the opposite direction. Where
+# UAF semantics allow either direction (composedOf vs partOf, performs vs
+# performedBy), the shape uses sh:or to accept both — no reasoner needed,
+# whichever way the modeller drew the edge.
 #
 # Conventions used below:
 #   - Shapes are named with a -Shape suffix on the targeted class IRI.
@@ -23,6 +34,9 @@
 #     (where false positives are likely against a real model) as sh:Warning.
 #   - All shapes use sh:message so violations come back with human prose,
 #     not bare paths.
+#   - Direction-tolerant shapes use sh:or with a forward path and a
+#     sh:inversePath alternative. The outer shape carries the sh:message and
+#     sh:severity so the report stays readable.
 
 @prefix sh:      <http://www.w3.org/ns/shacl#> .
 @prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -35,8 +49,8 @@
 
 <http://msosa-toolbox.local/uaf/shapes> a owl:Ontology ;
     rdfs:label "UAF SHACL shapes (Stage 3 scaffolding)" ;
-    rdfs:comment "Constraint graph over the UAF MVO. Stage 3 scope: Strategic + Security + cross-cutting hygiene." ;
-    owl:versionInfo "0.1.0" .
+    rdfs:comment "Constraint graph over the UAF MVO. Direction-tolerant: walks the actual dumped predicates, uses sh:inversePath where the modeller drew the opposite direction." ;
+    owl:versionInfo "0.2.0" .
 
 # --- Cross-cutting hygiene ---------------------------------------------------
 # Closes the "language uniqueness" item in NEXT-STEPS.md §"Ontology hygiene":
@@ -74,26 +88,18 @@ uafsh:LabelledInstanceShape a sh:NodeShape ;
     ] .
 
 # --- Strategic domain --------------------------------------------------------
-# Backbone Stage 3 shape per NEXT-STEPS.md: a Capability without a realising
-# activity is a governance failure. We split this across three property shapes
-# rather than one big sh:and so the violation messages stay actionable.
-#
-# NOTE: the dump emits Neo4j relationship types in camelCase under the uaf:
-# namespace (REALISES -> uaf:realises). These shapes assume the OPPOSITE
-# direction is also present where appropriate — i.e. an OperationalActivity
-# carrying uaf:realises pointing at a CapabilityConfiguration is the canonical
-# representation. If the model authors the inverse direction instead, this
-# constraint will fire incorrectly. Treat sh:Warning until we add owl:inverseOf
-# pairs to the MVO (Stage 3, next chunk).
+# Backbone Stage 3 shape per NEXT-STEPS.md: a CapabilityConfiguration without a
+# realising element is a governance failure. Reasoner-independent: the model
+# always emits uaf:realises in some direction, so we accept either via sh:or.
 
 uafsh:CapabilityConfigurationShape a sh:NodeShape ;
     sh:targetClass uaf:CapabilityConfiguration ;
-    sh:property [
-        sh:path uaf:realisedBy ;
-        sh:minCount 1 ;
-        sh:severity sh:Warning ;
-        sh:message "CapabilityConfiguration has no realising element. Stage 3 governance expects every config to be realised by at least one OperationalActivity / Resource / Role. Forward path uaf:realisedBy resolves under OWL FB via owl:inverseOf with uaf:realises." ;
-    ] .
+    sh:or (
+        [ sh:path [ sh:inversePath uaf:realises ] ; sh:minCount 1 ]
+        [ sh:path uaf:realises                    ; sh:minCount 1 ]
+    ) ;
+    sh:severity sh:Warning ;
+    sh:message "CapabilityConfiguration has no realising element (uaf:realises, either direction). Stage 3 governance expects every config to be realised by at least one OperationalActivity / Resource / Role." .
 
 # A Capability with no Vision / EndState / DesiredEffect upstream is a
 # capability detached from strategic intent. Speculative — many real models
@@ -101,22 +107,22 @@ uafsh:CapabilityConfigurationShape a sh:NodeShape ;
 
 uafsh:CapabilityStrategicAnchorShape a sh:NodeShape ;
     sh:targetClass uaf:Capability ;
-    sh:property [
-        sh:path uaf:exhibits ;
-        sh:minCount 1 ;
-        sh:severity sh:Warning ;
-        sh:message "Capability exhibits no DesiredEffect / EndState. Acceptable during early design, but flag for review before architecture baseline." ;
-    ] .
+    sh:or (
+        [ sh:path uaf:exhibits                    ; sh:minCount 1 ]
+        [ sh:path [ sh:inversePath uaf:exhibits ] ; sh:minCount 1 ]
+    ) ;
+    sh:severity sh:Warning ;
+    sh:message "Capability exhibits no DesiredEffect / EndState (uaf:exhibits, either direction). Acceptable during early design, but flag for review before architecture baseline." .
 
 # Vision without VisionStatement is a structural defect.
 
 uafsh:VisionShape a sh:NodeShape ;
     sh:targetClass uaf:Vision ;
-    sh:property [
-        sh:path uaf:composedOf ;
-        sh:minCount 1 ;
-        sh:message "Vision has no composing VisionStatement (uaf:composedOf). A Vision without statements is structurally incomplete." ;
-    ] .
+    sh:or (
+        [ sh:path uaf:composedOf                    ; sh:minCount 1 ]
+        [ sh:path [ sh:inversePath uaf:composedOf ] ; sh:minCount 1 ]
+    ) ;
+    sh:message "Vision has no composing VisionStatement (uaf:composedOf, either direction). A Vision without statements is structurally incomplete." .
 
 # --- Security domain ---------------------------------------------------------
 # Stage 3 calls out classification dominance chains for accreditation. True
@@ -127,42 +133,42 @@ uafsh:VisionShape a sh:NodeShape ;
 
 uafsh:SecurityAssetShape a sh:NodeShape ;
     sh:targetClass uaf:SecurityAsset ;
-    sh:property [
-        sh:path uaf:contributedToBy ;
-        sh:minCount 1 ;
-        sh:severity sh:Warning ;
-        sh:message "SecurityAsset has no contributing SecurityControl. Either the asset is unprotected (governance gap) or the model omits the link (modelling gap). Forward path uaf:contributedToBy resolves under OWL FB via owl:inverseOf with uaf:contributesTo." ;
-    ] .
+    sh:or (
+        [ sh:path [ sh:inversePath uaf:contributesTo ] ; sh:minCount 1 ]
+        [ sh:path uaf:contributesTo                    ; sh:minCount 1 ]
+    ) ;
+    sh:severity sh:Warning ;
+    sh:message "SecurityAsset has no contributing SecurityControl (uaf:contributesTo, either direction). Either the asset is unprotected (governance gap) or the model omits the link (modelling gap)." .
 
 uafsh:SecurityControlShape a sh:NodeShape ;
     sh:targetClass uaf:SecurityControl ;
-    sh:property [
-        sh:path uaf:containedIn ;
-        sh:minCount 1 ;
-        sh:severity sh:Warning ;
-        sh:message "SecurityControl is not contained in any SecurityControlFamily. Accreditation traceability typically requires every control to roll up to a family (e.g. NIST 800-53 AC, AU, ...)." ;
-    ] .
+    sh:or (
+        [ sh:path uaf:containedIn                    ; sh:minCount 1 ]
+        [ sh:path [ sh:inversePath uaf:containedIn ] ; sh:minCount 1 ]
+    ) ;
+    sh:severity sh:Warning ;
+    sh:message "SecurityControl is not contained in any SecurityControlFamily (uaf:containedIn, either direction). Accreditation traceability typically requires every control to roll up to a family (e.g. NIST 800-53 AC, AU, ...)." .
 
 uafsh:SecurityRiskShape a sh:NodeShape ;
     sh:targetClass uaf:SecurityRisk ;
-    sh:property [
-        sh:path uaf:tracedBy ;
-        sh:minCount 1 ;
-        sh:severity sh:Warning ;
-        sh:message "SecurityRisk has no SecurityControl tracing to it. Risks without mitigations are flagged for residual-risk review. Forward path uaf:tracedBy resolves under OWL FB via owl:inverseOf with uaf:tracesTo." ;
-    ] .
+    sh:or (
+        [ sh:path [ sh:inversePath uaf:tracesTo ] ; sh:minCount 1 ]
+        [ sh:path uaf:tracesTo                    ; sh:minCount 1 ]
+    ) ;
+    sh:severity sh:Warning ;
+    sh:message "SecurityRisk has no SecurityControl tracing to it (uaf:tracesTo, either direction). Risks without mitigations are flagged for residual-risk review." .
 
 # A SecurityDomain without enclaves is a placeholder. Often legitimate during
 # early architecture; warning so it surfaces but doesn't block.
 
 uafsh:SecurityDomainShape a sh:NodeShape ;
     sh:targetClass uaf:SecurityDomain ;
-    sh:property [
-        sh:path uaf:composedOf ;
-        sh:minCount 1 ;
-        sh:severity sh:Warning ;
-        sh:message "SecurityDomain has no composing SecurityEnclave. Acceptable during scoping; flag for review at baseline." ;
-    ] .
+    sh:or (
+        [ sh:path uaf:composedOf                    ; sh:minCount 1 ]
+        [ sh:path [ sh:inversePath uaf:composedOf ] ; sh:minCount 1 ]
+    ) ;
+    sh:severity sh:Warning ;
+    sh:message "SecurityDomain has no composing SecurityEnclave (uaf:composedOf, either direction). Acceptable during scoping; flag for review at baseline." .
 
 # --- Operational domain ------------------------------------------------------
 # Stage 3 governance for the Operational slice. The defining structural
@@ -171,19 +177,15 @@ uafsh:SecurityDomainShape a sh:NodeShape ;
 # at least one activity. All flagged sh:Warning — partial Operational
 # Architecture Description (OV-1/OV-2 scoping work) typically leaves these
 # links incomplete and we don't want to block design-time exports.
-#
-# All paths are forward-direction under OWL FB. uaf:performedBy resolves to
-# the reverse of uaf:performs via owl:inverseOf in uaf-mvo-axioms.ttl §1, so
-# whichever way the modeller drew the link, the shape sees it.
 
 uafsh:OperationalActivityShape a sh:NodeShape ;
     sh:targetClass uaf:OperationalActivity ;
-    sh:property [
-        sh:path uaf:performedBy ;
-        sh:minCount 1 ;
-        sh:severity sh:Warning ;
-        sh:message "OperationalActivity has no performer (uaf:performedBy). An activity that nobody performs is either an unassigned task or a modelling gap. Forward path resolves under OWL FB via owl:inverseOf with uaf:performs." ;
-    ] .
+    sh:or (
+        [ sh:path [ sh:inversePath uaf:performs ] ; sh:minCount 1 ]
+        [ sh:path uaf:performs                    ; sh:minCount 1 ]
+    ) ;
+    sh:severity sh:Warning ;
+    sh:message "OperationalActivity has no performer (uaf:performs, either direction). An activity that nobody performs is either an unassigned task or a modelling gap." .
 
 # An OperationalPerformer not bound to any activity is a floating role — the
 # inverse view of the same constraint above. Both shapes together catch the
@@ -191,12 +193,12 @@ uafsh:OperationalActivityShape a sh:NodeShape ;
 
 uafsh:OperationalPerformerShape a sh:NodeShape ;
     sh:targetClass uaf:OperationalPerformer ;
-    sh:property [
-        sh:path uaf:performs ;
-        sh:minCount 1 ;
-        sh:severity sh:Warning ;
-        sh:message "OperationalPerformer performs no OperationalActivity. Either an unassigned performer or a modelling gap. Acceptable during early scoping." ;
-    ] .
+    sh:or (
+        [ sh:path uaf:performs                    ; sh:minCount 1 ]
+        [ sh:path [ sh:inversePath uaf:performs ] ; sh:minCount 1 ]
+    ) ;
+    sh:severity sh:Warning ;
+    sh:message "OperationalPerformer performs no OperationalActivity (uaf:performs, either direction). Either an unassigned performer or a modelling gap." .
 
 # OperationalProcess is a composition of activities. A process with zero
 # composedOf is essentially an empty container — almost always a stub left
@@ -204,12 +206,12 @@ uafsh:OperationalPerformerShape a sh:NodeShape ;
 
 uafsh:OperationalProcessShape a sh:NodeShape ;
     sh:targetClass uaf:OperationalProcess ;
-    sh:property [
-        sh:path uaf:composedOf ;
-        sh:minCount 1 ;
-        sh:severity sh:Warning ;
-        sh:message "OperationalProcess composes no OperationalActivity. Empty process containers are usually scoping placeholders; flag for review before baseline." ;
-    ] .
+    sh:or (
+        [ sh:path uaf:composedOf                    ; sh:minCount 1 ]
+        [ sh:path [ sh:inversePath uaf:composedOf ] ; sh:minCount 1 ]
+    ) ;
+    sh:severity sh:Warning ;
+    sh:message "OperationalProcess composes no OperationalActivity (uaf:composedOf, either direction). Empty process containers are usually scoping placeholders; flag for review before baseline." .
 
 # --- Resource domain ---------------------------------------------------------
 # Stage 3 governance for the Resource slice. Resources are where Operational
@@ -220,12 +222,12 @@ uafsh:OperationalProcessShape a sh:NodeShape ;
 
 uafsh:ResourcePerformerShape a sh:NodeShape ;
     sh:targetClass uaf:ResourcePerformer ;
-    sh:property [
-        sh:path uaf:performs ;
-        sh:minCount 1 ;
-        sh:severity sh:Warning ;
-        sh:message "ResourcePerformer performs no ResourceElement (function / action / service). A performer without behaviour is either unspecified or a modelling gap." ;
-    ] .
+    sh:or (
+        [ sh:path uaf:performs                    ; sh:minCount 1 ]
+        [ sh:path [ sh:inversePath uaf:performs ] ; sh:minCount 1 ]
+    ) ;
+    sh:severity sh:Warning ;
+    sh:message "ResourcePerformer performs no ResourceElement (uaf:performs, either direction). A performer without behaviour is either unspecified or a modelling gap." .
 
 # Roles bound to nothing are governance debt — the role exists conceptually
 # but no performer is responsible for it. Warning so the violation surfaces
@@ -233,24 +235,24 @@ uafsh:ResourcePerformerShape a sh:NodeShape ;
 
 uafsh:ResourceRoleShape a sh:NodeShape ;
     sh:targetClass uaf:ResourceRole ;
-    sh:property [
-        sh:path uaf:assignedTo ;
-        sh:minCount 1 ;
-        sh:severity sh:Warning ;
-        sh:message "ResourceRole is not assigned to any ResourcePerformer (uaf:assignedTo). Role bindings clarify accountability; expected before architecture baseline." ;
-    ] .
+    sh:or (
+        [ sh:path uaf:assignedTo                    ; sh:minCount 1 ]
+        [ sh:path [ sh:inversePath uaf:assignedTo ] ; sh:minCount 1 ]
+    ) ;
+    sh:severity sh:Warning ;
+    sh:message "ResourceRole has no ResourcePerformer (uaf:assignedTo, either direction). Role bindings clarify accountability; expected before architecture baseline." .
 
 # A ResourceArchitecture with no components is a top-level container missing
 # its content. Equivalent to OperationalProcess for the Resource domain.
 
 uafsh:ResourceArchitectureShape a sh:NodeShape ;
     sh:targetClass uaf:ResourceArchitecture ;
-    sh:property [
-        sh:path uaf:composedOf ;
-        sh:minCount 1 ;
-        sh:severity sh:Warning ;
-        sh:message "ResourceArchitecture composes no ResourceElement. Empty architecture containers are usually scoping placeholders; flag for review before baseline." ;
-    ] .
+    sh:or (
+        [ sh:path uaf:composedOf                    ; sh:minCount 1 ]
+        [ sh:path [ sh:inversePath uaf:composedOf ] ; sh:minCount 1 ]
+    ) ;
+    sh:severity sh:Warning ;
+    sh:message "ResourceArchitecture composes no ResourceElement (uaf:composedOf, either direction). Empty architecture containers are usually scoping placeholders; flag for review before baseline." .
 
 # ResourceArtifact carries the allocation pattern: an artifact (document,
 # build output, data file) typically allocates to a performer/role/system.
@@ -259,12 +261,12 @@ uafsh:ResourceArchitectureShape a sh:NodeShape ;
 
 uafsh:ResourceArtifactShape a sh:NodeShape ;
     sh:targetClass uaf:ResourceArtifact ;
-    sh:property [
-        sh:path uaf:allocatedTo ;
-        sh:minCount 1 ;
-        sh:severity sh:Warning ;
-        sh:message "ResourceArtifact is not allocated to anything (uaf:allocatedTo). Artifacts without allocation lose configuration-management traceability." ;
-    ] .
+    sh:or (
+        [ sh:path uaf:allocatedTo                    ; sh:minCount 1 ]
+        [ sh:path [ sh:inversePath uaf:allocatedTo ] ; sh:minCount 1 ]
+    ) ;
+    sh:severity sh:Warning ;
+    sh:message "ResourceArtifact is not allocated to anything (uaf:allocatedTo, either direction). Artifacts without allocation lose configuration-management traceability." .
 
 # --- Service domain ----------------------------------------------------------
 # Stage 3 governance for the Service slice. A service is something a
@@ -272,84 +274,75 @@ uafsh:ResourceArtifactShape a sh:NodeShape ;
 # invariants: every Service has a provider; every ServicePerformer provides
 # at least one service; every ServiceArchitecture composes at least one
 # service element; every ServiceRole is assigned to a performer.
-#
-# uaf:providedBy is declared in uaf-mvo-axioms.ttl §1 as inverse of
-# uaf:provides, so the forward path in uafsh:ServiceShape resolves under
-# OWL FB regardless of which direction the model authors used.
 
 uafsh:ServiceShape a sh:NodeShape ;
     sh:targetClass uaf:Service ;
-    sh:property [
-        sh:path uaf:providedBy ;
-        sh:minCount 1 ;
-        sh:severity sh:Warning ;
-        sh:message "Service has no provider (uaf:providedBy). Services without a ServicePerformer are unallocated capabilities. Forward path resolves under OWL FB via owl:inverseOf with uaf:provides." ;
-    ] .
+    sh:or (
+        [ sh:path [ sh:inversePath uaf:provides ] ; sh:minCount 1 ]
+        [ sh:path uaf:provides                    ; sh:minCount 1 ]
+    ) ;
+    sh:severity sh:Warning ;
+    sh:message "Service has no provider (uaf:provides, either direction). Services without a ServicePerformer are unallocated capabilities." .
 
 uafsh:ServicePerformerShape a sh:NodeShape ;
     sh:targetClass uaf:ServicePerformer ;
-    sh:property [
-        sh:path uaf:provides ;
-        sh:minCount 1 ;
-        sh:severity sh:Warning ;
-        sh:message "ServicePerformer provides no Service. Either an unallocated performer or a modelling gap." ;
-    ] .
+    sh:or (
+        [ sh:path uaf:provides                    ; sh:minCount 1 ]
+        [ sh:path [ sh:inversePath uaf:provides ] ; sh:minCount 1 ]
+    ) ;
+    sh:severity sh:Warning ;
+    sh:message "ServicePerformer provides no Service (uaf:provides, either direction). Either an unallocated performer or a modelling gap." .
 
 uafsh:ServiceArchitectureShape a sh:NodeShape ;
     sh:targetClass uaf:ServiceArchitecture ;
-    sh:property [
-        sh:path uaf:composedOf ;
-        sh:minCount 1 ;
-        sh:severity sh:Warning ;
-        sh:message "ServiceArchitecture composes no ServiceElement. Empty architecture containers are usually scoping placeholders; flag for review before baseline." ;
-    ] .
+    sh:or (
+        [ sh:path uaf:composedOf                    ; sh:minCount 1 ]
+        [ sh:path [ sh:inversePath uaf:composedOf ] ; sh:minCount 1 ]
+    ) ;
+    sh:severity sh:Warning ;
+    sh:message "ServiceArchitecture composes no ServiceElement (uaf:composedOf, either direction). Empty architecture containers are usually scoping placeholders; flag for review before baseline." .
 
 uafsh:ServiceRoleShape a sh:NodeShape ;
     sh:targetClass uaf:ServiceRole ;
-    sh:property [
-        sh:path uaf:assignedTo ;
-        sh:minCount 1 ;
-        sh:severity sh:Warning ;
-        sh:message "ServiceRole is not assigned to any ServicePerformer (uaf:assignedTo). Role bindings clarify accountability; expected before architecture baseline." ;
-    ] .
+    sh:or (
+        [ sh:path uaf:assignedTo                    ; sh:minCount 1 ]
+        [ sh:path [ sh:inversePath uaf:assignedTo ] ; sh:minCount 1 ]
+    ) ;
+    sh:severity sh:Warning ;
+    sh:message "ServiceRole is not assigned to any ServicePerformer (uaf:assignedTo, either direction). Role bindings clarify accountability; expected before architecture baseline." .
 
 # --- Personnel domain --------------------------------------------------------
 # Stage 3 governance for the Personnel slice. UAF's Personnel domain
 # centres on Organizations and Posts (UAF has no first-class Person
 # concept in the registered class set — ActualOrganization and Post are
 # the canonical role-bearing elements).
-#
-# A Post that is not part of any Organization is a floating role-slot. An
-# Organization with no Posts is an empty container. A PersonnelActivity
-# without a performer is the personnel analogue of an OperationalActivity
-# with no performer.
 
 uafsh:PostShape a sh:NodeShape ;
     sh:targetClass uaf:Post ;
-    sh:property [
-        sh:path uaf:partOf ;
-        sh:minCount 1 ;
-        sh:severity sh:Warning ;
-        sh:message "Post is not part of any Organization (uaf:partOf, inverse of uaf:composedOf under OWL FB). Posts without an organisational owner are floating role-slots." ;
-    ] .
+    sh:or (
+        [ sh:path [ sh:inversePath uaf:composedOf ] ; sh:minCount 1 ]
+        [ sh:path uaf:composedOf                    ; sh:minCount 1 ]
+    ) ;
+    sh:severity sh:Warning ;
+    sh:message "Post is not part of any Organization (uaf:composedOf, either direction). Posts without an organisational owner are floating role-slots." .
 
 uafsh:OrganizationShape a sh:NodeShape ;
     sh:targetClass uaf:Organization ;
-    sh:property [
-        sh:path uaf:composedOf ;
-        sh:minCount 1 ;
-        sh:severity sh:Warning ;
-        sh:message "Organization composes no Posts (or sub-units). Acceptable during scoping; flag for review at baseline." ;
-    ] .
+    sh:or (
+        [ sh:path uaf:composedOf                    ; sh:minCount 1 ]
+        [ sh:path [ sh:inversePath uaf:composedOf ] ; sh:minCount 1 ]
+    ) ;
+    sh:severity sh:Warning ;
+    sh:message "Organization composes no Posts (or sub-units) (uaf:composedOf, either direction). Acceptable during scoping; flag for review at baseline." .
 
 uafsh:PersonnelActivityShape a sh:NodeShape ;
     sh:targetClass uaf:PersonnelActivity ;
-    sh:property [
-        sh:path uaf:performedBy ;
-        sh:minCount 1 ;
-        sh:severity sh:Warning ;
-        sh:message "PersonnelActivity has no performer (uaf:performedBy). An activity that no Post / Organization performs is either unassigned or a modelling gap." ;
-    ] .
+    sh:or (
+        [ sh:path [ sh:inversePath uaf:performs ] ; sh:minCount 1 ]
+        [ sh:path uaf:performs                    ; sh:minCount 1 ]
+    ) ;
+    sh:severity sh:Warning ;
+    sh:message "PersonnelActivity has no performer (uaf:performs, either direction). An activity that no Post / Organization performs is either unassigned or a modelling gap." .
 
 # --- Acquisition domain ------------------------------------------------------
 # Stage 3 governance for the Acquisition slice. Projects organise the
@@ -360,27 +353,27 @@ uafsh:PersonnelActivityShape a sh:NodeShape ;
 
 uafsh:ProjectShape a sh:NodeShape ;
     sh:targetClass uaf:Project ;
-    sh:property [
-        sh:path uaf:composedOf ;
-        sh:minCount 1 ;
-        sh:severity sh:Warning ;
-        sh:message "Project composes no AcquisitionElement (milestone / activity / role). Empty project containers are usually scoping placeholders; flag for review before baseline." ;
-    ] .
+    sh:or (
+        [ sh:path uaf:composedOf                    ; sh:minCount 1 ]
+        [ sh:path [ sh:inversePath uaf:composedOf ] ; sh:minCount 1 ]
+    ) ;
+    sh:severity sh:Warning ;
+    sh:message "Project composes no AcquisitionElement (uaf:composedOf, either direction). Empty project containers are usually scoping placeholders; flag for review before baseline." .
 
 uafsh:ProjectMilestoneShape a sh:NodeShape ;
     sh:targetClass uaf:ProjectMilestone ;
-    sh:property [
-        sh:path uaf:partOf ;
-        sh:minCount 1 ;
-        sh:severity sh:Warning ;
-        sh:message "ProjectMilestone is not part of any Project (uaf:partOf, inverse of uaf:composedOf under OWL FB). Floating milestones lose their planning context." ;
-    ] .
+    sh:or (
+        [ sh:path [ sh:inversePath uaf:composedOf ] ; sh:minCount 1 ]
+        [ sh:path uaf:composedOf                    ; sh:minCount 1 ]
+    ) ;
+    sh:severity sh:Warning ;
+    sh:message "ProjectMilestone is not part of any Project (uaf:composedOf, either direction). Floating milestones lose their planning context." .
 
 uafsh:ProjectThemeShape a sh:NodeShape ;
     sh:targetClass uaf:ProjectTheme ;
-    sh:property [
-        sh:path uaf:composedOf ;
-        sh:minCount 1 ;
-        sh:severity sh:Warning ;
-        sh:message "ProjectTheme composes no Project. Themes without projects are usually placeholders during portfolio scoping; flag for review at baseline." ;
-    ] .
+    sh:or (
+        [ sh:path uaf:composedOf                    ; sh:minCount 1 ]
+        [ sh:path [ sh:inversePath uaf:composedOf ] ; sh:minCount 1 ]
+    ) ;
+    sh:severity sh:Warning ;
+    sh:message "ProjectTheme composes no Project (uaf:composedOf, either direction). Themes without projects are usually placeholders during portfolio scoping; flag for review at baseline." .

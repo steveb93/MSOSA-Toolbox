@@ -14,19 +14,26 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComponent;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Properties;
 
 /**
@@ -61,6 +68,7 @@ final class ValidateModePanel extends JPanel implements WorkbenchPanel {
     private final JTextArea report  = new JTextArea(IDLE_TEXT);
     private final JButton runBtn    = new JButton("Run SHACL Validation");
     private final JButton cancelBtn = new JButton("Cancel");
+    private final JButton exportBtn = new JButton("Export Log…");
     private SwingWorker<String, String> currentWorker;
 
     ValidateModePanel(UAFWorkbench workbench) {
@@ -79,11 +87,17 @@ final class ValidateModePanel extends JPanel implements WorkbenchPanel {
           + "so background work can continue until it finishes — but the UI is freed immediately.");
         cancelBtn.addActionListener(e -> cancelValidation());
 
+        exportBtn.setToolTipText(
+            "Save the current report area to a .txt file. Captures whatever is shown — "
+          + "progress trace, conformance verdict, or error message.");
+        exportBtn.addActionListener(e -> exportLog());
+
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         buttons.setOpaque(false);
         buttons.setAlignmentX(Component.LEFT_ALIGNMENT);
         buttons.add(runBtn);
         buttons.add(cancelBtn);
+        buttons.add(exportBtn);
 
         report.setEditable(false);
         report.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
@@ -212,6 +226,44 @@ final class ValidateModePanel extends JPanel implements WorkbenchPanel {
     private void cancelValidation() {
         if (currentWorker != null && !currentWorker.isDone()) {
             currentWorker.cancel(true);
+        }
+    }
+
+    /**
+     * Write whatever is in the report area to a user-chosen .txt file. Captures
+     * progress traces, conformance verdicts, and error messages identically —
+     * the file mirrors the textual UI state at the moment of click.
+     */
+    private void exportLog() {
+        String content = report.getText();
+        if (content == null || content.isBlank() || IDLE_TEXT.equals(content)) {
+            JOptionPane.showMessageDialog(this,
+                "Nothing to export yet. Run a validation first.",
+                "Export Log", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        String stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Save SHACL validation log");
+        chooser.setSelectedFile(new File("shacl-validation-" + stamp + ".txt"));
+        chooser.setFileFilter(new FileNameExtensionFilter("Text files (*.txt)", "txt"));
+
+        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) return;
+
+        File target = chooser.getSelectedFile();
+        if (!target.getName().toLowerCase().endsWith(".txt")) {
+            target = new File(target.getParentFile(), target.getName() + ".txt");
+        }
+        try {
+            Files.writeString(target.toPath(), content, StandardCharsets.UTF_8);
+            JOptionPane.showMessageDialog(this,
+                "Saved to:\n" + target.getAbsolutePath(),
+                "Export Log", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                "Could not write log:\n" + ex.getMessage(),
+                "Export Log", JOptionPane.ERROR_MESSAGE);
         }
     }
 

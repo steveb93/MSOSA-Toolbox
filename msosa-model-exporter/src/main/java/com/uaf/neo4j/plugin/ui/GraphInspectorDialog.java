@@ -87,7 +87,7 @@ public class GraphInspectorDialog extends JDialog {
      * so a Settings save propagates without needing to rebuild the workbench.
      */
     public GraphInspectorDialog(Properties connectionConfig, Project project) {
-        super((Frame) null, "UAF Knowledge Graph — Inspect", false);
+        super((Frame) null, "MSOSA Knowledge Graph — Inspect", false);
         this.project = project;
 
         // Main table — 5 columns
