@@ -11,6 +11,7 @@ import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Element;
 import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.NamedElement;
 import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Package;
 import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Property;
+import com.nomagic.uml2.ext.magicdraw.auxiliaryconstructs.mdinformationflows.InformationFlow;
 import com.nomagic.uml2.ext.magicdraw.compositestructures.mdinternalstructures.Connector;
 import com.nomagic.uml2.ext.magicdraw.compositestructures.mdinternalstructures.ConnectorEnd;
 import com.nomagic.uml2.ext.magicdraw.compositestructures.mdinternalstructures.ConnectableElement;
@@ -334,6 +335,7 @@ public class UAFModelTraverser {
             // which left the entire IBD-style structure disconnected.
             extractConnectorEnds(element, id, matched.info);
             extractPropertyOwnership(element, id, matched.info);
+            extractInformationFlowEnds(element, id, matched.info);
         }
 
         // Descend into containers — Packages always, Classifiers (Block, Class, Activity,
@@ -777,6 +779,86 @@ public class UAFModelTraverser {
         } catch (Exception e) {
             LOG.warning("Failed to extract property ownership for " + propertyId + ": " + e.getMessage());
         }
+    }
+
+    /**
+     * UAF InformationFlow-derived exchanges (ResourceExchange, OperationalExchange,
+     * ServiceInterchange, …) are first-class nodes whose semantic endpoints —
+     * {@code informationSource}, {@code informationTarget}, {@code conveyed} — live
+     * on the underlying UML metamodel, NOT as UAF stereotype tagged values.
+     * {@link StereotypesHelper#getTaggedValue} does not surface them, so the prior
+     * reference-edge path via {@link #emitReferenceEdge} is a no-op for these
+     * elements and exchanges remain orphan in Neo4j.
+     *
+     * Walk the metamodel directly. The emitted edges are {@code ASSOCIATED_WITH}
+     * with {@code uafType} set to {@code <StereotypeName>.Source / .Target /
+     * .conveyed} so consumers can filter by intent and so the names line up with
+     * the verification queries documented on the originating PR.
+     */
+    private void extractInformationFlowEnds(Element element, String flowId,
+                                            UAFStereotypeRegistry.StereotypeInfo srcInfo) {
+        if (!(element instanceof InformationFlow)) return;
+        InformationFlow flow = (InformationFlow) element;
+        String stereoLabel = resolveDisplayStereotypeName(element);
+        try {
+            emitFlowEndEdges(flowId, flow.getInformationSource(),
+                             stereoLabel + ".Source",   srcInfo);
+            emitFlowEndEdges(flowId, flow.getInformationTarget(),
+                             stereoLabel + ".Target",   srcInfo);
+            emitFlowEndEdges(flowId, flow.getConveyed(),
+                             stereoLabel + ".conveyed", srcInfo);
+        } catch (Exception e) {
+            LOG.warning("Failed to extract InformationFlow ends for " + flowId + ": " + e.getMessage());
+        }
+    }
+
+    private void emitFlowEndEdges(String srcId,
+                                  Collection<? extends Element> targets,
+                                  String uafType,
+                                  UAFStereotypeRegistry.StereotypeInfo srcInfo) {
+        if (targets == null) return;
+        String domain = srcInfo != null && srcInfo.domain != null
+                        ? srcInfo.domain.name() : "NONE";
+        String language = srcInfo != null ? srcInfo.language : "UAF";
+        for (Element t : targets) {
+            if (t == null) continue;
+            Element resolved = (t instanceof NamedElement)
+                ? resolveReferenceTarget((NamedElement) t)
+                : (isRegisteredUAFElement(t) ? t : null);
+            if (resolved == null) continue;
+            String tgtId = safeId(resolved);
+            if (tgtId == null || tgtId.isEmpty()) continue;
+            String name = (t instanceof NamedElement && ((NamedElement) t).getName() != null)
+                          ? ((NamedElement) t).getName() : "";
+            relationships.add(UAFRelationshipDTO.builder(
+                    "flowend::" + srcId + "::" + uafType + "::" + tgtId,
+                    srcId, tgtId, UAFRelationshipDTO.REL_ASSOCIATED_WITH)
+                .uafType(uafType)
+                .name(name)
+                .domain(domain)
+                .language(language)
+                .build());
+        }
+    }
+
+    /**
+     * First registered UAF stereotype name on the element, falling back to
+     * {@code "InformationFlow"} when no UAF stereotype is found. Used to prefix
+     * the {@code uafType} on flow-end edges so queries can filter by the
+     * applied stereotype (e.g. {@code ResourceExchange.Source}) rather than the
+     * underlying UML metaclass.
+     */
+    private static String resolveDisplayStereotypeName(Element element) {
+        try {
+            for (Stereotype s : StereotypesHelper.getStereotypes(element)) {
+                if (findRegisteredAncestor(s) != null && s.getName() != null) {
+                    return s.getName();
+                }
+            }
+        } catch (Exception ignored) {
+            // fall through
+        }
+        return "InformationFlow";
     }
 
     /**
