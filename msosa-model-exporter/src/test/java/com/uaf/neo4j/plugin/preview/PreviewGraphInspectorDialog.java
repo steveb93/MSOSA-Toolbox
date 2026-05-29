@@ -1,10 +1,8 @@
 package com.uaf.neo4j.plugin.preview;
 
-import com.uaf.neo4j.plugin.neo4j.Neo4jExportService;
 import com.uaf.neo4j.plugin.neo4j.Neo4jExportService.NeighbourhoodResult;
 import com.uaf.neo4j.plugin.ui.GraphInspectorDialog;
 
-import java.awt.Frame;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;

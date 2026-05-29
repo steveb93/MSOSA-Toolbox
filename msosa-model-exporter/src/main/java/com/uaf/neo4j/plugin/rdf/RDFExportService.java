@@ -150,6 +150,10 @@ public class RDFExportService implements ExportService {
             LOG.warning("Failed to write " + outputPath + ": " + e.getMessage());
             result.errors.add("Turtle write: " + e.getMessage());
         }
+        // SHACL validation runs against the in-memory model before the Fuseki PUT so
+        // a failing conformance result reaches the summary dialog even when Fuseki
+        // is unreachable. Closes the Stage-3 conformance-row task in NEXT-STEPS.md.
+        ShaclValidationService.validateAndAttach(model, result);
         if (pushToFuseki) {
             try {
                 pushToFuseki();

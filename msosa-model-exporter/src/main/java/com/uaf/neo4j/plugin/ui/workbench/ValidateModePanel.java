@@ -24,6 +24,7 @@ import java.awt.Font;
  */
 final class ValidateModePanel extends JPanel implements WorkbenchPanel {
 
+    @SuppressWarnings("unused") // held for follow-up wiring of the Run SHACL button
     private final UAFWorkbench workbench;
     private final JTextArea report = new JTextArea(
         "No validation run yet.\n\n"

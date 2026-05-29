@@ -1,7 +1,6 @@
 package com.uaf.neo4j.plugin.ui;
 
 import com.uaf.neo4j.plugin.ExportLog;
-import com.uaf.neo4j.plugin.UAFNeo4jPlugin;
 import com.uaf.neo4j.plugin.export.ExportResult;
 
 import javax.swing.*;
@@ -38,6 +37,11 @@ public class ExportSummaryDialog extends JDialog {
         if (!result.misDomainHints.isEmpty()) {
             tabs.addTab("Mis-Domain Hints (" + result.misDomainHints.size() + ")",
                         buildMisDomainPanel(result));
+        }
+        if (!result.shaclViolationLines.isEmpty()) {
+            int total = result.shaclViolations + result.shaclWarnings;
+            tabs.addTab("SHACL Violations (" + total + ")",
+                        buildShaclPanel(result));
         }
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
@@ -95,6 +99,7 @@ public class ExportSummaryDialog extends JDialog {
         rowList.add(new String[]{"INSTANCE_OF links",     String.valueOf(result.instanceLinksWritten)});
         rowList.add(new String[]{"DEFINES links",         String.valueOf(result.definesLinksWritten)});
         rowList.add(new String[]{"Errors",                String.valueOf(result.errors.size())});
+        rowList.add(new String[]{"SHACL conformance",     shaclSummary(result)});
 
         String[][] rows = rowList.toArray(new String[0][]);
         JTable table = new JTable(new DefaultTableModel(rows, new String[]{"Category", "Count"}) {
@@ -214,6 +219,64 @@ public class ExportSummaryDialog extends JDialog {
             result.misDomainHints.forEach((k, v) -> lines.add(k.replace('|', '\t') + "\t" + v));
             copyToClipboard(lines);
         });
+        JPanel buttonRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        buttonRow.add(copyBtn);
+
+        JPanel panel = new JPanel(new BorderLayout(0, 8));
+        panel.setBorder(new EmptyBorder(12, 12, 12, 12));
+        panel.add(hint,                       BorderLayout.NORTH);
+        panel.add(new JScrollPane(table),     BorderLayout.CENTER);
+        panel.add(buttonRow,                  BorderLayout.SOUTH);
+        return panel;
+    }
+
+    /**
+     * One-cell summary of SHACL conformance for the Category/Count table.
+     * Distinguishes "not run" (LPG-only export, or validator failed to load)
+     * from "Pass" and "Fail (N)" so users don't read silence as success.
+     */
+    private String shaclSummary(ExportResult result) {
+        if (result.shaclConformance == null) {
+            return "N/A (RDF not enabled)";
+        }
+        if (result.shaclConformance) {
+            return result.shaclWarnings == 0
+                ? "Pass"
+                : "Pass (" + result.shaclWarnings + " warnings)";
+        }
+        StringBuilder sb = new StringBuilder("Fail (");
+        sb.append(result.shaclViolations).append(" violations");
+        if (result.shaclWarnings > 0) sb.append(", ").append(result.shaclWarnings).append(" warnings");
+        sb.append(")");
+        return sb.toString();
+    }
+
+    /**
+     * Render SHACL violation rows. One row per ValidationReport entry, formatted
+     * by {@code ShaclValidationService}. Mirrors {@link #buildUnmatchedPanel} —
+     * hint at top, table in the middle, copy-to-clipboard at the bottom.
+     */
+    private JPanel buildShaclPanel(ExportResult result) {
+        String[][] rows = new String[result.shaclViolationLines.size()][1];
+        for (int i = 0; i < result.shaclViolationLines.size(); i++) {
+            rows[i][0] = result.shaclViolationLines.get(i);
+        }
+        JTable table = new JTable(new DefaultTableModel(rows, new String[]{"Result"}) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        });
+        table.setPreferredScrollableViewportSize(new Dimension(600, 200));
+        table.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 11));
+
+        JLabel hint = new JLabel(
+            "<html>SHACL validation ran against <code>ontology/shapes/uaf-shapes.ttl</code> " +
+            "with OWL FB reasoning, mirroring the standalone " +
+            "<code>validate_shacl.py</code> validator. " +
+            "<b>Violations</b> are governance failures; <b>warnings</b> are likely " +
+            "issues that should be reviewed but do not block.</html>");
+        hint.setBorder(new EmptyBorder(0, 0, 8, 0));
+
+        JButton copyBtn = new JButton("Copy Rows");
+        copyBtn.addActionListener(e -> copyToClipboard(result.shaclViolationLines));
         JPanel buttonRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         buttonRow.add(copyBtn);
 

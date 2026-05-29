@@ -59,6 +59,15 @@
             <version>${jena.version}</version>
         </dependency>
 
+        <!-- Apache Jena SHACL — in-process SHACL validation against ontology/shapes/uaf-shapes.ttl
+             after the RDF emitter has built the in-memory model. Result is attached to ExportResult
+             and surfaced as a row + tab in ExportSummaryDialog. -->
+        <dependency>
+            <groupId>org.apache.jena</groupId>
+            <artifactId>jena-shacl</artifactId>
+            <version>${jena.version}</version>
+        </dependency>
+
         <!--
             MSOSA SDK jars — PROVIDED (on MSOSA classpath at runtime; not bundled).
             Jars are checked into /msosa-sdk/ at the repo root. Install once with:
@@ -152,12 +161,77 @@
     </dependencies>
 
     <build>
+        <!-- m2e (Eclipse Maven integration) does not have a default binding for the
+             antrun:run goal — without this mapping the IDE flags "Plugin execution
+             not covered by lifecycle configuration" as an information-level note.
+             Tell m2e to execute the copy-ontology execution at build time so the
+             classpath resources land where ShaclValidationService expects them. -->
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.eclipse.m2e</groupId>
+                    <artifactId>lifecycle-mapping</artifactId>
+                    <version>1.0.0</version>
+                    <configuration>
+                        <lifecycleMappingMetadata>
+                            <pluginExecutions>
+                                <pluginExecution>
+                                    <pluginExecutionFilter>
+                                        <groupId>org.apache.maven.plugins</groupId>
+                                        <artifactId>maven-antrun-plugin</artifactId>
+                                        <versionRange>[3.0.0,)</versionRange>
+                                        <goals><goal>run</goal></goals>
+                                    </pluginExecutionFilter>
+                                    <action>
+                                        <execute>
+                                            <runOnIncremental>false</runOnIncremental>
+                                        </execute>
+                                    </action>
+                                </pluginExecution>
+                            </pluginExecutions>
+                        </lifecycleMappingMetadata>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
         <plugins>
             <!-- Compiler -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.11.0</version>
+            </plugin>
+
+            <!-- Copy the ontology T-Box, axioms, and SHACL shapes into the plugin jar so
+                 ShaclValidationService can load them from the classpath at export time.
+                 Source files stay in ../ontology/ as the single editable copy; the plugin
+                 ships a snapshot taken at build time. maven-antrun-plugin is used in
+                 preference to maven-resources-plugin because the source directory sits
+                 outside ${project.basedir}, which the resources plugin flags as a
+                 boundary-violation warning. Ant's copy task has no such guard. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>copy-ontology</id>
+                        <phase>generate-resources</phase>
+                        <goals><goal>run</goal></goals>
+                        <configuration>
+                            <target>
+                                <copy todir="${project.build.outputDirectory}/uaf-ontology" overwrite="true">
+                                    <fileset dir="${project.basedir}/../ontology">
+                                        <include name="uaf-mvo.ttl"/>
+                                        <include name="uaf-mvo-axioms.ttl"/>
+                                        <include name="shapes/uaf-shapes.ttl"/>
+                                    </fileset>
+                                </copy>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
 
             <!-- Surefire 3.x: supports JUnit Platform (JUnit 5) natively -->
