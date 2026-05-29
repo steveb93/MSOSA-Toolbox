@@ -350,7 +350,9 @@ public class GraphInspectorDialog extends JDialog {
                     applyFilter();
                 } catch (Exception ex) {
                     Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
-                    statusLabel.setText("Failed to load: " + cause.getMessage());
+                    String uri = connectionConfig.getProperty("neo4j.uri", "bolt://localhost:7687");
+                    statusLabel.setText("Failed to load (" + uri + "): "
+                        + cause.getClass().getSimpleName() + " — " + cause.getMessage());
                 }
             }
         }.execute();
