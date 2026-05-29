@@ -6,8 +6,10 @@ import com.uaf.neo4j.plugin.model.UAFElementDTO;
 import com.uaf.neo4j.plugin.model.UAFRelationshipDTO;
 
 import org.neo4j.driver.*;
+import org.neo4j.driver.exceptions.ServiceUnavailableException;
 
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 /**
@@ -38,15 +40,48 @@ public class Neo4jExportService implements ExportService {
             config.getProperty("neo4j.batch.size", "500"));
     }
 
-    /** Opens the driver and verifies connectivity. Throws if connection fails. */
+    /**
+     * Opens the driver and verifies connectivity, with a short bounded retry to
+     * absorb container cold-starts (the most common cause of the intermittent
+     * "Failed to load" warning the Graph Inspector surfaces on first open).
+     * Throws the last cause if every attempt fails.
+     */
     public void init() {
         driver = GraphDatabase.driver(uri, AuthTokens.basic(user, password),
             Config.builder()
                 .withMaxConnectionPoolSize(
                     Integer.parseInt(System.getProperty("neo4j.max.connections", "10")))
+                .withConnectionAcquisitionTimeout(
+                    Integer.parseInt(System.getProperty("neo4j.acquire.timeout.seconds", "30")),
+                    TimeUnit.SECONDS)
+                .withConnectionTimeout(
+                    Integer.parseInt(System.getProperty("neo4j.connect.timeout.seconds", "10")),
+                    TimeUnit.SECONDS)
                 .build());
-        driver.verifyConnectivity();
-        LOG.info("Neo4jExportService: connected to " + uri);
+
+        int attempts = Integer.parseInt(System.getProperty("neo4j.connect.attempts", "3"));
+        long backoffMs = Long.parseLong(System.getProperty("neo4j.connect.backoff.ms", "2000"));
+        RuntimeException lastFailure = null;
+        for (int attempt = 1; attempt <= attempts; attempt++) {
+            try {
+                driver.verifyConnectivity();
+                LOG.info("Neo4jExportService: connected to " + uri
+                    + (attempt > 1 ? " (attempt " + attempt + "/" + attempts + ")" : ""));
+                return;
+            } catch (ServiceUnavailableException e) {
+                lastFailure = e;
+                LOG.warning("Neo4jExportService: connect attempt " + attempt + "/" + attempts
+                    + " to " + uri + " failed: " + e.getMessage());
+                if (attempt < attempts) {
+                    try { Thread.sleep(backoffMs); }
+                    catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw e;
+                    }
+                }
+            }
+        }
+        throw lastFailure;
     }
 
     // -------------------------------------------------------------------------

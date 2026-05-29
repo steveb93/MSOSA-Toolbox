@@ -23,11 +23,20 @@ public class UAFStereotypeRegistry {
         public final String neo4jLabel;
         public final Domain domain;   // null for non-UAF stereotypes
         public final String language;
+        /**
+         * Bare-noun catch-all stereotypes (e.g. {@code Resource}, {@code System},
+         * {@code Service}) that are legal UAF stereotypes but routinely appear as
+         * ancestors of more specific custom stereotypes. When {@code true} the
+         * traverser only uses this entry if no non-fallback ancestor exists for
+         * the element. See UAFModelTraverser.selectStereotype.
+         */
+        public final boolean isFallback;
 
-        StereotypeInfo(String neo4jLabel, Domain domain, String language) {
+        StereotypeInfo(String neo4jLabel, Domain domain, String language, boolean isFallback) {
             this.neo4jLabel = neo4jLabel;
             this.domain     = domain;
             this.language   = language;
+            this.isFallback = isFallback;
         }
     }
 
@@ -36,7 +45,6 @@ public class UAFStereotypeRegistry {
     static {
         // --- Strategic View (StV) ---
         reg("Capability",               "Capability",              Domain.STRATEGIC);
-        reg("CapabilityConfiguration",  "CapabilityConfiguration", Domain.STRATEGIC);
         reg("CapabilityComposition",    "CapabilityComposition",   Domain.STRATEGIC);
         reg("CapabilityDependency",     "CapabilityDependency",    Domain.STRATEGIC);
         reg("CapabilitySpecialization", "CapabilitySpecialization",Domain.STRATEGIC);
@@ -45,9 +53,9 @@ public class UAFStereotypeRegistry {
         reg("DesiredEffect",            "DesiredEffect",           Domain.STRATEGIC);
         reg("EnterprisePhase",          "EnterprisePhase",         Domain.STRATEGIC);
         reg("CapabilityIncrement",      "CapabilityIncrement",     Domain.STRATEGIC);
-        // Tier-1 #75 RC #6 reconciliation — added from real-world profile diff. The MSOSA UAF 1.2
-        // profile here uses EnterpriseVision / VisionStatement rather than the bare
-        // Vision; both are kept for back-compat across other UAF profile versions.
+        // Tier-1 #75 RC #6 reconciliation — added from real-world profile diff. Some
+        // MSOSA UAF 1.2 profiles use EnterpriseVision / VisionStatement rather than
+        // the bare Vision; both are kept for back-compat across profile versions.
         reg("EnterpriseVision",         "EnterpriseVision",        Domain.STRATEGIC);
         reg("VisionStatement",          "VisionStatement",         Domain.STRATEGIC);
         reg("CapabilityRole",           "CapabilityRole",          Domain.STRATEGIC);
@@ -69,7 +77,7 @@ public class UAFStereotypeRegistry {
         reg("NeedLine",                 "NeedLine",                Domain.OPERATIONAL);
         reg("PerformerPort",            "PerformerPort",           Domain.OPERATIONAL);
         reg("OperationalRole",          "OperationalRole",         Domain.OPERATIONAL);
-        // Tier-1 #75 RC #6 reconciliation — added from real-world UAF profile diff.
+        // Tier-1 #75 RC #6 reconciliation — added from a real-world profile diff.
         // Stereotypes confirmed present in the MSOSA UAF 1.2 profile and applied to
         // model elements; pre-reconciliation these were silently dropped.
         reg("OperationalAgent",         "OperationalAgent",        Domain.OPERATIONAL);
@@ -102,6 +110,15 @@ public class UAFStereotypeRegistry {
 
         // --- Resource View (RsV) ---
         reg("ResourcePerformer",        "ResourcePerformer",       Domain.RESOURCE);
+        // CapabilityConfiguration is the architectural realisation of a Capability
+        // through resources. UAF 1.2 DMM defines it as extending ResourceArchitecture,
+        // so its natural home is the Resource domain even though its name carries
+        // "Capability". Pre-2026-05-29 it was registered as STRATEGIC; the mis-domain
+        // validation on a real profile (PR #132) showed 17 elements consistently
+        // sitting under Resource folders. Modeller confirmed the registry was wrong.
+        // Migration consequence: existing exported `:CapabilityConfiguration` nodes
+        // still carry `domain: 'STRATEGIC'` until re-exported or patched in Cypher.
+        reg("CapabilityConfiguration",  "CapabilityConfiguration", Domain.RESOURCE);
         reg("ResourceFunction",         "ResourceFunction",        Domain.RESOURCE);
         reg("ResourceInteraction",      "ResourceInteraction",     Domain.RESOURCE);
         reg("ResourceArtifact",         "ResourceArtifact",        Domain.RESOURCE);
@@ -112,16 +129,27 @@ public class UAFStereotypeRegistry {
         reg("ResourceSystem",           "ResourceSystem",          Domain.RESOURCE);
         reg("HardwareElement",          "HardwareElement",         Domain.RESOURCE);
         reg("SoftwareElement",          "SoftwareElement",         Domain.RESOURCE);
-        reg("Software",                 "Software",                Domain.RESOURCE);
+        // Bare-noun catch-alls — see StereotypeInfo.isFallback. Real-world profiles
+        // apply Software/System/SystemBlock/Technology as base stereotypes to
+        // elements that carry a more specific operational/personnel stereotype as
+        // well; the traverser must prefer the specific one. Without the fallback
+        // flag a custom OperationalRole-like stereotype whose general chain passes
+        // through Software/System/Resource was being assigned to RESOURCE.
+        regFallback("Software",                 "Software",                Domain.RESOURCE);
         reg("NaturalResource",          "NaturalResource",         Domain.RESOURCE);
-        reg("SystemBlock",              "SystemBlock",             Domain.RESOURCE);
-        reg("System",                   "System",                  Domain.RESOURCE);
+        regFallback("SystemBlock",              "SystemBlock",             Domain.RESOURCE);
+        regFallback("System",                   "System",                  Domain.RESOURCE);
         reg("ActualSystem",             "ActualSystem",            Domain.RESOURCE);
-        reg("Technology",               "Technology",              Domain.RESOURCE);
+        regFallback("Technology",               "Technology",              Domain.RESOURCE);
         reg("LogicalArchitecture",      "LogicalArchitecture",     Domain.RESOURCE);
         reg("PhysicalArchitecture",     "PhysicalArchitecture",    Domain.RESOURCE);
-        // Tier-1 #75 RC #6 reconciliation — added from real-world profile diff.
-        reg("Resource",                 "Resource",                Domain.RESOURCE);
+        // Tier-1 #75 RC #6 reconciliation — added from a real-world profile diff.
+        // Bare `Resource` is the most aggressive collision source: it has been
+        // observed as the registered ancestor of operational-domain custom
+        // stereotypes (e.g. a bare-noun-typed performer whose qualifiedName ends
+        // in `Operational Taxonomy::Internal Performer` but where BFS returns
+        // `Resource`). Fallback so a more specific ancestor wins.
+        regFallback("Resource",                 "Resource",                Domain.RESOURCE);
         reg("ResourceAsset",            "ResourceAsset",           Domain.RESOURCE);
         reg("ResourceAction",           "ResourceAction",          Domain.RESOURCE);
         reg("ResourceExchange",         "ResourceExchange",        Domain.RESOURCE);
@@ -147,9 +175,13 @@ public class UAFStereotypeRegistry {
         reg("ServicePoint",             "ServicePoint",            Domain.SERVICE);
         reg("ServiceConnector",         "ServiceConnector",        Domain.SERVICE);
         reg("ServiceExchange",          "ServiceExchange",         Domain.SERVICE);
-        reg("Service",                  "Service",                 Domain.SERVICE);
+        // Bare `Service` is fallback for the same reason as `Resource` — concrete
+        // service flavours (ServicePerformer, ServiceFunction, ServiceArchitecture
+        // etc.) must win when present on an element whose general chain also reaches
+        // the bare `Service` stereotype.
+        regFallback("Service",                  "Service",                 Domain.SERVICE);
         reg("ServiceArchitecture",      "ServiceArchitecture",     Domain.SERVICE);
-        // Tier-1 #75 RC #6 reconciliation — added from real-world profile diff.
+        // Tier-1 #75 RC #6 reconciliation — added from a real-world profile diff.
         reg("ServiceRole",              "ServiceRole",             Domain.SERVICE);
         reg("ServiceParameter",         "ServiceParameter",        Domain.SERVICE);
         reg("ServiceMethod",            "ServiceMethod",           Domain.SERVICE);
@@ -168,7 +200,7 @@ public class UAFStereotypeRegistry {
         reg("ProjectMilestone",         "ProjectMilestone",        Domain.ACQUISITION);
         reg("ProjectBoundary",          "ProjectBoundary",         Domain.ACQUISITION);
         reg("FundingRequest",           "FundingRequest",          Domain.ACQUISITION);
-        // Tier-1 #75 RC #6 reconciliation — added from real-world profile diff.
+        // Tier-1 #75 RC #6 reconciliation — added from a real-world profile diff.
         reg("ProjectActivity",          "ProjectActivity",         Domain.ACQUISITION);
         reg("ProjectActivityAction",    "ProjectActivityAction",   Domain.ACQUISITION);
         reg("ProjectMilestoneRole",     "ProjectMilestoneRole",    Domain.ACQUISITION);
@@ -182,9 +214,9 @@ public class UAFStereotypeRegistry {
         reg("SecurityDomain",           "SecurityDomain",          Domain.SECURITY);
         reg("SecurityAsset",            "SecurityAsset",           Domain.SECURITY);
         reg("SecurityPolicy",           "SecurityPolicy",          Domain.SECURITY);
-        // Tier-1 #75 RC #6 reconciliation — added from real-world profile diff. The MSOSA UAF 1.2
-        // profile in real-world profile uses SecurityEnclave/SecurityControl/etc. rather than the
-        // older SecurityDomain/Asset/Policy; both name families coexist for back-compat.
+        // Tier-1 #75 RC #6 reconciliation — added from a real-world profile diff. Some
+        // MSOSA UAF 1.2 profiles use SecurityEnclave/SecurityControl/etc. rather than
+        // the older SecurityDomain/Asset/Policy; both name families coexist for back-compat.
         reg("SecurityEnclave",          "SecurityEnclave",         Domain.SECURITY);
         reg("SecurityConstraint",       "SecurityConstraint",      Domain.SECURITY);
         reg("SecurityControl",          "SecurityControl",         Domain.SECURITY);
@@ -250,7 +282,7 @@ public class UAFStereotypeRegistry {
         reg("CallActivity",             "CallActivity",            "BPMN");
         reg("Lane",                     "Lane",                    "BPMN");
         reg("Pool",                     "Pool",                    "BPMN");
-        // Tier-1 #75 RC #6 reconciliation — BPMN extras found applied in real-world profile.
+        // Tier-1 #75 RC #6 reconciliation — BPMN extras found applied in real-world profiles.
         reg("BPMNProcess",              "BPMNProcess",             "BPMN");
         reg("BPMNMessage",              "BPMNMessage",             "BPMN");
         reg("BusinessRuleTask",         "BusinessRuleTask",        "BPMN");
@@ -266,11 +298,20 @@ public class UAFStereotypeRegistry {
     }
 
     private static void reg(String stereotype, String label, Domain domain) {
-        REGISTRY.put(stereotype, new StereotypeInfo(label, domain, "UAF"));
+        REGISTRY.put(stereotype, new StereotypeInfo(label, domain, "UAF", false));
     }
 
     private static void reg(String stereotype, String label, String language) {
-        REGISTRY.put(stereotype, new StereotypeInfo(label, null, language));
+        REGISTRY.put(stereotype, new StereotypeInfo(label, null, language, false));
+    }
+
+    /**
+     * Register a bare-noun catch-all stereotype that the traverser must only use
+     * when no non-fallback ancestor of the element is registered. See
+     * {@link StereotypeInfo#isFallback}.
+     */
+    private static void regFallback(String stereotype, String label, Domain domain) {
+        REGISTRY.put(stereotype, new StereotypeInfo(label, domain, "UAF", true));
     }
 
     public static Optional<StereotypeInfo> get(String stereotypeName) {
@@ -287,5 +328,65 @@ public class UAFStereotypeRegistry {
 
     public static Map<String, StereotypeInfo> getAll() {
         return Collections.unmodifiableMap(REGISTRY);
+    }
+
+    /**
+     * Heuristic: if the element's qualifiedName path passes through a UAF
+     * taxonomy folder (e.g. {@code …::Operational Taxonomy::Internal Performer::…}),
+     * return the domain that folder belongs to. Used as a tie-breaker / drift
+     * indicator when an element resolves to a bare-noun fallback stereotype
+     * whose assigned domain disagrees with its path context.
+     *
+     * <p>Matching rules:
+     * <ul>
+     *   <li>Split {@code qname} on {@code ::} (UAF qualifiedName separator).</li>
+     *   <li>For each segment, look for a leading UAF-domain token followed by a
+     *       space and further content — bare {@code "Operational"} on its own
+     *       is rejected because it overlaps with legitimate element names.</li>
+     *   <li>If two segments hint different domains the result is empty
+     *       (ambiguous). If no segment hints anything the result is empty.</li>
+     * </ul>
+     *
+     * <p>The matcher is intentionally segment-prefix, not raw substring — a
+     * package literally called {@code "Operational Layout Templates"} would
+     * still match OPERATIONAL, but the alternative of substring matching would
+     * fire on element names like {@code "PreOperational Phase"} that genuinely
+     * belong elsewhere. Phase 1 of #125 uses this only for observability — the
+     * caller is the modeller, who can spot-check false positives.
+     */
+    public static Optional<Domain> qualifiedNameDomainHint(String qname) {
+        if (qname == null || qname.isEmpty()) return Optional.empty();
+        Domain found = null;
+        for (String segment : qname.split("::")) {
+            Domain d = leadingDomainToken(segment.trim());
+            if (d == null) continue;
+            if (found != null && found != d) return Optional.empty();
+            found = d;
+        }
+        return Optional.ofNullable(found);
+    }
+
+    private static Domain leadingDomainToken(String segment) {
+        if (segment.isEmpty()) return null;
+        if (startsWithToken(segment, "Strategic"))   return Domain.STRATEGIC;
+        if (startsWithToken(segment, "Operational")) return Domain.OPERATIONAL;
+        if (startsWithToken(segment, "Resource")
+         || startsWithToken(segment, "Resources"))   return Domain.RESOURCE;
+        if (startsWithToken(segment, "Service")
+         || startsWithToken(segment, "Services"))    return Domain.SERVICE;
+        if (startsWithToken(segment, "Personnel"))   return Domain.PERSONNEL;
+        if (startsWithToken(segment, "Security"))    return Domain.SECURITY;
+        if (startsWithToken(segment, "Acquisition")
+         || startsWithToken(segment, "Project")
+         || startsWithToken(segment, "Projects"))    return Domain.ACQUISITION;
+        return null;
+    }
+
+    /** True iff {@code segment} is {@code token} followed by a space and more characters. */
+    private static boolean startsWithToken(String segment, String token) {
+        int n = token.length();
+        return segment.length() > n + 1
+            && segment.startsWith(token)
+            && segment.charAt(n) == ' ';
     }
 }

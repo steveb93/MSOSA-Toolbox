@@ -129,7 +129,7 @@ walkAppliedUnknown = { Element element, Set knownNames, Map acc ->
 //   UAFStereotypeRegistry.allStereotypeNames().each { guiLog.log('        "' + it + '",') }
 def EMBEDDED_REGISTRY_KEYS = [
     // STRATEGIC
-    "Capability", "CapabilityConfiguration", "CapabilityComposition",
+    "Capability", "CapabilityComposition",
     "CapabilityDependency", "CapabilitySpecialization", "Vision",
     "EndState", "DesiredEffect", "EnterprisePhase", "CapabilityIncrement",
     // OPERATIONAL
@@ -139,8 +139,8 @@ def EMBEDDED_REGISTRY_KEYS = [
     "OperationalInformation", "NeedLine", "PerformerPort", "OperationalRole",
     // OPERATIONAL — UAF-wrapped BPMN data elements
     "DataObject", "DataInput", "DataOutput", "DataStore",
-    // RESOURCE
-    "ResourcePerformer", "ResourceFunction", "ResourceInteraction",
+    // RESOURCE (CapabilityConfiguration moved here 2026-05-29 — extends ResourceArchitecture per UAF 1.2 DMM)
+    "ResourcePerformer", "CapabilityConfiguration", "ResourceFunction", "ResourceInteraction",
     "ResourceArtifact", "ResourceInformation", "ResourcePort",
     "ResourceConnector", "ResourceArchitecture", "ResourceSystem",
     "HardwareElement", "SoftwareElement", "Software", "NaturalResource",

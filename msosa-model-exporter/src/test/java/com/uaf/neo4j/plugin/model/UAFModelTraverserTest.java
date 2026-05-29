@@ -6,9 +6,16 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -18,6 +25,70 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * pins the deterministic pieces.
  */
 class UAFModelTraverserTest {
+
+    // ── Mis-domain key derivation (#125 Part 1 follow-up) ─────────────────────
+
+    @Test
+    void misDomainKey_assignedDomainAgreesWithHint_returnsEmpty() {
+        // An OperationalActivity under "Operational Taxonomy::…" — assigned and
+        // hinted both OPERATIONAL, no observation to record.
+        Optional<String> key = UAFModelTraverser.misDomainKey(
+            "OperationalActivity",
+            UAFStereotypeRegistry.Domain.OPERATIONAL,
+            "Root::Operational Taxonomy::Activity X");
+        assertTrue(key.isEmpty(),
+            "Hint matching the assigned domain must not produce a key");
+    }
+
+    @Test
+    void misDomainKey_assignedDomainDisagreesWithHint_returnsKey() {
+        // A bare-Resource-fallback element living under an operational folder —
+        // exactly the kind of mis-classification the observability surfaces.
+        Optional<String> key = UAFModelTraverser.misDomainKey(
+            "ResourceRole",
+            UAFStereotypeRegistry.Domain.RESOURCE,
+            "Root::Operational Taxonomy::Internal Performer::Analyst");
+        assertTrue(key.isPresent());
+        assertEquals("ResourceRole|RESOURCE|OPERATIONAL", key.get());
+    }
+
+    @Test
+    void misDomainKey_nullAssignedDomain_returnsEmpty() {
+        // SysML/BPMN stereotypes carry a null UAF domain — nothing to compare.
+        Optional<String> key = UAFModelTraverser.misDomainKey(
+            "Block", null, "Root::Operational Taxonomy::SomeBlock");
+        assertTrue(key.isEmpty(),
+            "Null assigned domain (SysML/BPMN) must never produce a key");
+    }
+
+    @Test
+    void misDomainKey_sharedAssignedDomain_returnsEmpty() {
+        // SHARED stereotypes (Entity, Standard, Measurement, Location, …) are
+        // cross-cutting by definition. A :Standard referenced from a Service
+        // taxonomy package is correctly assigned SHARED — the qname hint is
+        // noise. Validation on a real profile showed SHARED-in-domain-folder
+        // pairs were ~63% of the raw hints; filtering them isolates real signal.
+        for (String name : new String[]{"Entity", "EntityRelation", "Standard",
+                                        "Measurement", "Location"}) {
+            Optional<String> key = UAFModelTraverser.misDomainKey(
+                name,
+                UAFStereotypeRegistry.Domain.SHARED,
+                "Root::Operational Taxonomy::" + name);
+            assertTrue(key.isEmpty(),
+                name + " is SHARED — must never contribute a mis-domain hit "
+                + "even when sitting in a domain-labelled folder");
+        }
+    }
+
+    @Test
+    void misDomainKey_qnameYieldsNoHint_returnsEmpty() {
+        // qname has no recognisable domain segment — nothing to compare.
+        Optional<String> key = UAFModelTraverser.misDomainKey(
+            "ResourcePerformer",
+            UAFStereotypeRegistry.Domain.RESOURCE,
+            "Root::Generic Library::Element");
+        assertTrue(key.isEmpty());
+    }
 
     // ── Stereotype-priority ordering (#75 RC #1) ──────────────────────────────
 
@@ -62,6 +133,15 @@ class UAFModelTraverserTest {
     void relationshipStereotypeMap_includesResourceInteraction() {
         assertEquals(UAFRelationshipDTO.REL_CONNECTED_TO,
                      UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP.get("ResourceInteraction"));
+    }
+
+    @Test
+    void relationshipStereotypeMap_includesResourceExchange() {
+        assertEquals(UAFRelationshipDTO.REL_INFORMATION_FLOW,
+                     UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP.get("ResourceExchange"),
+                     "ResourceExchange on a UML InformationFlow/Connector between resource ports "
+                     + "must produce an INFORMATION_FLOW edge, not become an orphan node with only "
+                     + "DEFINES/INSTANCE_OF relationships");
     }
 
     @Test
@@ -123,8 +203,8 @@ class UAFModelTraverserTest {
 
     @Test
     void relationshipStereotypeMap_includesImplementsAndCapabilityMappings() {
-        // Stereotypes applied to UML relationship elements in real-world profile that pre-#75-RC6
-        // were silently dropped because the map didn't know them.
+        // Stereotypes applied to UML relationship elements in real-world UAF profiles
+        // that pre-#75-RC6 were silently dropped because the map didn't know them.
         assertEquals(UAFRelationshipDTO.REL_IMPLEMENTS,
                      UAFModelTraverser.RELATIONSHIP_STEREOTYPE_MAP.get("Implements"));
         assertEquals(UAFRelationshipDTO.REL_PERFORMS,
@@ -217,6 +297,104 @@ class UAFModelTraverserTest {
         assertEquals("", UAFModelTraverser.resolveName("",   null));
     }
 
+    // ── Resource Internal Connectivity wiring (Connector ends, Property
+    //    ownership, reference-typed stereotype properties) ────────────────────
+
+    @Test
+    void connectorEndExtractor_method_exists() {
+        // Connectors (typically ResourceConnector / OperationalConnector) must
+        // emit edges to their ownedEnd[].role and to their typing classifier,
+        // otherwise the whole IBD-style internal-structure wiring is missing.
+        // Method exists with the expected signature on the traverser.
+        boolean found = Arrays.stream(UAFModelTraverser.class.getDeclaredMethods())
+            .anyMatch(m -> m.getName().equals("extractConnectorEnds")
+                        && m.getParameterCount() == 3);
+        assertTrue(found, "extractConnectorEnds(Element, String, StereotypeInfo) must exist — "
+                        + "ResourceConnector orphans depend on it");
+    }
+
+    @Test
+    void propertyOwnershipExtractor_method_exists() {
+        // UAF Roles (ResourceRole / ResourceInformationRole / OperationalRole / ...)
+        // export as nodes but were previously not linked back to their owning
+        // architecture. Method emits COMPOSED_OF from owner Classifier to the Property.
+        boolean found = Arrays.stream(UAFModelTraverser.class.getDeclaredMethods())
+            .anyMatch(m -> m.getName().equals("extractPropertyOwnership")
+                        && m.getParameterCount() == 3);
+        assertTrue(found, "extractPropertyOwnership(Element, String, StereotypeInfo) must exist — "
+                        + "architecture→port navigability depends on it");
+    }
+
+    @Test
+    void referenceEdgeEmitter_method_exists() {
+        // Reference-typed stereotype properties (e.g. ResourceExchange.Source/
+        // Target/conveyed) previously stringified into lossy tv_* values. Method
+        // emits an ASSOCIATED_WITH edge with uafType=<Stereotype>.<property> so
+        // the references are reachable via graph traversal.
+        boolean found = Arrays.stream(UAFModelTraverser.class.getDeclaredMethods())
+            .anyMatch(m -> m.getName().equals("emitReferenceEdge")
+                        && m.getParameterCount() == 5);
+        assertTrue(found, "emitReferenceEdge(srcId, target, stereoName, tag, info) must exist — "
+                        + "ResourceExchange Source/Target/conveyed wiring depends on it");
+    }
+
+    @Test
+    void referenceTargetResolver_method_exists() {
+        // emitReferenceEdge previously handed the raw NamedElement straight to the
+        // Cypher writer. The writer uses MATCH (not MERGE) on both endpoints, so
+        // raw UML Property memberEnds — which are never themselves MERGE'd as UAF
+        // nodes — caused the edge to be silently dropped. The resolver walks up
+        // (Property.getType() → owner chain) to find a UAF-stereotyped element
+        // before the edge is emitted.
+        boolean found = Arrays.stream(UAFModelTraverser.class.getDeclaredMethods())
+            .anyMatch(m -> m.getName().equals("resolveReferenceTarget")
+                        && m.getParameterCount() == 1);
+        assertTrue(found, "resolveReferenceTarget(NamedElement) must exist — "
+                        + "ASSOCIATED_WITH edges silently drop without it");
+    }
+
+    @Test
+    void informationFlowEndsExtractor_method_exists() {
+        // ResourceExchange / OperationalExchange / ServiceInterchange wiring lives on
+        // the underlying UML InformationFlow.informationSource / informationTarget /
+        // conveyed — NOT as UAF stereotype tagged values. StereotypesHelper does not
+        // surface them, so the reference-edge path via emitReferenceEdge cannot reach
+        // them. The dedicated extractor walks the metamodel directly.
+        boolean found = Arrays.stream(UAFModelTraverser.class.getDeclaredMethods())
+            .anyMatch(m -> m.getName().equals("extractInformationFlowEnds")
+                        && m.getParameterCount() == 3);
+        assertTrue(found, "extractInformationFlowEnds(Element, String, StereotypeInfo) must exist — "
+                        + "ResourceExchange.Source/.Target/.conveyed wiring depends on it");
+    }
+
+    @Test
+    void registeredUafElementProbe_isStaticAndNonMutating() {
+        // The probe used by resolveReferenceTarget must NOT go through
+        // selectStereotype — that method mutates unmatchedStereos as a side effect
+        // and would double-count every reference-edge probe as an unmatched
+        // stereotype miss. Static-method contract pins the non-mutating helper.
+        boolean found = Arrays.stream(UAFModelTraverser.class.getDeclaredMethods())
+            .anyMatch(m -> m.getName().equals("isRegisteredUAFElement")
+                        && m.getParameterCount() == 1
+                        && Modifier.isStatic(m.getModifiers()));
+        assertTrue(found, "isRegisteredUAFElement(Element) must exist as a static probe — "
+                        + "selectStereotype mutates unmatchedStereos and cannot be used for probing");
+    }
+
+    @Test
+    void internalWiringExtractors_useExpectedRelConstants() {
+        // Pin the chosen rel types so an accidental change to one of these
+        // breaks here, not silently in production.
+        assertEquals("CONNECTED_TO", UAFRelationshipDTO.REL_CONNECTED_TO,
+            "Connector ends emit CONNECTED_TO");
+        assertEquals("OF_TYPE", UAFRelationshipDTO.REL_OF_TYPE,
+            "Connector.type emits OF_TYPE");
+        assertEquals("COMPOSED_OF", UAFRelationshipDTO.REL_COMPOSED_OF,
+            "Property owner emits COMPOSED_OF");
+        assertEquals("ASSOCIATED_WITH", UAFRelationshipDTO.REL_ASSOCIATED_WITH,
+            "Reference-typed stereotype properties emit ASSOCIATED_WITH");
+    }
+
     @Test
     void traverseAttachedModulesField_isFinalAndBoolean() {
         // The flag stores once at construction time and is consulted by ensureTraversed.
@@ -229,5 +407,184 @@ class UAFModelTraverserTest {
         }
         assertEquals(boolean.class, field.getType(), "Field must be a primitive boolean");
         assertTrue(Modifier.isFinal(field.getModifiers()), "Field must be final");
+    }
+
+    // ── Fallback-aware ancestor resolution (bare-noun-ancestor class of bug) ──
+    //
+    // In real-world UAF profiles, operational-domain custom stereotypes have been
+    // observed being assigned :Resource (RESOURCE domain) even though their
+    // qualifiedName ended in `Operational Taxonomy::Internal Performer::<name>`.
+    // Root cause: BFS in findRegisteredAncestor returned the FIRST registered
+    // name it hit, so a custom op-side stereotype whose general chain passed
+    // through `Resource` (which IS in the registry) returned `Resource` before
+    // reaching the operational ancestor further up. The fix marks bare-noun
+    // catch-alls as fallback so the BFS prefers a non-fallback ancestor at any
+    // distance.
+    //
+    // resolveBestRegistered is the pure-function core of the new algorithm and
+    // can be exercised here with synthetic stereotype hierarchies; full traversal
+    // remains gated on the manual MSOSA regression harness.
+
+    /** Build a minimal registry of {name → StereotypeInfo} for the algorithm tests. */
+    private static Function<String, Optional<UAFStereotypeRegistry.StereotypeInfo>> registry(
+            Map<String, UAFStereotypeRegistry.StereotypeInfo> map) {
+        return name -> Optional.ofNullable(map.get(name));
+    }
+
+    /** Build a name → list-of-parents adapter from a map. Missing keys return empty. */
+    private static Function<String, List<String>> parents(Map<String, List<String>> graph) {
+        return name -> graph.getOrDefault(name, Collections.emptyList());
+    }
+
+    private static UAFStereotypeRegistry.StereotypeInfo concrete(String label,
+                                                                  UAFStereotypeRegistry.Domain d) {
+        return new UAFStereotypeRegistry.StereotypeInfo(label, d, "UAF", false);
+    }
+
+    private static UAFStereotypeRegistry.StereotypeInfo fallback(String label,
+                                                                  UAFStereotypeRegistry.Domain d) {
+        return new UAFStereotypeRegistry.StereotypeInfo(label, d, "UAF", true);
+    }
+
+    @Test
+    void resolveBestRegistered_directNonFallback_returnsImmediately() {
+        // Start name is itself a registered non-fallback entry — return it at distance 0.
+        Map<String, UAFStereotypeRegistry.StereotypeInfo> reg = new LinkedHashMap<>();
+        reg.put("OperationalPerformer", concrete("OperationalPerformer",
+                                                 UAFStereotypeRegistry.Domain.OPERATIONAL));
+        UAFModelTraverser.RegisteredHit hit = UAFModelTraverser.resolveBestRegistered(
+            "OperationalPerformer",
+            parents(Collections.emptyMap()),
+            registry(reg));
+        assertNotNull(hit);
+        assertEquals("OperationalPerformer", hit.stereotypeName);
+        assertEquals(0, hit.distance);
+        assertEquals(UAFStereotypeRegistry.Domain.OPERATIONAL, hit.info.domain);
+    }
+
+    @Test
+    void resolveBestRegistered_nonFallbackAtDistanceBeatsFallbackAtZero() {
+        // The bare-noun-ancestor case in miniature: starting stereotype
+        // "MyInternalPerformer" is NOT registered. Its parents reach `Resource`
+        // (fallback, distance 1) and `OperationalPerformer` (non-fallback,
+        // distance 2). Expected result: OperationalPerformer wins despite being
+        // further away, because fallbacks never compete with non-fallbacks.
+        Map<String, UAFStereotypeRegistry.StereotypeInfo> reg = new LinkedHashMap<>();
+        reg.put("Resource",             fallback("Resource",
+                                                  UAFStereotypeRegistry.Domain.RESOURCE));
+        reg.put("OperationalPerformer", concrete("OperationalPerformer",
+                                                  UAFStereotypeRegistry.Domain.OPERATIONAL));
+
+        Map<String, List<String>> hierarchy = new LinkedHashMap<>();
+        hierarchy.put("MyInternalPerformer", Arrays.asList("Resource", "Performer"));
+        hierarchy.put("Performer",           Arrays.asList("OperationalPerformer"));
+
+        UAFModelTraverser.RegisteredHit hit = UAFModelTraverser.resolveBestRegistered(
+            "MyInternalPerformer", parents(hierarchy), registry(reg));
+        assertNotNull(hit);
+        assertEquals("OperationalPerformer", hit.stereotypeName,
+            "Non-fallback ancestor must win even when a fallback ancestor is closer");
+        assertEquals(UAFStereotypeRegistry.Domain.OPERATIONAL, hit.info.domain);
+    }
+
+    @Test
+    void resolveBestRegistered_fallbackUsedWhenNoNonFallbackExists() {
+        // No non-fallback ancestor anywhere in the chain. The fallback IS the
+        // correct answer in this case — a model that legitimately applies a bare
+        // `Resource` stereotype to an element with no more specific stereotype
+        // should still export as :Resource / RESOURCE domain.
+        Map<String, UAFStereotypeRegistry.StereotypeInfo> reg = new LinkedHashMap<>();
+        reg.put("Resource", fallback("Resource",
+                                      UAFStereotypeRegistry.Domain.RESOURCE));
+
+        Map<String, List<String>> hierarchy = new LinkedHashMap<>();
+        hierarchy.put("PlainResourceSubtype", Collections.singletonList("Resource"));
+
+        UAFModelTraverser.RegisteredHit hit = UAFModelTraverser.resolveBestRegistered(
+            "PlainResourceSubtype", parents(hierarchy), registry(reg));
+        assertNotNull(hit);
+        assertEquals("Resource", hit.stereotypeName);
+        assertTrue(hit.info.isFallback);
+        assertEquals(UAFStereotypeRegistry.Domain.RESOURCE, hit.info.domain);
+    }
+
+    @Test
+    void resolveBestRegistered_closestNonFallbackWinsAmongMultiple() {
+        // Two non-fallback ancestors at different distances — the closer one wins.
+        Map<String, UAFStereotypeRegistry.StereotypeInfo> reg = new LinkedHashMap<>();
+        reg.put("OperationalRole",      concrete("OperationalRole",
+                                                  UAFStereotypeRegistry.Domain.OPERATIONAL));
+        reg.put("OperationalPerformer", concrete("OperationalPerformer",
+                                                  UAFStereotypeRegistry.Domain.OPERATIONAL));
+
+        Map<String, List<String>> hierarchy = new LinkedHashMap<>();
+        hierarchy.put("CustomOpRole",  Collections.singletonList("OperationalRole"));
+        hierarchy.put("OperationalRole", Collections.singletonList("OperationalPerformer"));
+
+        UAFModelTraverser.RegisteredHit hit = UAFModelTraverser.resolveBestRegistered(
+            "CustomOpRole", parents(hierarchy), registry(reg));
+        assertNotNull(hit);
+        assertEquals("OperationalRole", hit.stereotypeName,
+            "The closer non-fallback ancestor must win over the further one");
+        assertEquals(1, hit.distance);
+    }
+
+    @Test
+    void resolveBestRegistered_unknownChainReturnsNull() {
+        // Starting stereotype is unknown and so are all its ancestors.
+        Map<String, UAFStereotypeRegistry.StereotypeInfo> reg = new LinkedHashMap<>();
+        reg.put("OperationalPerformer", concrete("OperationalPerformer",
+                                                  UAFStereotypeRegistry.Domain.OPERATIONAL));
+
+        Map<String, List<String>> hierarchy = new LinkedHashMap<>();
+        hierarchy.put("Foo", Collections.singletonList("Bar"));
+        hierarchy.put("Bar", Collections.singletonList("Baz"));
+
+        assertNull(UAFModelTraverser.resolveBestRegistered("Foo",
+            parents(hierarchy), registry(reg)));
+    }
+
+    @Test
+    void resolveBestRegistered_handlesCyclesWithoutInfiniteLoop() {
+        // Cycle in the general chain — must terminate via seen-set, not stack overflow.
+        Map<String, UAFStereotypeRegistry.StereotypeInfo> reg = new LinkedHashMap<>();
+        reg.put("CycleAnchor", concrete("CycleAnchor",
+                                         UAFStereotypeRegistry.Domain.SHARED));
+
+        Map<String, List<String>> hierarchy = new LinkedHashMap<>();
+        hierarchy.put("A", Arrays.asList("B", "CycleAnchor"));
+        hierarchy.put("B", Collections.singletonList("A"));   // cycle
+
+        UAFModelTraverser.RegisteredHit hit = UAFModelTraverser.resolveBestRegistered(
+            "A", parents(hierarchy), registry(reg));
+        assertNotNull(hit);
+        assertEquals("CycleAnchor", hit.stereotypeName);
+    }
+
+    @Test
+    void resolveBestRegistered_nullStartReturnsNull() {
+        assertNull(UAFModelTraverser.resolveBestRegistered(null,
+            parents(Collections.emptyMap()),
+            registry(Collections.emptyMap())));
+    }
+
+    @Test
+    void resolveBestRegistered_directFallback_yieldsToFurtherNonFallback() {
+        // The start name IS a registered fallback (distance 0) — but a non-fallback
+        // ancestor exists further up. Non-fallback wins regardless of distance.
+        Map<String, UAFStereotypeRegistry.StereotypeInfo> reg = new LinkedHashMap<>();
+        reg.put("Resource",             fallback("Resource",
+                                                  UAFStereotypeRegistry.Domain.RESOURCE));
+        reg.put("OperationalPerformer", concrete("OperationalPerformer",
+                                                  UAFStereotypeRegistry.Domain.OPERATIONAL));
+
+        Map<String, List<String>> hierarchy = new LinkedHashMap<>();
+        hierarchy.put("Resource", Collections.singletonList("OperationalPerformer"));
+
+        UAFModelTraverser.RegisteredHit hit = UAFModelTraverser.resolveBestRegistered(
+            "Resource", parents(hierarchy), registry(reg));
+        assertNotNull(hit);
+        assertEquals("OperationalPerformer", hit.stereotypeName,
+            "Fallback at distance 0 must yield to non-fallback further up the chain");
     }
 }

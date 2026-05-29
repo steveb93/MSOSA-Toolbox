@@ -79,6 +79,23 @@ class UAFStereotypeRegistryTest {
     }
 
     @Test
+    void get_capabilityConfiguration_returnsResourceDomain() {
+        // CapabilityConfiguration is RESOURCE-domain — it extends ResourceArchitecture
+        // in UAF 1.2 DMM. Pre-2026-05-29 it was registered as STRATEGIC; mis-domain
+        // validation on a real profile (PR #132) confirmed the registry was wrong.
+        // Migration consequence: existing exported nodes still carry domain:'STRATEGIC'
+        // until re-exported or patched in Cypher.
+        Optional<UAFStereotypeRegistry.StereotypeInfo> info =
+            UAFStereotypeRegistry.get("CapabilityConfiguration");
+        assertTrue(info.isPresent());
+        assertEquals(UAFStereotypeRegistry.Domain.RESOURCE, info.get().domain,
+            "CapabilityConfiguration must be RESOURCE (was STRATEGIC pre-2026-05-29)");
+        assertEquals("UAF", info.get().language);
+        assertFalse(info.get().isFallback,
+            "CapabilityConfiguration is a concrete UAF stereotype, never a bare-noun fallback");
+    }
+
+    @Test
     void get_hardwareElement_returnsResourceDomain() {
         Optional<UAFStereotypeRegistry.StereotypeInfo> info = UAFStereotypeRegistry.get("HardwareElement");
         assertTrue(info.isPresent());
@@ -263,5 +280,146 @@ class UAFStereotypeRegistryTest {
     void allStereotypeNames_isUnmodifiable() {
         Set<String> names = UAFStereotypeRegistry.allStereotypeNames();
         assertThrows(UnsupportedOperationException.class, () -> names.add("NewStereo"));
+    }
+
+    // ── Fallback (bare-noun catch-all) flagging ───────────────────────────────
+
+    @Test
+    void isFallback_isTrueForBareNounCatchAlls() {
+        // These six entries are the ones whose general chain is routinely walked
+        // through by more specific custom stereotypes. Marking them fallback
+        // makes the traverser prefer the more specific ancestor.
+        for (String name : new String[]{"Resource", "Service", "System",
+                                        "Software", "SystemBlock", "Technology"}) {
+            Optional<UAFStereotypeRegistry.StereotypeInfo> info = UAFStereotypeRegistry.get(name);
+            assertTrue(info.isPresent(), name + " must remain registered");
+            assertTrue(info.get().isFallback,
+                name + " must be marked isFallback=true so the traverser only "
+                + "uses it when no non-fallback ancestor exists");
+        }
+    }
+
+    @Test
+    void isFallback_isFalseForSpecificUAFStereotypes() {
+        // Sample across domains — these are concrete, non-collision-prone names
+        // and must remain non-fallback so they win against bare-noun ancestors.
+        for (String name : new String[]{
+                "Capability", "OperationalPerformer", "OperationalActivity",
+                "OperationalRole", "ResourcePerformer", "ResourceRole",
+                "ResourceArchitecture", "HardwareElement", "SoftwareElement",
+                "ServicePerformer", "ServiceFunction",
+                "Organization", "Post", "SecurityEnclave"}) {
+            Optional<UAFStereotypeRegistry.StereotypeInfo> info = UAFStereotypeRegistry.get(name);
+            assertTrue(info.isPresent(), name + " must remain registered");
+            assertFalse(info.get().isFallback,
+                name + " must NOT be a fallback entry — it is a specific UAF "
+                + "stereotype and should win over bare-noun ancestors");
+        }
+    }
+
+    @Test
+    void isFallback_isFalseForSysmlAndBpmnEntries() {
+        // Fallback is a UAF-only concept (bare-noun ambiguity within UAF). SysML
+        // and BPMN entries must always be treated as concrete.
+        for (String name : new String[]{"Block", "Requirement", "Task",
+                                        "ExclusiveGateway", "StartEvent"}) {
+            Optional<UAFStereotypeRegistry.StereotypeInfo> info = UAFStereotypeRegistry.get(name);
+            assertTrue(info.isPresent(), name + " must remain registered");
+            assertFalse(info.get().isFallback,
+                name + " is " + info.get().language + " — must never be fallback");
+        }
+    }
+
+    // ── qualifiedNameDomainHint (#125 Part 1) ─────────────────────────────────
+
+    @Test
+    void qualifiedNameDomainHint_operationalSegment_returnsOperational() {
+        Optional<UAFStereotypeRegistry.Domain> hint = UAFStereotypeRegistry
+            .qualifiedNameDomainHint("RootModel::Operational Taxonomy::Internal Performer::Analyst");
+        assertTrue(hint.isPresent());
+        assertEquals(UAFStereotypeRegistry.Domain.OPERATIONAL, hint.get());
+    }
+
+    @Test
+    void qualifiedNameDomainHint_eachDomainSegment_returnsThatDomain() {
+        Object[][] cases = {
+            {"Root::Strategic Taxonomy::X",     UAFStereotypeRegistry.Domain.STRATEGIC},
+            {"Root::Operational Connectivity::X", UAFStereotypeRegistry.Domain.OPERATIONAL},
+            {"Root::Resource Structure::X",    UAFStereotypeRegistry.Domain.RESOURCE},
+            {"Root::Resources Taxonomy::X",    UAFStereotypeRegistry.Domain.RESOURCE},
+            {"Root::Service Processes::X",     UAFStereotypeRegistry.Domain.SERVICE},
+            {"Root::Services Taxonomy::X",     UAFStereotypeRegistry.Domain.SERVICE},
+            {"Root::Personnel Structure::X",   UAFStereotypeRegistry.Domain.PERSONNEL},
+            {"Root::Security Constraints::X",  UAFStereotypeRegistry.Domain.SECURITY},
+            {"Root::Acquisition Phasing::X",   UAFStereotypeRegistry.Domain.ACQUISITION},
+            {"Root::Projects Taxonomy::X",     UAFStereotypeRegistry.Domain.ACQUISITION},
+        };
+        for (Object[] c : cases) {
+            String qname = (String) c[0];
+            UAFStereotypeRegistry.Domain expected = (UAFStereotypeRegistry.Domain) c[1];
+            Optional<UAFStereotypeRegistry.Domain> hint =
+                UAFStereotypeRegistry.qualifiedNameDomainHint(qname);
+            assertTrue(hint.isPresent(), qname + " should hint a domain");
+            assertEquals(expected, hint.get(), qname);
+        }
+    }
+
+    @Test
+    void qualifiedNameDomainHint_noKnownPrefix_returnsEmpty() {
+        assertFalse(UAFStereotypeRegistry.qualifiedNameDomainHint(
+            "RootModel::Generic Library::SomePackage::Element").isPresent());
+        assertFalse(UAFStereotypeRegistry.qualifiedNameDomainHint("").isPresent());
+        assertFalse(UAFStereotypeRegistry.qualifiedNameDomainHint(null).isPresent());
+    }
+
+    @Test
+    void qualifiedNameDomainHint_ambiguousAcrossSegments_returnsEmpty() {
+        // Path passes through two different domain folders — modeller intent is
+        // unclear; refuse to hint rather than guess wrong.
+        Optional<UAFStereotypeRegistry.Domain> hint = UAFStereotypeRegistry
+            .qualifiedNameDomainHint("Root::Operational Taxonomy::Resource Library::Item");
+        assertFalse(hint.isPresent(),
+            "Conflicting domain hints across segments must yield empty");
+    }
+
+    @Test
+    void qualifiedNameDomainHint_repeatedSameDomain_returnsThatDomain() {
+        // Multiple segments hinting the same domain are fine — not ambiguous.
+        Optional<UAFStereotypeRegistry.Domain> hint = UAFStereotypeRegistry
+            .qualifiedNameDomainHint("Root::Operational Taxonomy::Operational Activities::Activity");
+        assertTrue(hint.isPresent());
+        assertEquals(UAFStereotypeRegistry.Domain.OPERATIONAL, hint.get());
+    }
+
+    @Test
+    void qualifiedNameDomainHint_bareDomainWordOnly_returnsEmpty() {
+        // Segment must be "<Domain> <more>" — bare "Operational" with no trailing
+        // content is rejected because it overlaps with legitimate element names.
+        assertFalse(UAFStereotypeRegistry.qualifiedNameDomainHint(
+            "Root::Operational::Item").isPresent());
+        assertFalse(UAFStereotypeRegistry.qualifiedNameDomainHint(
+            "Root::Resource::Item").isPresent());
+    }
+
+    @Test
+    void qualifiedNameDomainHint_substringWithinName_doesNotTrigger() {
+        // The matcher must be segment-prefix, not raw substring. An element whose
+        // own name happens to contain "Operational " in the middle must not be
+        // flagged — only segment-leading domain tokens count.
+        assertFalse(UAFStereotypeRegistry.qualifiedNameDomainHint(
+            "Root::Library::PreOperational Phase Element").isPresent());
+    }
+
+    @Test
+    void qualifiedNameDomainHint_falsePositiveOnNonTaxonomyFolder_acceptedAsKnownLimit() {
+        // "Operational Layout Templates" still triggers — this is a known limit
+        // of the segment-prefix heuristic and is acceptable for Phase 1 because
+        // the output is observability-only, surfaced to the modeller for review.
+        Optional<UAFStereotypeRegistry.Domain> hint = UAFStereotypeRegistry
+            .qualifiedNameDomainHint("Root::Operational Layout Templates::Item");
+        assertTrue(hint.isPresent(),
+            "Segment-prefix matcher fires whenever the leading domain token is present; "
+            + "the false-positive risk is documented and surfaced for modeller review");
+        assertEquals(UAFStereotypeRegistry.Domain.OPERATIONAL, hint.get());
     }
 }

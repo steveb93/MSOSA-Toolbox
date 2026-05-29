@@ -15,7 +15,7 @@
 # Reasoner alignment: the validator runs pyshacl with inference="rdfs" so that
 # rdfs:subClassOf+ paths resolve, matching Fuseki's RDFS-Exp reasoner. That means
 # sh:targetClass uaf:StrategicElement catches subclasses (uaf:Capability,
-# uaf:CapabilityConfiguration, ...) without listing them individually.
+# uaf:Vision, ...) without listing them individually.
 #
 # Conventions used below:
 #   - Shapes are named with a -Shape suffix on the targeted class IRI.

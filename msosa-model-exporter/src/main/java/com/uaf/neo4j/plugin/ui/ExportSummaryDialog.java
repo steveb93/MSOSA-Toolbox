@@ -35,6 +35,10 @@ public class ExportSummaryDialog extends JDialog {
             tabs.addTab("Unmatched Stereotypes (" + result.unmatchedStereotypes.size() + ")",
                         buildUnmatchedPanel(result));
         }
+        if (!result.misDomainHints.isEmpty()) {
+            tabs.addTab("Mis-Domain Hints (" + result.misDomainHints.size() + ")",
+                        buildMisDomainPanel(result));
+        }
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         buttons.setBorder(new EmptyBorder(4, 12, 12, 12));
@@ -52,16 +56,9 @@ public class ExportSummaryDialog extends JDialog {
             buttons.add(openLogBtn);
         }
 
-        JButton browseBtn = new JButton("Browse Graph…");
-        browseBtn.setToolTipText("Open the Graph Inspector to explore exported nodes in Neo4j");
-        browseBtn.addActionListener(e -> {
-            dispose(); // close summary before opening inspector
-            UAFNeo4jPlugin plugin = UAFNeo4jPlugin.getInstance();
-            if (plugin != null) {
-                plugin.showGraphInspector();
-            }
-        });
-        buttons.add(browseBtn);
+        // "Browse Graph…" used to launch a separate inspector; the workbench's
+        // Inspect rail now hosts the same view, so users navigate via the rail
+        // after dismissing this summary.
 
         JButton copyRefreshBtn = new JButton("Copy SPARQL Refresh Cmd");
         copyRefreshBtn.setToolTipText(
@@ -162,6 +159,59 @@ public class ExportSummaryDialog extends JDialog {
         copyBtn.addActionListener(e -> {
             List<String> lines = new ArrayList<>(result.unmatchedStereotypes.size());
             result.unmatchedStereotypes.forEach((k, v) -> lines.add(k + "\t" + v));
+            copyToClipboard(lines);
+        });
+        JPanel buttonRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        buttonRow.add(copyBtn);
+
+        JPanel panel = new JPanel(new BorderLayout(0, 8));
+        panel.setBorder(new EmptyBorder(12, 12, 12, 12));
+        panel.add(hint,                       BorderLayout.NORTH);
+        panel.add(new JScrollPane(table),     BorderLayout.CENTER);
+        panel.add(buttonRow,                  BorderLayout.SOUTH);
+        return panel;
+    }
+
+    /**
+     * Render the qualifiedName-based mis-domain diagnostic. Each row is a
+     * stereotype whose assigned UAF domain disagrees with a domain hinted by
+     * its model-path package segment (e.g. an element assigned RESOURCE that
+     * sits under {@code …::Operational Taxonomy::…}). Per #125 Part 1 —
+     * observability only, the export is unchanged. Modellers use the list to
+     * decide whether the element needs re-stereotyping or whether the hint is
+     * a false positive.
+     */
+    private JPanel buildMisDomainPanel(ExportResult result) {
+        List<String[]> rowList = new ArrayList<>();
+        result.misDomainHints.entrySet().stream()
+            .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+            .forEach(e -> {
+                String[] parts = e.getKey().split("\\|", 3);
+                String stereo   = parts.length > 0 ? parts[0] : e.getKey();
+                String assigned = parts.length > 1 ? parts[1] : "";
+                String hinted   = parts.length > 2 ? parts[2] : "";
+                rowList.add(new String[]{stereo, assigned, hinted, String.valueOf(e.getValue())});
+            });
+        String[][] rows = rowList.toArray(new String[0][]);
+
+        JTable table = new JTable(new DefaultTableModel(rows,
+                new String[]{"Stereotype", "Assigned domain", "Hinted domain", "Elements"}) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        });
+        table.setPreferredScrollableViewportSize(new Dimension(520, 180));
+
+        JLabel hint = new JLabel(
+            "<html>These elements were exported with the domain in <i>Assigned</i>, but their " +
+            "<code>qualifiedName</code> path includes a package segment whose leading token " +
+            "matches <i>Hinted</i> (e.g. <code>…::Operational Taxonomy::…</code>). " +
+            "This is a likely mis-classification — review and re-stereotype on the model side, " +
+            "or treat as a false positive when the package name is incidental.</html>");
+        hint.setBorder(new EmptyBorder(0, 0, 8, 0));
+
+        JButton copyBtn = new JButton("Copy Rows");
+        copyBtn.addActionListener(e -> {
+            List<String> lines = new ArrayList<>(result.misDomainHints.size());
+            result.misDomainHints.forEach((k, v) -> lines.add(k.replace('|', '\t') + "\t" + v));
             copyToClipboard(lines);
         });
         JPanel buttonRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));

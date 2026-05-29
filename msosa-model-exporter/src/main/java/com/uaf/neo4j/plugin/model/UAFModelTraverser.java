@@ -10,6 +10,11 @@ import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Classifier;
 import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Element;
 import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.NamedElement;
 import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Package;
+import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Property;
+import com.nomagic.uml2.ext.magicdraw.auxiliaryconstructs.mdinformationflows.InformationFlow;
+import com.nomagic.uml2.ext.magicdraw.compositestructures.mdinternalstructures.Connector;
+import com.nomagic.uml2.ext.magicdraw.compositestructures.mdinternalstructures.ConnectorEnd;
+import com.nomagic.uml2.ext.magicdraw.compositestructures.mdinternalstructures.ConnectableElement;
 import com.nomagic.uml2.ext.magicdraw.mdprofiles.Stereotype;
 
 import org.eclipse.emf.ecore.EObject;
@@ -107,9 +112,10 @@ public class UAFModelTraverser {
         // applies them to a UML InformationFlow / Association / Connector the element
         // registry would silently drop the edge — they must appear here too.
         RELATIONSHIP_STEREOTYPE_MAP.put("OperationalExchange", UAFRelationshipDTO.REL_INFORMATION_FLOW);
+        RELATIONSHIP_STEREOTYPE_MAP.put("ResourceExchange",    UAFRelationshipDTO.REL_INFORMATION_FLOW);
         RELATIONSHIP_STEREOTYPE_MAP.put("ResourceInteraction", UAFRelationshipDTO.REL_CONNECTED_TO);
         RELATIONSHIP_STEREOTYPE_MAP.put("NeedLine",            UAFRelationshipDTO.REL_INFORMATION_FLOW);
-        // Tier-1 #75 RC #6 — found applied to UML relationship elements in real-world profile.
+        // Tier-1 #75 RC #6 — found applied to UML relationship elements in real-world profiles that extend UAF 1.2.
         RELATIONSHIP_STEREOTYPE_MAP.put("Implements",             UAFRelationshipDTO.REL_IMPLEMENTS);
         RELATIONSHIP_STEREOTYPE_MAP.put("IsCapableToPerform",     UAFRelationshipDTO.REL_PERFORMS);
         RELATIONSHIP_STEREOTYPE_MAP.put("PerformsInContext",      UAFRelationshipDTO.REL_PERFORMS);
@@ -146,6 +152,12 @@ public class UAFModelTraverser {
     private final List<UAFRelationshipDTO> relationships     = new ArrayList<>();
     private final Set<String>              visitedIds        = new HashSet<>();
     private final Map<String, Integer>     unmatchedStereos  = new LinkedHashMap<>();
+    // Mis-domain telemetry per #125 Part 1 (observability). Key encodes the
+    // stereotype + assigned domain + hinted domain as
+    // "<stereotype>|<assigned>|<hinted>" so the summary dialog can split it
+    // into separate columns. Value is the count of elements affected. The
+    // export itself is unchanged — this is pure surfacing of probable misfits.
+    private final Map<String, Integer>     misDomainCounts   = new LinkedHashMap<>();
     private boolean traversed = false;
 
     /**
@@ -195,6 +207,21 @@ public class UAFModelTraverser {
         return Collections.unmodifiableMap(unmatchedStereos);
     }
 
+    /**
+     * Counts of elements whose assigned UAF domain disagrees with a
+     * {@link UAFStereotypeRegistry#qualifiedNameDomainHint hint} derived from
+     * their {@code qualifiedName} path. Surfaces probable mis-classifications
+     * (e.g. an element resolving to {@code Resource} that sits under
+     * {@code …::Operational Taxonomy::…}) without changing what gets exported.
+     *
+     * <p>Key format: {@code "<stereotype>|<assignedDomain>|<hintedDomain>"}.
+     * Value: number of elements with that combination. Per #125 Part 1.
+     */
+    public Map<String, Integer> getMisDomainCounts() {
+        ensureTraversed();
+        return Collections.unmodifiableMap(misDomainCounts);
+    }
+
     // -------------------------------------------------------------------------
 
     private void ensureTraversed() {
@@ -219,8 +246,8 @@ public class UAFModelTraverser {
                 traverseAttachedProjects();
             }
             traversed = true;
-            LOG.info(String.format("UAFModelTraverser: %d elements, %d relationships, %d unmatched stereotypes",
-                elements.size(), relationships.size(), unmatchedStereos.size()));
+            LOG.info(String.format("UAFModelTraverser: %d elements, %d relationships, %d unmatched stereotypes, %d mis-domain hints",
+                elements.size(), relationships.size(), unmatchedStereos.size(), misDomainCounts.size()));
         }
     }
 
@@ -302,6 +329,8 @@ public class UAFModelTraverser {
 
             String docs = ModelHelper.getComment(element);
 
+            recordMisDomainHint(matched, qname);
+
             UAFElementDTO.Builder eb = UAFElementDTO.builder(id, name, matched.stereotype.getName())
                 .qualifiedName(qname)
                 .neo4jLabel(matched.info.neo4jLabel)
@@ -313,7 +342,7 @@ public class UAFModelTraverser {
                 .documentation(docs != null ? docs : "")
                 .modelFileName(modelFileName);
 
-            extractTaggedValues(element, matched.stereotype, eb);
+            extractTaggedValues(element, matched.stereotype, eb, id, matched.info);
 
             elements.add(eb.build());
 
@@ -322,6 +351,14 @@ public class UAFModelTraverser {
             extractAttributes(element, id, qname, matched.info.language);
 
             extractRelationships(element, matched.info);
+
+            // Resource Internal Connectivity wiring — UAF connectors, ports and
+            // exchanges become orphan nodes without these. The exporter previously
+            // walked only DirectedRelationships (Dependency/Generalization/etc.),
+            // which left the entire IBD-style structure disconnected.
+            extractConnectorEnds(element, id, matched.info);
+            extractPropertyOwnership(element, id, matched.info);
+            extractInformationFlowEnds(element, id, matched.info);
         }
 
         // Descend into containers — Packages always, Classifiers (Block, Class, Activity,
@@ -364,6 +401,20 @@ public class UAFModelTraverser {
         }
         if (candidates.isEmpty()) return null;
 
+        // Prefer non-fallback candidates over fallback ones. Fallback registry
+        // entries (Resource, Service, System, Software, SystemBlock, Technology)
+        // exist to cover models that legitimately apply the bare-noun stereotype
+        // directly, but they routinely appear as ancestors of more specific
+        // custom stereotypes too. When any applied stereotype resolves to a
+        // non-fallback registry entry, drop the fallbacks from consideration —
+        // otherwise the bare noun would compete with (and frequently win) the
+        // more specific semantics encoded on the same element.
+        List<StereotypeMatch> primary = new ArrayList<>();
+        for (StereotypeMatch c : candidates) {
+            if (!c.info.isFallback) primary.add(c);
+        }
+        if (!primary.isEmpty()) candidates = primary;
+
         // Best language rank wins
         int bestRank = Integer.MAX_VALUE;
         for (StereotypeMatch c : candidates) {
@@ -393,30 +444,147 @@ public class UAFModelTraverser {
     }
 
     /**
-     * Walk {@code s} and its general chain (BFS); return the first match in the
-     * UAF stereotype registry, or {@code null} if none exists. Direct match wins
-     * over ancestor match because BFS visits {@code s} first.
+     * Record one mis-domain observation if the matched element's domain
+     * disagrees with the {@link UAFStereotypeRegistry#qualifiedNameDomainHint
+     * qualifiedName hint}. Per #125 Part 1: observability only, the export
+     * is unchanged. The heavy logic lives in {@link #misDomainKey} so the
+     * skip rules are unit-testable without MSOSA in scope.
+     */
+    private void recordMisDomainHint(StereotypeMatch matched, String qname) {
+        if (matched == null || matched.info == null) return;
+        misDomainKey(matched.stereotype.getName(), matched.info.domain, qname)
+            .ifPresent(k -> misDomainCounts.merge(k, 1, Integer::sum));
+    }
+
+    /**
+     * Pure-function key derivation for {@link #misDomainCounts}. Returns the
+     * {@code "<stereotype>|<assigned>|<hinted>"} key, or empty when no
+     * observation should be recorded.
+     *
+     * <p>Skip rules:
+     * <ul>
+     *   <li>Null assigned domain — SysML/BPMN stereotypes carry no UAF domain.</li>
+     *   <li>{@link UAFStereotypeRegistry.Domain#SHARED SHARED}-domain stereotypes
+     *       — Entity, EntityRelation, Standard, Measurement, Location, etc. are
+     *       cross-cutting by definition and routinely live under every domain
+     *       folder (e.g. a {@code :Standard} referenced from a Service taxonomy
+     *       package). Hint disagreement is noise, not signal. Validation on the
+     *       class profile showed ~63% of the raw hints were SHARED-in-
+     *       domain-folder pairs; filtering them keeps the tab focused on real
+     *       mis-classifications.</li>
+     *   <li>qname yields no domain hint — nothing to compare against.</li>
+     *   <li>Hint matches the assigned domain — by definition no disagreement.</li>
+     * </ul>
+     */
+    static Optional<String> misDomainKey(String stereoName,
+                                         UAFStereotypeRegistry.Domain assigned,
+                                         String qname) {
+        if (assigned == null) return Optional.empty();
+        if (assigned == UAFStereotypeRegistry.Domain.SHARED) return Optional.empty();
+        Optional<UAFStereotypeRegistry.Domain> hint =
+            UAFStereotypeRegistry.qualifiedNameDomainHint(qname);
+        if (!hint.isPresent() || hint.get() == assigned) return Optional.empty();
+        return Optional.of(stereoName + "|" + assigned.name() + "|" + hint.get().name());
+    }
+
+    /**
+     * BFS over {@code s} and its general chain, returning the best registered
+     * ancestor by distance, with non-fallback registry entries preferred over
+     * fallback ones at any distance. Direct match (distance 0) wins among
+     * non-fallbacks; the closest non-fallback wins overall; fallbacks are used
+     * only when no non-fallback ancestor exists.
+     *
+     * Production wrapper around {@link #resolveBestRegistered} — the heavy
+     * lifting is in that pure-function helper so the tests can drive it with a
+     * synthetic stereotype hierarchy and no MSOSA dependency.
      */
     private static StereotypeMatch findRegisteredAncestor(Stereotype s) {
-        Deque<Stereotype> queue = new ArrayDeque<>();
+        if (s == null || s.getName() == null) return null;
+
+        // Lazy by-name cache populated during BFS so the matched stereotype-name
+        // can be mapped back to the actual Stereotype object for the result.
+        Map<String, Stereotype> byName = new HashMap<>();
+        byName.put(s.getName(), s);
+
+        RegisteredHit hit = resolveBestRegistered(
+            s.getName(),
+            name -> {
+                Stereotype st = byName.get(name);
+                if (st == null) return Collections.emptyList();
+                List<String> parents = new ArrayList<>();
+                for (Classifier general : st.getGeneral()) {
+                    if (general instanceof Stereotype) {
+                        Stereotype gs = (Stereotype) general;
+                        String gn = gs.getName();
+                        if (gn != null) {
+                            byName.putIfAbsent(gn, gs);
+                            parents.add(gn);
+                        }
+                    }
+                }
+                return parents;
+            },
+            UAFStereotypeRegistry::get
+        );
+        if (hit == null) return null;
+        Stereotype matched = byName.get(hit.stereotypeName);
+        return new StereotypeMatch(matched != null ? matched : s, hit.info);
+    }
+
+    /**
+     * Pure-function BFS that picks the best registered ancestor without
+     * depending on MSOSA types — exposed package-private so unit tests can
+     * drive it with a synthetic parent provider.
+     *
+     * Algorithm:
+     * <ol>
+     *   <li>BFS from {@code startName} via {@code parentsOf}; track distance.</li>
+     *   <li>Every time a name resolves through {@code registry}, record it as
+     *       either a non-fallback or fallback hit with its distance.</li>
+     *   <li>Cycle / multi-parent guard via {@code seen}.</li>
+     *   <li>Return the closest non-fallback hit; if none, the closest fallback.</li>
+     * </ol>
+     */
+    static RegisteredHit resolveBestRegistered(
+            String startName,
+            java.util.function.Function<String, List<String>> parentsOf,
+            java.util.function.Function<String, Optional<UAFStereotypeRegistry.StereotypeInfo>> registry) {
+        if (startName == null) return null;
+
+        Deque<String>  nameQ = new ArrayDeque<>();
+        Deque<Integer> distQ = new ArrayDeque<>();
         Set<String> seen = new HashSet<>();
-        queue.add(s);
-        while (!queue.isEmpty()) {
-            Stereotype cur = queue.poll();
-            String curName = cur.getName();
-            if (curName == null || !seen.add(curName)) continue;
-            Optional<UAFStereotypeRegistry.StereotypeInfo> info =
-                UAFStereotypeRegistry.get(curName);
+        RegisteredHit bestNonFallback = null;
+        RegisteredHit bestFallback    = null;
+
+        nameQ.add(startName);
+        distQ.add(0);
+
+        while (!nameQ.isEmpty()) {
+            String cur  = nameQ.poll();
+            int    dist = distQ.poll();
+            if (cur == null || !seen.add(cur)) continue;
+
+            Optional<UAFStereotypeRegistry.StereotypeInfo> info = registry.apply(cur);
             if (info.isPresent()) {
-                return new StereotypeMatch(cur, info.get());
+                RegisteredHit hit = new RegisteredHit(cur, info.get(), dist);
+                if (info.get().isFallback) {
+                    if (bestFallback == null || dist < bestFallback.distance) bestFallback = hit;
+                } else {
+                    if (bestNonFallback == null || dist < bestNonFallback.distance) bestNonFallback = hit;
+                }
             }
-            for (Classifier general : cur.getGeneral()) {
-                if (general instanceof Stereotype) {
-                    queue.add((Stereotype) general);
+            List<String> parents = parentsOf.apply(cur);
+            if (parents != null) {
+                for (String p : parents) {
+                    if (p != null) {
+                        nameQ.add(p);
+                        distQ.add(dist + 1);
+                    }
                 }
             }
         }
-        return null;
+        return bestNonFallback != null ? bestNonFallback : bestFallback;
     }
 
     /** True if {@code maybeAncestor} appears in {@code s}'s general chain. */
@@ -454,26 +622,310 @@ public class UAFModelTraverser {
     // ── Attribute / tag-value extraction ──────────────────────────────────────
 
     private void extractTaggedValues(Element element, Stereotype stereo,
-                                     UAFElementDTO.Builder builder) {
-        try {
-            for (com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Property prop
-                    : StereotypesHelper.getPropertiesWithDerivedOrdered(stereo)) {
-                String tag = prop.getName();
+                                     UAFElementDTO.Builder builder,
+                                     String srcId,
+                                     UAFStereotypeRegistry.StereotypeInfo srcInfo) {
+        String stereoName = stereo.getName();
+        // Per-property try/catch so a single bad property doesn't kill extraction
+        // for the rest (the prior whole-loop catch was responsible for the
+        // ResourceExchange model seeing only the alphabetically-first scalar tags).
+        for (Property prop : StereotypesHelper.getPropertiesWithDerivedOrdered(stereo)) {
+            String tag = prop.getName();
+            try {
                 Object val = StereotypesHelper.getTaggedValue(element, stereo, tag);
                 if (val instanceof Collection) {
                     StringJoiner sj = new StringJoiner(", ");
                     for (Object v : (Collection<?>) val) {
-                        if (v instanceof NamedElement) sj.add(((NamedElement) v).getName());
-                        else if (v != null) sj.add(v.toString());
+                        if (v instanceof NamedElement) {
+                            sj.add(((NamedElement) v).getName());
+                            emitReferenceEdge(srcId, (NamedElement) v, stereoName, tag, srcInfo);
+                        } else if (v != null) {
+                            sj.add(v.toString());
+                        }
                     }
                     builder.taggedValue(tag, sj.toString());
+                } else if (val instanceof NamedElement) {
+                    NamedElement ne = (NamedElement) val;
+                    builder.taggedValue(tag, ne.getName() != null ? ne.getName() : "");
+                    emitReferenceEdge(srcId, ne, stereoName, tag, srcInfo);
                 } else if (val != null) {
                     builder.taggedValue(tag, val.toString());
                 }
+            } catch (Exception e) {
+                LOG.warning("Failed to extract tag '" + tag + "' on " + srcId + ": " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Emit an {@code ASSOCIATED_WITH} edge whenever a stereotype reference property
+     * carries a NamedElement value (e.g. {@code ResourceExchange.Source/Target/conveyed},
+     * {@code ServiceInterchange.conveyed}, any custom stereotype with element-typed
+     * properties). The {@code uafType} is {@code Stereotype.property} so consumers
+     * can filter by intent; the {@code name} is the property name alone.
+     *
+     * The prior implementation only string-joined references into a lossy {@code tv_*}
+     * value, so a ResourceExchange's Source/Target/conveyed wiring was unreachable
+     * via graph traversal — exchanges were orphan nodes despite the model being
+     * complete. The target is passed through {@link #resolveReferenceTarget} so
+     * that raw UML memberEnd Properties are walked up to the typing classifier
+     * before the edge is emitted — otherwise the relationship's {@code MATCH (tgt)}
+     * silently fails because the memberEnd was never MERGE'd as a node.
+     */
+    private void emitReferenceEdge(String srcId, NamedElement target,
+                                   String stereoName, String tag,
+                                   UAFStereotypeRegistry.StereotypeInfo srcInfo) {
+        if (target == null) return;
+        Element resolved = resolveReferenceTarget(target);
+        if (resolved == null) {
+            LOG.fine("Reference " + stereoName + "." + tag + " on " + srcId
+                     + " did not resolve to a UAF-stereotyped element; edge dropped");
+            return;
+        }
+        String tgtId = safeId(resolved);
+        if (tgtId == null || tgtId.isEmpty()) return;
+        String rawName = target.getName();
+        String resolvedName = (resolved instanceof NamedElement)
+                              ? ((NamedElement) resolved).getName() : null;
+        String name = (rawName != null && !rawName.isEmpty()) ? rawName
+                    : (resolvedName != null && !resolvedName.isEmpty()) ? resolvedName
+                    : tag;
+        String uafType = stereoName + "." + tag;
+        String domain = srcInfo != null && srcInfo.domain != null
+                        ? srcInfo.domain.name() : "NONE";
+        String language = srcInfo != null ? srcInfo.language : "UAF";
+        relationships.add(UAFRelationshipDTO.builder(
+                "ref::" + srcId + "::" + tag + "::" + tgtId,
+                srcId, tgtId, UAFRelationshipDTO.REL_ASSOCIATED_WITH)
+            .uafType(uafType)
+            .name(name)
+            .domain(domain)
+            .language(language)
+            .build());
+    }
+
+    /**
+     * Resolve a reference-edge target up its type / owner chain to the closest
+     * element that carries a registered UAF stereotype.
+     *
+     * The relationship writer (see {@code Neo4jCypherBuilder.relationshipMergeCypher})
+     * uses {@code MATCH} on both endpoints — if a relationship references an id
+     * that was never MERGE'd as a node, the statement silently writes nothing.
+     * Reference-typed UAF stereotype properties frequently point at UML
+     * {@code Property} memberEnds (e.g. {@code ResourceExchange.Source/.Target}
+     * on an Association) which are themselves untyped from a UAF perspective —
+     * the meaningful endpoint is the classifier typing the memberEnd.
+     *
+     * Resolution order:
+     * <ol>
+     *   <li>The raw target itself, if it carries a registered UAF stereotype.</li>
+     *   <li>For a {@link Property}, its {@code getType()} (e.g. the
+     *       {@code ResourceArchitecture} at one end of a {@code ResourceExchange}).</li>
+     *   <li>Walk {@link Element#getOwner()} upward (bounded) until a UAF-stereotyped
+     *       ancestor is found.</li>
+     * </ol>
+     *
+     * Returns {@code null} if no UAF-stereotyped element can be found — callers
+     * drop the edge rather than emit a dangling reference.
+     */
+    private Element resolveReferenceTarget(NamedElement raw) {
+        if (raw == null) return null;
+        if (isRegisteredUAFElement(raw)) return raw;
+        if (raw instanceof Property) {
+            com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Type t = ((Property) raw).getType();
+            if (t instanceof Element && isRegisteredUAFElement((Element) t)) {
+                return (Element) t;
+            }
+        }
+        Element cur = raw.getOwner();
+        int hops = 0;
+        while (cur != null && hops++ < 8) {
+            if (isRegisteredUAFElement(cur)) return cur;
+            cur = cur.getOwner();
+        }
+        return null;
+    }
+
+    /**
+     * Non-mutating probe: does the element carry any stereotype that resolves
+     * to a {@link UAFStereotypeRegistry} entry (directly or via its general
+     * chain)? Distinct from {@link #selectStereotype(Element)} which both
+     * disambiguates the winning stereotype and records misses into
+     * {@code unmatchedStereos} — neither is wanted when probing the target of
+     * a reference edge.
+     */
+    private static boolean isRegisteredUAFElement(Element element) {
+        if (element == null) return false;
+        try {
+            for (Stereotype s : StereotypesHelper.getStereotypes(element)) {
+                if (findRegisteredAncestor(s) != null) return true;
+            }
+        } catch (Exception ignored) {
+            // Defensive: some MSOSA elements throw when probed early in the lifecycle.
+        }
+        return false;
+    }
+
+    /**
+     * UML {@code Connector} (typically stereotyped {@code ResourceConnector} or
+     * {@code OperationalConnector}) carries the actual port-to-port wiring. Walk
+     * {@code ownedEnd[].role} → emit a {@code CONNECTED_TO} edge to each connected
+     * role/port, and walk {@code Connector.type} → emit an {@code OF_TYPE} edge to
+     * the typing classifier (the Association stereotyped as a ResourceExchange).
+     * Without this, every Connector is an orphan with only DEFINES + INSTANCE_OF.
+     */
+    private void extractConnectorEnds(Element element, String connectorId,
+                                      UAFStereotypeRegistry.StereotypeInfo srcInfo) {
+        if (!(element instanceof Connector)) return;
+        Connector conn = (Connector) element;
+        String domain = srcInfo != null && srcInfo.domain != null
+                        ? srcInfo.domain.name() : "NONE";
+        String language = srcInfo != null ? srcInfo.language : "UAF";
+        try {
+            for (ConnectorEnd end : conn.getEnd()) {
+                ConnectableElement role = end.getRole();
+                if (role == null) continue;
+                String roleId = safeId(role);
+                if (roleId == null || roleId.isEmpty()) continue;
+                relationships.add(UAFRelationshipDTO.builder(
+                        "conn_end::" + connectorId + "::" + roleId,
+                        connectorId, roleId, UAFRelationshipDTO.REL_CONNECTED_TO)
+                    .uafType("ConnectorEnd")
+                    .name(role.getName() != null ? role.getName() : "")
+                    .domain(domain)
+                    .language(language)
+                    .build());
+            }
+            Classifier connType = conn.getType();
+            if (connType != null) {
+                String typeId = safeId(connType);
+                if (typeId != null && !typeId.isEmpty()) {
+                    relationships.add(UAFRelationshipDTO.builder(
+                            "conn_type::" + connectorId + "::" + typeId,
+                            connectorId, typeId, UAFRelationshipDTO.REL_OF_TYPE)
+                        .uafType("ConnectorType")
+                        .name(connType.getName() != null ? connType.getName() : "")
+                        .domain(domain)
+                        .language(language)
+                        .build());
+                }
             }
         } catch (Exception e) {
-            LOG.warning("Failed to extract tagged values for " + safeId(element) + ": " + e.getMessage());
+            LOG.warning("Failed to extract connector ends for " + connectorId + ": " + e.getMessage());
         }
+    }
+
+    /**
+     * Emit {@code COMPOSED_OF} from a Classifier (typically a ResourceArchitecture or
+     * OperationalArchitecture) to each of its UAF-stereotyped owned Properties
+     * (typically ResourceRole, ResourceInformationRole, OperationalRole). Gives the
+     * architecture → port navigability that the Resource page of the NeoDash starter
+     * needs in order to root any traversal at an architecture.
+     */
+    private void extractPropertyOwnership(Element element, String propertyId,
+                                          UAFStereotypeRegistry.StereotypeInfo srcInfo) {
+        if (!(element instanceof Property)) return;
+        Property prop = (Property) element;
+        String domain = srcInfo != null && srcInfo.domain != null
+                        ? srcInfo.domain.name() : "NONE";
+        String language = srcInfo != null ? srcInfo.language : "UAF";
+        try {
+            Classifier owner = prop.getUMLClass();
+            if (owner == null) owner = prop.getFeaturingClassifier();
+            if (owner == null) return;
+            String ownerId = safeId(owner);
+            if (ownerId == null || ownerId.isEmpty()) return;
+            relationships.add(UAFRelationshipDTO.builder(
+                    "owns::" + ownerId + "::" + propertyId,
+                    ownerId, propertyId, UAFRelationshipDTO.REL_COMPOSED_OF)
+                .uafType("OwnedAttribute")
+                .name(prop.getName() != null ? prop.getName() : "")
+                .domain(domain)
+                .language(language)
+                .build());
+        } catch (Exception e) {
+            LOG.warning("Failed to extract property ownership for " + propertyId + ": " + e.getMessage());
+        }
+    }
+
+    /**
+     * UAF InformationFlow-derived exchanges (ResourceExchange, OperationalExchange,
+     * ServiceInterchange, …) are first-class nodes whose semantic endpoints —
+     * {@code informationSource}, {@code informationTarget}, {@code conveyed} — live
+     * on the underlying UML metamodel, NOT as UAF stereotype tagged values.
+     * {@link StereotypesHelper#getTaggedValue} does not surface them, so the prior
+     * reference-edge path via {@link #emitReferenceEdge} is a no-op for these
+     * elements and exchanges remain orphan in Neo4j.
+     *
+     * Walk the metamodel directly. The emitted edges are {@code ASSOCIATED_WITH}
+     * with {@code uafType} set to {@code <StereotypeName>.Source / .Target /
+     * .conveyed} so consumers can filter by intent and so the names line up with
+     * the verification queries documented on the originating PR.
+     */
+    private void extractInformationFlowEnds(Element element, String flowId,
+                                            UAFStereotypeRegistry.StereotypeInfo srcInfo) {
+        if (!(element instanceof InformationFlow)) return;
+        InformationFlow flow = (InformationFlow) element;
+        String stereoLabel = resolveDisplayStereotypeName(element);
+        try {
+            emitFlowEndEdges(flowId, flow.getInformationSource(),
+                             stereoLabel + ".Source",   srcInfo);
+            emitFlowEndEdges(flowId, flow.getInformationTarget(),
+                             stereoLabel + ".Target",   srcInfo);
+            emitFlowEndEdges(flowId, flow.getConveyed(),
+                             stereoLabel + ".conveyed", srcInfo);
+        } catch (Exception e) {
+            LOG.warning("Failed to extract InformationFlow ends for " + flowId + ": " + e.getMessage());
+        }
+    }
+
+    private void emitFlowEndEdges(String srcId,
+                                  Collection<? extends Element> targets,
+                                  String uafType,
+                                  UAFStereotypeRegistry.StereotypeInfo srcInfo) {
+        if (targets == null) return;
+        String domain = srcInfo != null && srcInfo.domain != null
+                        ? srcInfo.domain.name() : "NONE";
+        String language = srcInfo != null ? srcInfo.language : "UAF";
+        for (Element t : targets) {
+            if (t == null) continue;
+            Element resolved = (t instanceof NamedElement)
+                ? resolveReferenceTarget((NamedElement) t)
+                : (isRegisteredUAFElement(t) ? t : null);
+            if (resolved == null) continue;
+            String tgtId = safeId(resolved);
+            if (tgtId == null || tgtId.isEmpty()) continue;
+            String name = (t instanceof NamedElement && ((NamedElement) t).getName() != null)
+                          ? ((NamedElement) t).getName() : "";
+            relationships.add(UAFRelationshipDTO.builder(
+                    "flowend::" + srcId + "::" + uafType + "::" + tgtId,
+                    srcId, tgtId, UAFRelationshipDTO.REL_ASSOCIATED_WITH)
+                .uafType(uafType)
+                .name(name)
+                .domain(domain)
+                .language(language)
+                .build());
+        }
+    }
+
+    /**
+     * First registered UAF stereotype name on the element, falling back to
+     * {@code "InformationFlow"} when no UAF stereotype is found. Used to prefix
+     * the {@code uafType} on flow-end edges so queries can filter by the
+     * applied stereotype (e.g. {@code ResourceExchange.Source}) rather than the
+     * underlying UML metaclass.
+     */
+    private static String resolveDisplayStereotypeName(Element element) {
+        try {
+            for (Stereotype s : StereotypesHelper.getStereotypes(element)) {
+                if (findRegisteredAncestor(s) != null && s.getName() != null) {
+                    return s.getName();
+                }
+            }
+        } catch (Exception ignored) {
+            // fall through
+        }
+        return "InformationFlow";
     }
 
     /**
@@ -693,6 +1145,22 @@ public class UAFModelTraverser {
         StereotypeMatch(Stereotype s, UAFStereotypeRegistry.StereotypeInfo i) {
             this.stereotype = s;
             this.info       = i;
+        }
+    }
+
+    /**
+     * Output of {@link #resolveBestRegistered} — the matched stereotype name, its
+     * registry entry, and how many BFS hops from the start we found it. Package-
+     * private so unit tests can assert on it without MSOSA classes in scope.
+     */
+    static final class RegisteredHit {
+        final String stereotypeName;
+        final UAFStereotypeRegistry.StereotypeInfo info;
+        final int    distance;
+        RegisteredHit(String name, UAFStereotypeRegistry.StereotypeInfo i, int distance) {
+            this.stereotypeName = name;
+            this.info           = i;
+            this.distance       = distance;
         }
     }
 }

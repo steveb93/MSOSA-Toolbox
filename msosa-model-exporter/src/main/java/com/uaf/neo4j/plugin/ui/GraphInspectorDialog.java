@@ -70,8 +70,15 @@ public class GraphInspectorDialog extends JDialog {
         "id", "name", "qualifiedName", "stereotype", "domain", "language", "packageName", "documentation"
     );
 
-    public GraphInspectorDialog(Frame parent, Properties connectionConfig, Project project) {
-        super(parent, "UAF Neo4j — Graph Inspector", false);
+    private final JPanel body = new JPanel(new BorderLayout());
+
+    /**
+     * Build the embedded inspector form. The dialog object exists only as a
+     * controller; {@link #getEmbeddedBody()} returns the panel hosted by the
+     * workbench's Inspect rail.
+     */
+    public GraphInspectorDialog(Properties connectionConfig, Project project) {
+        super((Frame) null, "UAF Knowledge Graph — Inspect", false);
         this.connectionConfig = connectionConfig;
         this.project          = project;
 
@@ -152,19 +159,16 @@ public class GraphInspectorDialog extends JDialog {
             }
         });
 
-        setLayout(new BorderLayout());
-        add(buildHeader(), BorderLayout.NORTH);
-        add(buildMain(),   BorderLayout.CENTER);
-        add(buildSouth(),  BorderLayout.SOUTH);
-
-        pack();
-        setMinimumSize(new Dimension(1060, 620));
-        setPreferredSize(new Dimension(1240, 760));
-        setResizable(true);
-        setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
-        setLocationRelativeTo(parent);
+        body.add(buildHeader(), BorderLayout.NORTH);
+        body.add(buildMain(),   BorderLayout.CENTER);
+        body.add(buildSouth(),  BorderLayout.SOUTH);
 
         refreshData();
+    }
+
+    /** The inspector form panel, hosted by the workbench's Inspect rail. */
+    public JComponent getEmbeddedBody() {
+        return body;
     }
 
     // ── Header ────────────────────────────────────────────────────────────────
@@ -207,7 +211,12 @@ public class GraphInspectorDialog extends JDialog {
 
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
             buildNodesPanel(), rightTabs);
-        split.setDividerLocation(660);
+        // Proportional divider — the previous hard-coded 660px assumed the
+        // 1240px dialog and left the workbench's narrower content area with
+        // ~140px of right-tab space.
+        split.setResizeWeight(0.60);
+        split.setDividerLocation(520);                   // sensible absolute fallback
+        SwingUtilities.invokeLater(() -> split.setDividerLocation(0.60));  // proportional once realised
         split.setBorder(null);
         return split;
     }
@@ -282,24 +291,12 @@ public class GraphInspectorDialog extends JDialog {
         cypherRow.add(cypherLbl,   BorderLayout.WEST);
         cypherRow.add(cypherField, BorderLayout.CENTER);
 
-        JButton exportBtn = new JButton("Export…");
-        exportBtn.setToolTipText("Open the Export Configuration dialog");
-        exportBtn.addActionListener(e -> {
-            UAFNeo4jPlugin plugin = UAFNeo4jPlugin.getInstance();
-            if (plugin != null) plugin.showExportDialog();
-        });
-
         JButton refreshBtn = new JButton("Refresh");
         refreshBtn.addActionListener(e -> refreshData());
 
-        JButton closeBtn = new JButton("Close");
-        closeBtn.addActionListener(e -> dispose());
-
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         btnPanel.setOpaque(false);
-        btnPanel.add(exportBtn);
         btnPanel.add(refreshBtn);
-        btnPanel.add(closeBtn);
 
         loadingBar.setPreferredSize(new Dimension(100, 14));
         JPanel statusRow = new JPanel(new BorderLayout(8, 0));
@@ -330,10 +327,7 @@ public class GraphInspectorDialog extends JDialog {
         new SwingWorker<List<Map<String, Object>>, Void>() {
             @Override
             protected List<Map<String, Object>> doInBackground() throws Exception {
-                try (Neo4jExportService svc = new Neo4jExportService(connectionConfig)) {
-                    svc.init();
-                    return svc.fetchAllUAFElements();
-                }
+                return fetchAllNodes();
             }
             @Override
             protected void done() {
@@ -356,10 +350,21 @@ public class GraphInspectorDialog extends JDialog {
                     applyFilter();
                 } catch (Exception ex) {
                     Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
-                    statusLabel.setText("Failed to load: " + cause.getMessage());
+                    String uri = connectionConfig.getProperty("neo4j.uri", "bolt://localhost:7687");
+                    statusLabel.setText("Failed to load (" + uri + "): "
+                        + cause.getClass().getSimpleName() + " — " + cause.getMessage());
                 }
             }
         }.execute();
+    }
+
+    /** Source of all node rows for the table. Overridable so the inspector can be
+     *  driven from sample data (UI preview harness) without a live Neo4j. */
+    protected List<Map<String, Object>> fetchAllNodes() throws Exception {
+        try (Neo4jExportService svc = new Neo4jExportService(connectionConfig)) {
+            svc.init();
+            return svc.fetchAllUAFElements();
+        }
     }
 
     // ── Filtering ─────────────────────────────────────────────────────────────
@@ -430,10 +435,7 @@ public class GraphInspectorDialog extends JDialog {
         new SwingWorker<Neo4jExportService.NeighbourhoodResult, Void>() {
             @Override
             protected Neo4jExportService.NeighbourhoodResult doInBackground() throws Exception {
-                try (Neo4jExportService svc = new Neo4jExportService(connectionConfig)) {
-                    svc.init();
-                    return svc.fetchNeighbourhood(nodeId);
-                }
+                return fetchNeighbourhood(nodeId);
             }
             @Override
             protected void done() {
@@ -444,6 +446,14 @@ public class GraphInspectorDialog extends JDialog {
                 } catch (Exception ignored) {}
             }
         }.execute();
+    }
+
+    /** Source of a node's 1-hop neighbourhood. Overridable for the UI preview harness. */
+    protected Neo4jExportService.NeighbourhoodResult fetchNeighbourhood(String nodeId) throws Exception {
+        try (Neo4jExportService svc = new Neo4jExportService(connectionConfig)) {
+            svc.init();
+            return svc.fetchNeighbourhood(nodeId);
+        }
     }
 
     // ── Locate in MSOSA ───────────────────────────────────────────────────────

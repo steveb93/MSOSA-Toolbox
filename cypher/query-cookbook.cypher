@@ -178,7 +178,8 @@ RETURN src.name AS source, src.stereotype AS sourceType,
        dst.name AS destination, dst.stereotype AS destType
 ORDER BY d.name;
 
-// Data objects within a specific owner process (replace name as needed)
+// Data objects within a specific owner process (replace the literal with a
+// process name from your own model — e.g. 'Order Fulfilment Process').
 MATCH (d)
 WHERE d.stereotype IN ['DataObject', 'DataInput', 'DataOutput', 'DataStore']
   AND d.packageName CONTAINS '<OwnerProcessName>'
