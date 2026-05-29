@@ -233,6 +233,61 @@ class UAFModelTraverserTest {
         assertEquals("", UAFModelTraverser.resolveName("",   null));
     }
 
+    // ── Resource Internal Connectivity wiring (Connector ends, Property
+    //    ownership, reference-typed stereotype properties) ────────────────────
+
+    @Test
+    void connectorEndExtractor_method_exists() {
+        // Connectors (typically ResourceConnector / OperationalConnector) must
+        // emit edges to their ownedEnd[].role and to their typing classifier,
+        // otherwise the whole IBD-style internal-structure wiring is missing.
+        // Method exists with the expected signature on the traverser.
+        boolean found = Arrays.stream(UAFModelTraverser.class.getDeclaredMethods())
+            .anyMatch(m -> m.getName().equals("extractConnectorEnds")
+                        && m.getParameterCount() == 3);
+        assertTrue(found, "extractConnectorEnds(Element, String, StereotypeInfo) must exist — "
+                        + "ResourceConnector orphans depend on it");
+    }
+
+    @Test
+    void propertyOwnershipExtractor_method_exists() {
+        // UAF Roles (ResourceRole / ResourceInformationRole / OperationalRole / ...)
+        // export as nodes but were previously not linked back to their owning
+        // architecture. Method emits COMPOSED_OF from owner Classifier to the Property.
+        boolean found = Arrays.stream(UAFModelTraverser.class.getDeclaredMethods())
+            .anyMatch(m -> m.getName().equals("extractPropertyOwnership")
+                        && m.getParameterCount() == 3);
+        assertTrue(found, "extractPropertyOwnership(Element, String, StereotypeInfo) must exist — "
+                        + "architecture→port navigability depends on it");
+    }
+
+    @Test
+    void referenceEdgeEmitter_method_exists() {
+        // Reference-typed stereotype properties (e.g. ResourceExchange.Source/
+        // Target/conveyed) previously stringified into lossy tv_* values. Method
+        // emits an ASSOCIATED_WITH edge with uafType=<Stereotype>.<property> so
+        // the references are reachable via graph traversal.
+        boolean found = Arrays.stream(UAFModelTraverser.class.getDeclaredMethods())
+            .anyMatch(m -> m.getName().equals("emitReferenceEdge")
+                        && m.getParameterCount() == 5);
+        assertTrue(found, "emitReferenceEdge(srcId, target, stereoName, tag, info) must exist — "
+                        + "ResourceExchange Source/Target/conveyed wiring depends on it");
+    }
+
+    @Test
+    void internalWiringExtractors_useExpectedRelConstants() {
+        // Pin the chosen rel types so an accidental change to one of these
+        // breaks here, not silently in production.
+        assertEquals("CONNECTED_TO", UAFRelationshipDTO.REL_CONNECTED_TO,
+            "Connector ends emit CONNECTED_TO");
+        assertEquals("OF_TYPE", UAFRelationshipDTO.REL_OF_TYPE,
+            "Connector.type emits OF_TYPE");
+        assertEquals("COMPOSED_OF", UAFRelationshipDTO.REL_COMPOSED_OF,
+            "Property owner emits COMPOSED_OF");
+        assertEquals("ASSOCIATED_WITH", UAFRelationshipDTO.REL_ASSOCIATED_WITH,
+            "Reference-typed stereotype properties emit ASSOCIATED_WITH");
+    }
+
     @Test
     void traverseAttachedModulesField_isFinalAndBoolean() {
         // The flag stores once at construction time and is consulted by ensureTraversed.
