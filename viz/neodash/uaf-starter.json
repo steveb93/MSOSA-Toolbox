@@ -321,8 +321,8 @@
         },
         {
           "id": "p3-r6",
-          "title": "Resource exchanges from $neodash_resource (ports collapsed)",
-          "query": "MATCH path = (e {name: $neodash_resource})-[*1..5]-(target) WHERE e <> target AND target.domain = 'RESOURCE' AND target.stereotype IN ['ResourceArchitecture','ResourceArtifact','HardwareElement','SoftwareElement','System','Software','SystemBlock','Technology','ActualSystem','ResourceSystem'] AND ANY(n IN nodes(path) WHERE n.stereotype = 'ResourceExchange') AND NONE(n IN nodes(path) WHERE n:SystemModel OR n:Stereotype OR n:Domain) WITH e, target, [n IN nodes(path) WHERE n.stereotype IN ['ResourceExchange','ResourceInformation']] AS carriers UNWIND carriers AS carrier WITH DISTINCT e, target, carrier CALL apoc.create.vRelationship(e, 'VIA', {via: carrier.stereotype}, carrier) YIELD rel AS r1 CALL apoc.create.vRelationship(carrier, 'VIA', {via: carrier.stereotype}, target) YIELD rel AS r2 RETURN e, r1, carrier, r2, target LIMIT 200",
+          "title": "Resource exchanges from $neodash_resource",
+          "query": "MATCH path = (e {name: $neodash_resource})-[:ASSOCIATED_WITH|CONNECTED_TO|COMPOSED_OF|INFORMATION_FLOW*1..3]-(target) WHERE e <> target AND target.domain = 'RESOURCE' AND target.stereotype IN ['ResourceArchitecture','ResourcePerformer','ResourceArtifact','HardwareElement','SoftwareElement','System','Software','SystemBlock','Technology','ActualSystem','ResourceSystem'] AND ANY(n IN nodes(path) WHERE n.stereotype IN ['ResourceExchange','ResourceInformation']) RETURN path LIMIT 200",
           "type": "graph",
           "x": 0,
           "y": 14,
