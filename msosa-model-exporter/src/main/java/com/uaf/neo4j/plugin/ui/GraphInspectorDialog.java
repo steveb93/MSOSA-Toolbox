@@ -1,6 +1,5 @@
 package com.uaf.neo4j.plugin.ui;
 
-import com.uaf.neo4j.plugin.UAFNeo4jPlugin;
 import com.uaf.neo4j.plugin.neo4j.Neo4jExportService;
 import com.nomagic.magicdraw.core.Application;
 import com.nomagic.magicdraw.core.Project;

@@ -509,6 +509,7 @@ public final class UiInspector {
         final String declaringClassSimple; // for the on-screen label
         final String fieldName;
         final String key;
+        @SuppressWarnings("unused") // captured for future detail rendering in the inspector tooltip
         final String type;
         final int line;
 
