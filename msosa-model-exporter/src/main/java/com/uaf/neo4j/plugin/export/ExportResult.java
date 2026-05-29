@@ -45,26 +45,6 @@ public final class ExportResult {
      */
     public final Map<String, Integer> misDomainHints = new LinkedHashMap<>();
 
-    /**
-     * SHACL conformance against {@code ontology/shapes/uaf-shapes.ttl}, populated by the
-     * RDF emitter when an RDF target is selected. {@code null} means SHACL was not run
-     * (e.g. LPG-only export); {@code true} means the dataset conformed; {@code false}
-     * means at least one violation. See Stage 3 in {@code ontology/NEXT-STEPS.md}.
-     */
-    public Boolean shaclConformance = null;
-
-    /** SHACL violation count (severity = sh:Violation). Zero unless {@link #shaclConformance} is {@code false}. */
-    public int shaclViolations = 0;
-
-    /** SHACL warning count (severity = sh:Warning). Reported separately so warnings do not flip {@link #shaclConformance}. */
-    public int shaclWarnings = 0;
-
-    /**
-     * Formatted violation lines for the summary dialog, one per ValidationReport entry.
-     * Each line: {@code "[Severity] ShapeName: focusNode — message"}.
-     */
-    public final List<String> shaclViolationLines = new ArrayList<>();
-
     public boolean hasErrors() {
         return !errors.isEmpty();
     }

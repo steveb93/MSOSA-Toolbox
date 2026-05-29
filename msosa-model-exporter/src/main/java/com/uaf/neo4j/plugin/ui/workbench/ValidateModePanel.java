@@ -1,8 +1,8 @@
 package com.uaf.neo4j.plugin.ui.workbench;
 
 import com.uaf.neo4j.plugin.UAFNeo4jPlugin;
-import com.uaf.neo4j.plugin.export.ExportResult;
 import com.uaf.neo4j.plugin.rdf.FusekiClient;
+import com.uaf.neo4j.plugin.rdf.ShaclReport;
 import com.uaf.neo4j.plugin.rdf.ShaclValidationService;
 
 import org.apache.jena.rdf.model.Model;
@@ -57,8 +57,10 @@ final class ValidateModePanel extends JPanel implements WorkbenchPanel {
 
     @SuppressWarnings("unused") // held for future "validate the current model only" actions
     private final UAFWorkbench workbench;
-    private final JTextArea report = new JTextArea(IDLE_TEXT);
-    private final JButton runBtn   = new JButton("Run SHACL Validation");
+    private final JTextArea report  = new JTextArea(IDLE_TEXT);
+    private final JButton runBtn    = new JButton("Run SHACL Validation");
+    private final JButton cancelBtn = new JButton("Cancel");
+    private SwingWorker<String, Void> currentWorker;
 
     ValidateModePanel(UAFWorkbench workbench) {
         this.workbench = workbench;
@@ -70,10 +72,17 @@ final class ValidateModePanel extends JPanel implements WorkbenchPanel {
             "Snapshot Fuseki via SPARQL CONSTRUCT and validate against the bundled UAF SHACL shapes.");
         runBtn.addActionListener(e -> runValidation());
 
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        cancelBtn.setEnabled(false);
+        cancelBtn.setToolTipText(
+            "Cancel the running validation. Jena may not honour the interrupt mid-reasoning, "
+          + "so background work can continue until it finishes — but the UI is freed immediately.");
+        cancelBtn.addActionListener(e -> cancelValidation());
+
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         buttons.setOpaque(false);
         buttons.setAlignmentX(Component.LEFT_ALIGNMENT);
         buttons.add(runBtn);
+        buttons.add(cancelBtn);
 
         report.setEditable(false);
         report.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
@@ -97,25 +106,35 @@ final class ValidateModePanel extends JPanel implements WorkbenchPanel {
 
     /**
      * Launch the validation pipeline on a SwingWorker so the EDT stays responsive
-     * during the CONSTRUCT round-trip and the OWL FB closure (which can take a
-     * couple of seconds on a large dataset).
+     * during the CONSTRUCT round-trip and the OWL FB closure. Probes Fuseki first
+     * to surface the common first-run failures (unreachable, empty dataset) with
+     * actionable hints rather than a stuck "Running…" message.
      */
     private void runValidation() {
-        runBtn.setEnabled(false);
+        toggleRunning(true);
         report.setText("Running…\n\n"
-                     + "  → Fetching dataset from Fuseki…\n");
+                     + "  → Probing Fuseki…\n");
 
-        new SwingWorker<String, Void>() {
+        currentWorker = new SwingWorker<String, Void>() {
             @Override
             protected String doInBackground() {
-                try {
-                    Properties cfg = UAFNeo4jPlugin.getInstance().getConfig();
-                    String fusekiUrl = cfg.getProperty("fuseki.url",      "http://localhost:3030/uaf");
-                    String fusekiUsr = cfg.getProperty("fuseki.user",     "");
-                    String fusekiPwd = cfg.getProperty("fuseki.password", "");
+                Properties cfg = UAFNeo4jPlugin.getInstance().getConfig();
+                String fusekiUrl = cfg.getProperty("fuseki.url",      "http://localhost:3030/uaf");
+                String fusekiUsr = cfg.getProperty("fuseki.user",     "");
+                String fusekiPwd = cfg.getProperty("fuseki.password", "");
+                FusekiClient client = new FusekiClient(fusekiUrl, fusekiUsr, fusekiPwd);
 
-                    FusekiClient client = new FusekiClient(fusekiUrl, fusekiUsr, fusekiPwd);
+                if (!client.testConnection()) {
+                    return "Fuseki unreachable at " + fusekiUrl + ".\n\n"
+                         + "Check the Settings rail (Fuseki URL + credentials) and the "
+                         + "status strip at the bottom of the workbench. If Fuseki is "
+                         + "not running, start it via the docker-compose overlay.\n";
+                }
+                if (isCancelled()) return cancelledMessage();
+
+                try {
                     String turtle = client.constructAll();
+                    if (isCancelled()) return cancelledMessage();
 
                     Model data = ModelFactory.createDefaultModel();
                     RDFParser.create()
@@ -123,8 +142,15 @@ final class ValidateModePanel extends JPanel implements WorkbenchPanel {
                         .lang(Lang.TURTLE)
                         .parse(data);
 
-                    ExportResult result = new ExportResult();
-                    ShaclValidationService.validateAndAttach(data, result);
+                    if (data.isEmpty()) {
+                        return "Fuseki dataset is empty.\n\n"
+                             + "Source: " + fusekiUrl + "/sparql\n\n"
+                             + "Run an export with the Export rail and tick \"Also PUT to Fuseki\" "
+                             + "so the dataset has something to validate against.\n";
+                    }
+                    if (isCancelled()) return cancelledMessage();
+
+                    ShaclReport result = ShaclValidationService.validate(data);
                     return formatReport(fusekiUrl, data.size(), result);
                 } catch (Exception ex) {
                     return formatError(ex);
@@ -134,22 +160,47 @@ final class ValidateModePanel extends JPanel implements WorkbenchPanel {
             @Override
             protected void done() {
                 try {
-                    report.setText(get());
+                    if (isCancelled()) {
+                        report.setText(cancelledMessage());
+                    } else {
+                        report.setText(get());
+                    }
                     report.setCaretPosition(0);
+                } catch (java.util.concurrent.CancellationException ce) {
+                    report.setText(cancelledMessage());
                 } catch (Exception ex) {
                     report.setText(formatError(ex));
                 } finally {
-                    runBtn.setEnabled(true);
+                    toggleRunning(false);
+                    currentWorker = null;
                 }
             }
-        }.execute();
+        };
+        currentWorker.execute();
     }
 
-    private static String formatReport(String fusekiUrl, long tripleCount, ExportResult r) {
+    private void cancelValidation() {
+        if (currentWorker != null && !currentWorker.isDone()) {
+            currentWorker.cancel(true);
+        }
+    }
+
+    private void toggleRunning(boolean running) {
+        runBtn.setEnabled(!running);
+        cancelBtn.setEnabled(running);
+    }
+
+    private static String cancelledMessage() {
+        return "Validation cancelled.\n\n"
+             + "Jena does not always honour mid-reasoning interruption, so background work may "
+             + "continue until it finishes naturally — but the UI is free to use.\n";
+    }
+
+    private static String formatReport(String fusekiUrl, long tripleCount, ShaclReport r) {
         StringBuilder sb = new StringBuilder();
         sb.append("Source: ").append(fusekiUrl).append("/sparql\n");
         sb.append("Snapshot: ").append(tripleCount).append(" triples\n");
-        if (r.shaclConformance == null) {
+        if (r.conforms == null) {
             sb.append("Result: SHACL validator did not run.\n");
             if (!r.errors.isEmpty()) {
                 sb.append("\nErrors:\n");
@@ -157,14 +208,14 @@ final class ValidateModePanel extends JPanel implements WorkbenchPanel {
             }
             return sb.toString();
         }
-        sb.append("Result: ").append(r.shaclConformance ? "CONFORMS" : "DOES NOT CONFORM").append('\n');
-        sb.append("Violations: ").append(r.shaclViolations).append('\n');
-        sb.append("Warnings:   ").append(r.shaclWarnings).append('\n');
-        if (r.shaclViolationLines.isEmpty()) {
+        sb.append("Result: ").append(r.conforms ? "CONFORMS" : "DOES NOT CONFORM").append('\n');
+        sb.append("Violations: ").append(r.violations).append('\n');
+        sb.append("Warnings:   ").append(r.warnings).append('\n');
+        if (r.lines.isEmpty()) {
             sb.append("\n(no actionable findings against URI-named uafinst: instances)\n");
         } else {
             sb.append("\nFindings:\n");
-            for (String line : r.shaclViolationLines) sb.append("  ").append(line).append('\n');
+            for (String line : r.lines) sb.append("  ").append(line).append('\n');
         }
         return sb.toString();
     }
