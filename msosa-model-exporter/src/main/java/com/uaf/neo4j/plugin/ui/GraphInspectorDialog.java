@@ -1,5 +1,6 @@
 package com.uaf.neo4j.plugin.ui;
 
+import com.uaf.neo4j.plugin.UAFNeo4jPlugin;
 import com.uaf.neo4j.plugin.neo4j.Neo4jExportService;
 import com.nomagic.magicdraw.core.Application;
 import com.nomagic.magicdraw.core.Project;
@@ -37,7 +38,6 @@ public class GraphInspectorDialog extends JDialog {
     private static final Color BORDER_SUBTLE = new Color(218, 219, 224);
 
     // ── State ─────────────────────────────────────────────────────────────────
-    private final Properties                connectionConfig;
     private final Project                   project;
     private final List<String>              nodeIds  = new ArrayList<>();
     private final List<Map<String, Object>> nodeData = new ArrayList<>();
@@ -75,11 +75,17 @@ public class GraphInspectorDialog extends JDialog {
      * Build the embedded inspector form. The dialog object exists only as a
      * controller; {@link #getEmbeddedBody()} returns the panel hosted by the
      * workbench's Inspect rail.
+     *
+     * <p>The {@code connectionConfig} parameter is retained for the UI preview
+     * harness (which subclasses this dialog and overrides {@link #fetchAllNodes()}
+     * with sample data, so the config is never read). Production paths route
+     * through {@link #currentConfig()}, which reads
+     * {@code UAFNeo4jPlugin.getInstance().getConfig()} fresh on every call —
+     * so a Settings save propagates without needing to rebuild the workbench.
      */
     public GraphInspectorDialog(Properties connectionConfig, Project project) {
         super((Frame) null, "UAF Knowledge Graph — Inspect", false);
-        this.connectionConfig = connectionConfig;
-        this.project          = project;
+        this.project = project;
 
         // Main table — 5 columns
         tableModel = new DefaultTableModel(
@@ -168,6 +174,26 @@ public class GraphInspectorDialog extends JDialog {
     /** The inspector form panel, hosted by the workbench's Inspect rail. */
     public JComponent getEmbeddedBody() {
         return body;
+    }
+
+    /**
+     * Re-fetch nodes against the current plugin config. Called by the workbench
+     * after a Settings save and when the Inspect rail is activated.
+     */
+    public void refresh() {
+        refreshData();
+    }
+
+    /**
+     * Live view of the plugin's connection settings. Re-read on every call so a
+     * Settings save flows through to the next refresh without rebuilding the
+     * workbench. The fields the inspector reads ({@code neo4j.uri},
+     * {@code neo4j.user}, etc.) come straight from
+     * {@link UAFNeo4jPlugin#getConfig()} — the Settings rail is the single
+     * source of truth.
+     */
+    protected Properties currentConfig() {
+        return UAFNeo4jPlugin.getInstance().getConfig();
     }
 
     // ── Header ────────────────────────────────────────────────────────────────
@@ -349,7 +375,7 @@ public class GraphInspectorDialog extends JDialog {
                     applyFilter();
                 } catch (Exception ex) {
                     Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
-                    String uri = connectionConfig.getProperty("neo4j.uri", "bolt://localhost:7687");
+                    String uri = currentConfig().getProperty("neo4j.uri", "bolt://localhost:7687");
                     statusLabel.setText("Failed to load (" + uri + "): "
                         + cause.getClass().getSimpleName() + " — " + cause.getMessage());
                 }
@@ -360,7 +386,7 @@ public class GraphInspectorDialog extends JDialog {
     /** Source of all node rows for the table. Overridable so the inspector can be
      *  driven from sample data (UI preview harness) without a live Neo4j. */
     protected List<Map<String, Object>> fetchAllNodes() throws Exception {
-        try (Neo4jExportService svc = new Neo4jExportService(connectionConfig)) {
+        try (Neo4jExportService svc = new Neo4jExportService(currentConfig())) {
             svc.init();
             return svc.fetchAllUAFElements();
         }
@@ -449,7 +475,7 @@ public class GraphInspectorDialog extends JDialog {
 
     /** Source of a node's 1-hop neighbourhood. Overridable for the UI preview harness. */
     protected Neo4jExportService.NeighbourhoodResult fetchNeighbourhood(String nodeId) throws Exception {
-        try (Neo4jExportService svc = new Neo4jExportService(connectionConfig)) {
+        try (Neo4jExportService svc = new Neo4jExportService(currentConfig())) {
             svc.init();
             return svc.fetchNeighbourhood(nodeId);
         }
