@@ -59,6 +59,15 @@
             <version>${jena.version}</version>
         </dependency>
 
+        <!-- Apache Jena SHACL — in-process SHACL validation against ontology/shapes/uaf-shapes.ttl
+             after the RDF emitter has built the in-memory model. Result is attached to ExportResult
+             and surfaced as a row + tab in ExportSummaryDialog. -->
+        <dependency>
+            <groupId>org.apache.jena</groupId>
+            <artifactId>jena-shacl</artifactId>
+            <version>${jena.version}</version>
+        </dependency>
+
         <!--
             MSOSA SDK jars — PROVIDED (on MSOSA classpath at runtime; not bundled).
             Jars are checked into /msosa-sdk/ at the repo root. Install once with:
@@ -158,6 +167,36 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.11.0</version>
+            </plugin>
+
+            <!-- Copy the ontology T-Box, axioms, and SHACL shapes into the plugin jar so
+                 ShaclValidationService can load them from the classpath at export time.
+                 Source files stay in ../ontology/ as the single editable copy; the plugin
+                 ships a snapshot taken at build time. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>copy-ontology</id>
+                        <phase>generate-resources</phase>
+                        <goals><goal>copy-resources</goal></goals>
+                        <configuration>
+                            <outputDirectory>${project.build.outputDirectory}/uaf-ontology</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/../ontology</directory>
+                                    <includes>
+                                        <include>uaf-mvo.ttl</include>
+                                        <include>uaf-mvo-axioms.ttl</include>
+                                        <include>shapes/uaf-shapes.ttl</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
 
             <!-- Surefire 3.x: supports JUnit Platform (JUnit 5) natively -->
