@@ -60,7 +60,7 @@ final class ValidateModePanel extends JPanel implements WorkbenchPanel {
     private final JTextArea report  = new JTextArea(IDLE_TEXT);
     private final JButton runBtn    = new JButton("Run SHACL Validation");
     private final JButton cancelBtn = new JButton("Cancel");
-    private SwingWorker<String, Void> currentWorker;
+    private SwingWorker<String, String> currentWorker;
 
     ValidateModePanel(UAFWorkbench workbench) {
         this.workbench = workbench;
@@ -109,13 +109,17 @@ final class ValidateModePanel extends JPanel implements WorkbenchPanel {
      * during the CONSTRUCT round-trip and the OWL FB closure. Probes Fuseki first
      * to surface the common first-run failures (unreachable, empty dataset) with
      * actionable hints rather than a stuck "Running…" message.
+     *
+     * <p>Each stage publishes a progress line through {@link SwingWorker#publish}
+     * so the user sees forward motion (probe → snapshot triple count → reasoner →
+     * SHACL) instead of a single frozen "Probing Fuseki…" string while the OWL FB
+     * closure churns for minutes.
      */
     private void runValidation() {
         toggleRunning(true);
-        report.setText("Running…\n\n"
-                     + "  → Probing Fuseki…\n");
+        report.setText("Running…\n");
 
-        currentWorker = new SwingWorker<String, Void>() {
+        currentWorker = new SwingWorker<String, String>() {
             @Override
             protected String doInBackground() {
                 Properties cfg = UAFNeo4jPlugin.getInstance().getConfig();
@@ -124,23 +128,36 @@ final class ValidateModePanel extends JPanel implements WorkbenchPanel {
                 String fusekiPwd = cfg.getProperty("fuseki.password", "");
                 FusekiClient client = new FusekiClient(fusekiUrl, fusekiUsr, fusekiPwd);
 
+                long t0 = System.currentTimeMillis();
+                publish("  → Probing Fuseki at " + fusekiUrl + " …");
                 if (!client.testConnection()) {
                     return "Fuseki unreachable at " + fusekiUrl + ".\n\n"
                          + "Check the Settings rail (Fuseki URL + credentials) and the "
                          + "status strip at the bottom of the workbench. If Fuseki is "
                          + "not running, start it via the docker-compose overlay.\n";
                 }
+                publish("  ✓ Fuseki reachable (" + (System.currentTimeMillis() - t0) + " ms).");
                 if (isCancelled()) return cancelledMessage();
 
                 try {
+                    publish("  → Snapshotting dataset via SPARQL CONSTRUCT …");
+                    long t1 = System.currentTimeMillis();
                     String turtle = client.constructAll();
+                    publish("  ✓ Snapshot received: "
+                          + (turtle.length() / 1024) + " KB Turtle in "
+                          + (System.currentTimeMillis() - t1) + " ms.");
                     if (isCancelled()) return cancelledMessage();
 
+                    publish("  → Parsing Turtle into Jena model …");
+                    long t2 = System.currentTimeMillis();
                     Model data = ModelFactory.createDefaultModel();
                     RDFParser.create()
                         .source(new ByteArrayInputStream(turtle.getBytes(StandardCharsets.UTF_8)))
                         .lang(Lang.TURTLE)
                         .parse(data);
+                    long tripleCount = data.size();
+                    publish("  ✓ Parsed " + tripleCount + " triples in "
+                          + (System.currentTimeMillis() - t2) + " ms.");
 
                     if (data.isEmpty()) {
                         return "Fuseki dataset is empty.\n\n"
@@ -150,11 +167,24 @@ final class ValidateModePanel extends JPanel implements WorkbenchPanel {
                     }
                     if (isCancelled()) return cancelledMessage();
 
+                    publish("  → Running OWL FB reasoner + SHACL validator …");
+                    publish("    (this is the slow step — Jena may not honour cancel mid-reasoning)");
+                    long t3 = System.currentTimeMillis();
                     ShaclReport result = ShaclValidationService.validate(data);
-                    return formatReport(fusekiUrl, data.size(), result);
+                    publish("  ✓ Validation finished in "
+                          + (System.currentTimeMillis() - t3) + " ms.");
+                    return formatReport(fusekiUrl, tripleCount, result);
                 } catch (Exception ex) {
                     return formatError(ex);
                 }
+            }
+
+            @Override
+            protected void process(java.util.List<String> chunks) {
+                for (String line : chunks) {
+                    report.append(line + "\n");
+                }
+                report.setCaretPosition(report.getDocument().getLength());
             }
 
             @Override

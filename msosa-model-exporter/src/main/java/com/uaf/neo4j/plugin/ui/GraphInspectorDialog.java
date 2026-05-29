@@ -31,9 +31,12 @@ import java.util.Properties;
 public class GraphInspectorDialog extends JDialog {
 
     // ── Palette ───────────────────────────────────────────────────────────────
-    private static final Color HDR_BG        = new Color( 43,  43,  43);
-    private static final Color HDR_TITLE     = Color.WHITE;
-    private static final Color HDR_SUBTITLE  = new Color(160, 160, 160);
+    // White-on-white header aligns with the workbench's other tabs (Validate /
+    // Settings). The previous dark banner clashed with the workbench's own dark
+    // header above and produced a double-banded look when embedded.
+    private static final Color HDR_BG        = Color.WHITE;
+    private static final Color HDR_TITLE     = new Color( 40,  40,  40);
+    private static final Color HDR_SUBTITLE  = new Color( 80,  80,  80);
     private static final Color LEFT_BG       = new Color(248, 249, 251);
     private static final Color BORDER_SUBTLE = new Color(218, 219, 224);
 
@@ -203,7 +206,7 @@ public class GraphInspectorDialog extends JDialog {
         header.setBackground(HDR_BG);
         header.setOpaque(true);
         header.setBorder(BorderFactory.createCompoundBorder(
-            new MatteBorder(0, 0, 1, 0, new Color(65, 65, 65)),
+            new MatteBorder(0, 0, 1, 0, BORDER_SUBTLE),
             new EmptyBorder(16, 20, 15, 20)));
 
         JLabel title = new JLabel("Graph Inspector");

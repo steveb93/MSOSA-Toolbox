@@ -51,7 +51,7 @@ public class UAFWorkbench extends JFrame {
     private final StatusStrip statusStrip;
 
     public UAFWorkbench(Project project) {
-        super("UAF Knowledge Graph");
+        super("MSOSA Knowledge Graph");
         this.project = project;
 
         Properties cfg = UAFNeo4jPlugin.getInstance().getConfig();
@@ -139,7 +139,7 @@ public class UAFWorkbench extends JFrame {
         header.setBackground(HEADER_BG);
         header.setBorder(new EmptyBorder(10, 16, 10, 16));
 
-        JLabel title = new JLabel("UAF Knowledge Graph");
+        JLabel title = new JLabel("MSOSA Knowledge Graph");
         title.setForeground(HEADER_TITLE);
         title.setFont(title.getFont().deriveFont(Font.BOLD, 16f));
 
