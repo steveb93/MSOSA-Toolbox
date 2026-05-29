@@ -446,20 +446,45 @@ public class UAFModelTraverser {
     /**
      * Record one mis-domain observation if the matched element's domain
      * disagrees with the {@link UAFStereotypeRegistry#qualifiedNameDomainHint
-     * qualifiedName hint}. Skips when no UAF domain applies (SysML/BPMN
-     * elements), when the qname yields no hint, and when the hint agrees with
-     * the assigned domain. Per #125 Part 1: observability only — does not
-     * change the export.
+     * qualifiedName hint}. Per #125 Part 1: observability only, the export
+     * is unchanged. The heavy logic lives in {@link #misDomainKey} so the
+     * skip rules are unit-testable without MSOSA in scope.
      */
     private void recordMisDomainHint(StereotypeMatch matched, String qname) {
-        if (matched == null || matched.info == null || matched.info.domain == null) return;
+        if (matched == null || matched.info == null) return;
+        misDomainKey(matched.stereotype.getName(), matched.info.domain, qname)
+            .ifPresent(k -> misDomainCounts.merge(k, 1, Integer::sum));
+    }
+
+    /**
+     * Pure-function key derivation for {@link #misDomainCounts}. Returns the
+     * {@code "<stereotype>|<assigned>|<hinted>"} key, or empty when no
+     * observation should be recorded.
+     *
+     * <p>Skip rules:
+     * <ul>
+     *   <li>Null assigned domain — SysML/BPMN stereotypes carry no UAF domain.</li>
+     *   <li>{@link UAFStereotypeRegistry.Domain#SHARED SHARED}-domain stereotypes
+     *       — Entity, EntityRelation, Standard, Measurement, Location, etc. are
+     *       cross-cutting by definition and routinely live under every domain
+     *       folder (e.g. a {@code :Standard} referenced from a Service taxonomy
+     *       package). Hint disagreement is noise, not signal. Validation on the
+     *       class profile showed ~63% of the raw hints were SHARED-in-
+     *       domain-folder pairs; filtering them keeps the tab focused on real
+     *       mis-classifications.</li>
+     *   <li>qname yields no domain hint — nothing to compare against.</li>
+     *   <li>Hint matches the assigned domain — by definition no disagreement.</li>
+     * </ul>
+     */
+    static Optional<String> misDomainKey(String stereoName,
+                                         UAFStereotypeRegistry.Domain assigned,
+                                         String qname) {
+        if (assigned == null) return Optional.empty();
+        if (assigned == UAFStereotypeRegistry.Domain.SHARED) return Optional.empty();
         Optional<UAFStereotypeRegistry.Domain> hint =
             UAFStereotypeRegistry.qualifiedNameDomainHint(qname);
-        if (!hint.isPresent() || hint.get() == matched.info.domain) return;
-        String key = matched.stereotype.getName()
-            + "|" + matched.info.domain.name()
-            + "|" + hint.get().name();
-        misDomainCounts.merge(key, 1, Integer::sum);
+        if (!hint.isPresent() || hint.get() == assigned) return Optional.empty();
+        return Optional.of(stereoName + "|" + assigned.name() + "|" + hint.get().name());
     }
 
     /**

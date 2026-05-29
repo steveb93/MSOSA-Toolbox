@@ -26,6 +26,70 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class UAFModelTraverserTest {
 
+    // ── Mis-domain key derivation (#125 Part 1 follow-up) ─────────────────────
+
+    @Test
+    void misDomainKey_assignedDomainAgreesWithHint_returnsEmpty() {
+        // An OperationalActivity under "Operational Taxonomy::…" — assigned and
+        // hinted both OPERATIONAL, no observation to record.
+        Optional<String> key = UAFModelTraverser.misDomainKey(
+            "OperationalActivity",
+            UAFStereotypeRegistry.Domain.OPERATIONAL,
+            "Root::Operational Taxonomy::Activity X");
+        assertTrue(key.isEmpty(),
+            "Hint matching the assigned domain must not produce a key");
+    }
+
+    @Test
+    void misDomainKey_assignedDomainDisagreesWithHint_returnsKey() {
+        // A bare-Resource-fallback element living under an operational folder —
+        // exactly the kind of mis-classification the observability surfaces.
+        Optional<String> key = UAFModelTraverser.misDomainKey(
+            "ResourceRole",
+            UAFStereotypeRegistry.Domain.RESOURCE,
+            "Root::Operational Taxonomy::Internal Performer::Analyst");
+        assertTrue(key.isPresent());
+        assertEquals("ResourceRole|RESOURCE|OPERATIONAL", key.get());
+    }
+
+    @Test
+    void misDomainKey_nullAssignedDomain_returnsEmpty() {
+        // SysML/BPMN stereotypes carry a null UAF domain — nothing to compare.
+        Optional<String> key = UAFModelTraverser.misDomainKey(
+            "Block", null, "Root::Operational Taxonomy::SomeBlock");
+        assertTrue(key.isEmpty(),
+            "Null assigned domain (SysML/BPMN) must never produce a key");
+    }
+
+    @Test
+    void misDomainKey_sharedAssignedDomain_returnsEmpty() {
+        // SHARED stereotypes (Entity, Standard, Measurement, Location, …) are
+        // cross-cutting by definition. A :Standard referenced from a Service
+        // taxonomy package is correctly assigned SHARED — the qname hint is
+        // noise. Validation on a real profile showed SHARED-in-domain-folder
+        // pairs were ~63% of the raw hints; filtering them isolates real signal.
+        for (String name : new String[]{"Entity", "EntityRelation", "Standard",
+                                        "Measurement", "Location"}) {
+            Optional<String> key = UAFModelTraverser.misDomainKey(
+                name,
+                UAFStereotypeRegistry.Domain.SHARED,
+                "Root::Operational Taxonomy::" + name);
+            assertTrue(key.isEmpty(),
+                name + " is SHARED — must never contribute a mis-domain hit "
+                + "even when sitting in a domain-labelled folder");
+        }
+    }
+
+    @Test
+    void misDomainKey_qnameYieldsNoHint_returnsEmpty() {
+        // qname has no recognisable domain segment — nothing to compare.
+        Optional<String> key = UAFModelTraverser.misDomainKey(
+            "ResourcePerformer",
+            UAFStereotypeRegistry.Domain.RESOURCE,
+            "Root::Generic Library::Element");
+        assertTrue(key.isEmpty());
+    }
+
     // ── Stereotype-priority ordering (#75 RC #1) ──────────────────────────────
 
     @Test
