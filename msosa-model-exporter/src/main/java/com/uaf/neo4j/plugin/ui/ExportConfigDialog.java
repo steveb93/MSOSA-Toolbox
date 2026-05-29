@@ -64,9 +64,13 @@ public class ExportConfigDialog extends JDialog {
     // ── Buttons ───────────────────────────────────────────────────────────────
     private final JButton saveConfigBtn  = new JButton("Save Config");
     private final JButton exportBtn      = new JButton("Export");
+    private final JButton cancelBtn      = new JButton("Cancel");
 
     private final Project project;
     private final JPanel body = new JPanel(new BorderLayout());
+
+    /** The running export, if any. Null when no export is in flight. */
+    private SwingWorker<Map<String, ExportResult>, String> currentWorker;
 
     /**
      * Build the embedded export form. The dialog object exists only as a
@@ -157,6 +161,12 @@ public class ExportConfigDialog extends JDialog {
 
         saveConfigBtn.addActionListener(e -> saveConfig());
         exportBtn.addActionListener(e -> runExport());
+
+        cancelBtn.setEnabled(false);
+        cancelBtn.setToolTipText(
+            "Cancel the running export. Neo4j writes already committed are not rolled back; "
+          + "the in-memory RDF buffer is discarded. The UI is freed immediately.");
+        cancelBtn.addActionListener(e -> cancelExport());
 
         body.add(buildHeader(),     BorderLayout.NORTH);
         body.add(buildMain(),       BorderLayout.CENTER);
@@ -479,6 +489,7 @@ public class ExportConfigDialog extends JDialog {
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 2));
         right.add(saveConfigBtn);
         right.add(exportBtn);
+        right.add(cancelBtn);
 
         bar.add(right, BorderLayout.EAST);
         return bar;
@@ -587,12 +598,12 @@ public class ExportConfigDialog extends JDialog {
         final ExportLog  log            = new ExportLog(project.getName());
         final Set<String> langFilter    = Collections.unmodifiableSet(selectedLanguages);
 
-        setButtonsEnabled(false);
+        toggleRunning(true);
         logArea.setText("");
         progressBar.setIndeterminate(true);
         progressBar.setVisible(true);
 
-        new SwingWorker<Map<String, ExportResult>, String>() {
+        currentWorker = new SwingWorker<Map<String, ExportResult>, String>() {
             @Override
             protected Map<String, ExportResult> doInBackground() throws Exception {
                 publish("Traversing model (languages: " + String.join(", ", langFilter) + ")…");
@@ -674,7 +685,13 @@ public class ExportConfigDialog extends JDialog {
             protected void done() {
                 progressBar.setIndeterminate(false);
                 progressBar.setVisible(false);
-                setButtonsEnabled(true);
+                toggleRunning(false);
+                currentWorker = null;
+                if (isCancelled()) {
+                    log.add("Export cancelled by user.");
+                    appendLog("Export cancelled.");
+                    return;
+                }
                 try {
                     Map<String, ExportResult> results = get();
                     ExportResult combined = mergeResults(results);
@@ -686,13 +703,28 @@ public class ExportConfigDialog extends JDialog {
                     }
                     new ExportSummaryDialog(null, combined, log).setVisible(true);
                     dispose();
+                } catch (java.util.concurrent.CancellationException ce) {
+                    appendLog("Export cancelled.");
                 } catch (Exception ex) {
                     Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
                     log.finishWithException(cause.getMessage());
                     appendLog("ERROR: " + cause.getMessage());
                 }
             }
-        }.execute();
+        };
+        currentWorker.execute();
+    }
+
+    private void cancelExport() {
+        if (currentWorker != null && !currentWorker.isDone()) {
+            currentWorker.cancel(true);
+        }
+    }
+
+    private void toggleRunning(boolean running) {
+        saveConfigBtn.setEnabled(!running);
+        exportBtn.setEnabled(!running);
+        cancelBtn.setEnabled(running);
     }
 
     /**
@@ -721,10 +753,5 @@ public class ExportConfigDialog extends JDialog {
     private void appendLog(String msg) {
         logArea.append(msg + "\n");
         logArea.setCaretPosition(logArea.getDocument().getLength());
-    }
-
-    private void setButtonsEnabled(boolean enabled) {
-        saveConfigBtn.setEnabled(enabled);
-        exportBtn.setEnabled(enabled);
     }
 }

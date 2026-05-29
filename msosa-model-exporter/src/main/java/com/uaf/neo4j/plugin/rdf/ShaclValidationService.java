@@ -1,7 +1,5 @@
 package com.uaf.neo4j.plugin.rdf;
 
-import com.uaf.neo4j.plugin.export.ExportResult;
-
 import org.apache.jena.graph.Node;
 import org.apache.jena.rdf.model.InfModel;
 import org.apache.jena.rdf.model.Model;
@@ -25,26 +23,18 @@ import java.nio.file.Paths;
 import java.util.logging.Logger;
 
 /**
- * In-process SHACL validation of the RDF emitter's in-memory A-Box against
- * {@code ontology/shapes/uaf-shapes.ttl}, running with an OWL FB reasoner so
- * results match Fuseki's Stage 3 reasoner profile (the same conformance the
- * standalone {@code ontology/codegen/validate_shacl.py} reports).
+ * In-process SHACL validation against {@code ontology/shapes/uaf-shapes.ttl}, running
+ * with an OWL FB reasoner so results match Fuseki's Stage 3 reasoner profile (the
+ * same conformance the standalone {@code ontology/codegen/validate_shacl.py} reports).
  *
- * The shapes file, MVO T-Box, and axioms are bundled into the plugin jar at
- * build time via {@code maven-resources-plugin} (see {@code pom.xml}) and
- * loaded from the classpath at validation time. Source of truth remains
- * {@code ../ontology/} — the plugin ships a snapshot.
+ * <p>The shapes file, MVO T-Box, and axioms are bundled into the plugin jar at build
+ * time via {@code maven-antrun-plugin} (see {@code pom.xml}) and loaded from the
+ * classpath at validation time. Source of truth remains {@code ../ontology/} — the
+ * plugin ships a snapshot.
  *
- * On success the {@link ExportResult} carries:
- * <ul>
- *   <li>{@link ExportResult#shaclConformance} — {@code true} if zero violations.</li>
- *   <li>{@link ExportResult#shaclViolations} / {@link ExportResult#shaclWarnings} — severity tallies.</li>
- *   <li>{@link ExportResult#shaclViolationLines} — one formatted line per report entry.</li>
- * </ul>
- *
- * On failure (missing resources, reasoner crash) {@code shaclConformance} stays {@code null}
- * and a one-line error is appended to {@link ExportResult#errors}. Leaving the field {@code null}
- * lets the summary dialog render "N/A" rather than misleadingly showing "Pass".
+ * <p>Used by the Validate workbench rail (post-hoc, against a Fuseki snapshot). SHACL
+ * is intentionally <b>not</b> run inside the export pipeline — OWL FB closure over a
+ * real UAF model takes many minutes, which made exports appear hung.
  */
 public final class ShaclValidationService {
 
@@ -56,7 +46,15 @@ public final class ShaclValidationService {
 
     private ShaclValidationService() {}
 
-    public static void validateAndAttach(Model aboxModel, ExportResult result) {
+    /**
+     * Validate the supplied A-Box against the bundled UAF shapes. Returns a
+     * {@link ShaclReport} with the verdict and any violation lines, or a report
+     * whose {@link ShaclReport#conforms} is {@code null} if the validator failed
+     * to run (in which case the {@link ShaclReport#errors} list carries the
+     * cause).
+     */
+    public static ShaclReport validate(Model aboxModel) {
+        ShaclReport report = new ShaclReport();
         try {
             Model dataset = ModelFactory.createDefaultModel().add(aboxModel);
             loadResourceInto(dataset, RES_MVO);
@@ -69,29 +67,30 @@ public final class ShaclValidationService {
             loadResourceInto(shapesModel, RES_SHAPES);
             Shapes shapes = Shapes.parse(shapesModel.getGraph());
 
-            ValidationReport report =
+            ValidationReport jenaReport =
                 ShaclValidator.get().validate(shapes, inferred.getGraph());
 
             int violations = 0;
             int warnings   = 0;
-            for (ReportEntry e : report.getEntries()) {
+            for (ReportEntry e : jenaReport.getEntries()) {
                 if (isReasonerArtefact(e.focusNode())) continue;
                 Severity sev = e.severity();
                 if (Severity.Violation.equals(sev)) violations++;
                 else if (Severity.Warning.equals(sev)) warnings++;
-                result.shaclViolationLines.add(formatEntry(e, shapesModel));
+                report.lines.add(formatEntry(e, shapesModel));
             }
-            result.shaclViolations  = violations;
-            result.shaclWarnings    = warnings;
-            result.shaclConformance = (violations == 0);
+            report.violations = violations;
+            report.warnings   = warnings;
+            report.conforms   = (violations == 0);
 
-            LOG.info("SHACL: conforms=" + result.shaclConformance
+            LOG.info("SHACL: conforms=" + report.conforms
                      + ", violations=" + violations + ", warnings=" + warnings);
         } catch (Exception e) {
             LOG.warning("SHACL validation failed: " + e.getMessage());
-            result.shaclConformance = null;
-            result.errors.add("SHACL validation failed: " + e.getMessage());
+            report.conforms = null;
+            report.errors.add("SHACL validation failed: " + e.getMessage());
         }
+        return report;
     }
 
     private static void loadResourceInto(Model model, String resourcePath) {

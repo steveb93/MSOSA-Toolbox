@@ -1,7 +1,5 @@
 package com.uaf.neo4j.plugin.rdf;
 
-import com.uaf.neo4j.plugin.export.ExportResult;
-
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Property;
@@ -28,19 +26,18 @@ class ShaclValidationServiceTest {
         Model abox = ModelFactory.createDefaultModel();
         RDFTripleBuilder.bindPrefixes(abox);
 
-        ExportResult result = new ExportResult();
-        ShaclValidationService.validateAndAttach(abox, result);
+        ShaclReport result = ShaclValidationService.validate(abox);
 
         // The MVO + axioms themselves should satisfy the cross-cutting hygiene shapes
         // (every MVO class has exactly one uafprop:language). With no instances, the
         // instance-targeting shapes have nothing to fire against. Reasoner-introduced
         // blank-node existentials are filtered out — see ShaclValidationService.isReasonerArtefact.
-        assertEquals(Boolean.TRUE, result.shaclConformance,
-            "Empty A-Box + MVO should conform. Lines: " + result.shaclViolationLines);
-        assertEquals(0, result.shaclViolations);
-        assertEquals(0, result.shaclWarnings,
+        assertEquals(Boolean.TRUE, result.conforms,
+            "Empty A-Box + MVO should conform. Lines: " + result.lines);
+        assertEquals(0, result.violations);
+        assertEquals(0, result.warnings,
             "Empty A-Box should produce no warnings either; reasoner artefacts must be filtered. "
-            + "Lines: " + result.shaclViolationLines);
+            + "Lines: " + result.lines);
     }
 
     @Test
@@ -57,16 +54,15 @@ class ShaclValidationServiceTest {
         instance.addLiteral(RDFS.label, "Test Vision");
         instance.addLiteral(domain,     "STRATEGIC");
 
-        ExportResult result = new ExportResult();
-        ShaclValidationService.validateAndAttach(abox, result);
+        ShaclReport result = ShaclValidationService.validate(abox);
 
-        assertEquals(Boolean.FALSE, result.shaclConformance);
-        assertTrue(result.shaclViolations >= 1,
-            "Expected at least one Violation, got " + result.shaclViolations
-            + " (lines: " + result.shaclViolationLines + ")");
-        assertTrue(result.shaclViolationLines.stream()
+        assertEquals(Boolean.FALSE, result.conforms);
+        assertTrue(result.violations >= 1,
+            "Expected at least one Violation, got " + result.violations
+            + " (lines: " + result.lines + ")");
+        assertTrue(result.lines.stream()
                        .anyMatch(line -> line.contains("VisionShape")),
-            "Expected a VisionShape violation, got: " + result.shaclViolationLines);
+            "Expected a VisionShape violation, got: " + result.lines);
     }
 
     @Test
@@ -83,13 +79,12 @@ class ShaclValidationServiceTest {
         instance.addLiteral(RDFS.label, "Test Capability");
         instance.addLiteral(domain,     "STRATEGIC");
 
-        ExportResult result = new ExportResult();
-        ShaclValidationService.validateAndAttach(abox, result);
+        ShaclReport result = ShaclValidationService.validate(abox);
 
-        assertEquals(Boolean.TRUE, result.shaclConformance,
-            "Warnings should not fail conformance. Lines: " + result.shaclViolationLines);
-        assertEquals(0, result.shaclViolations);
-        assertTrue(result.shaclWarnings >= 1,
-            "Expected at least one Warning, got " + result.shaclWarnings);
+        assertEquals(Boolean.TRUE, result.conforms,
+            "Warnings should not fail conformance. Lines: " + result.lines);
+        assertEquals(0, result.violations);
+        assertTrue(result.warnings >= 1,
+            "Expected at least one Warning, got " + result.warnings);
     }
 }
