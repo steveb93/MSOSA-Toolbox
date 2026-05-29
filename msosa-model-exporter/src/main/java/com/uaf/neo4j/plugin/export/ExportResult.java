@@ -34,6 +34,16 @@ public final class ExportResult {
      */
     public final Map<String, Integer> unmatchedStereotypes = new LinkedHashMap<>();
 
+    /**
+     * Counts of elements whose assigned UAF domain disagrees with a hint derived
+     * from their {@code qualifiedName} path. Key format:
+     * {@code "<stereotype>|<assignedDomain>|<hintedDomain>"}. Populated by
+     * {@link com.uaf.neo4j.plugin.model.UAFModelTraverser#getMisDomainCounts()}
+     * and rendered by the summary dialog. Per #125 Part 1 — observability only,
+     * does not change what gets exported.
+     */
+    public final Map<String, Integer> misDomainHints = new LinkedHashMap<>();
+
     public boolean hasErrors() {
         return !errors.isEmpty();
     }
