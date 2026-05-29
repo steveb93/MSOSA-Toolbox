@@ -598,15 +598,29 @@ public class UAFModelTraverser {
      * The prior implementation only string-joined references into a lossy {@code tv_*}
      * value, so a ResourceExchange's Source/Target/conveyed wiring was unreachable
      * via graph traversal — exchanges were orphan nodes despite the model being
-     * complete.
+     * complete. The target is passed through {@link #resolveReferenceTarget} so
+     * that raw UML memberEnd Properties are walked up to the typing classifier
+     * before the edge is emitted — otherwise the relationship's {@code MATCH (tgt)}
+     * silently fails because the memberEnd was never MERGE'd as a node.
      */
     private void emitReferenceEdge(String srcId, NamedElement target,
                                    String stereoName, String tag,
                                    UAFStereotypeRegistry.StereotypeInfo srcInfo) {
         if (target == null) return;
-        String tgtId = safeId(target);
+        Element resolved = resolveReferenceTarget(target);
+        if (resolved == null) {
+            LOG.fine("Reference " + stereoName + "." + tag + " on " + srcId
+                     + " did not resolve to a UAF-stereotyped element; edge dropped");
+            return;
+        }
+        String tgtId = safeId(resolved);
         if (tgtId == null || tgtId.isEmpty()) return;
-        String name = target.getName() != null ? target.getName() : tag;
+        String rawName = target.getName();
+        String resolvedName = (resolved instanceof NamedElement)
+                              ? ((NamedElement) resolved).getName() : null;
+        String name = (rawName != null && !rawName.isEmpty()) ? rawName
+                    : (resolvedName != null && !resolvedName.isEmpty()) ? resolvedName
+                    : tag;
         String uafType = stereoName + "." + tag;
         String domain = srcInfo != null && srcInfo.domain != null
                         ? srcInfo.domain.name() : "NONE";
@@ -619,6 +633,68 @@ public class UAFModelTraverser {
             .domain(domain)
             .language(language)
             .build());
+    }
+
+    /**
+     * Resolve a reference-edge target up its type / owner chain to the closest
+     * element that carries a registered UAF stereotype.
+     *
+     * The relationship writer (see {@code Neo4jCypherBuilder.relationshipMergeCypher})
+     * uses {@code MATCH} on both endpoints — if a relationship references an id
+     * that was never MERGE'd as a node, the statement silently writes nothing.
+     * Reference-typed UAF stereotype properties frequently point at UML
+     * {@code Property} memberEnds (e.g. {@code ResourceExchange.Source/.Target}
+     * on an Association) which are themselves untyped from a UAF perspective —
+     * the meaningful endpoint is the classifier typing the memberEnd.
+     *
+     * Resolution order:
+     * <ol>
+     *   <li>The raw target itself, if it carries a registered UAF stereotype.</li>
+     *   <li>For a {@link Property}, its {@code getType()} (e.g. the
+     *       {@code ResourceArchitecture} at one end of a {@code ResourceExchange}).</li>
+     *   <li>Walk {@link Element#getOwner()} upward (bounded) until a UAF-stereotyped
+     *       ancestor is found.</li>
+     * </ol>
+     *
+     * Returns {@code null} if no UAF-stereotyped element can be found — callers
+     * drop the edge rather than emit a dangling reference.
+     */
+    private Element resolveReferenceTarget(NamedElement raw) {
+        if (raw == null) return null;
+        if (isRegisteredUAFElement(raw)) return raw;
+        if (raw instanceof Property) {
+            com.nomagic.uml2.ext.magicdraw.classes.mdkernel.Type t = ((Property) raw).getType();
+            if (t instanceof Element && isRegisteredUAFElement((Element) t)) {
+                return (Element) t;
+            }
+        }
+        Element cur = raw.getOwner();
+        int hops = 0;
+        while (cur != null && hops++ < 8) {
+            if (isRegisteredUAFElement(cur)) return cur;
+            cur = cur.getOwner();
+        }
+        return null;
+    }
+
+    /**
+     * Non-mutating probe: does the element carry any stereotype that resolves
+     * to a {@link UAFStereotypeRegistry} entry (directly or via its general
+     * chain)? Distinct from {@link #selectStereotype(Element)} which both
+     * disambiguates the winning stereotype and records misses into
+     * {@code unmatchedStereos} — neither is wanted when probing the target of
+     * a reference edge.
+     */
+    private static boolean isRegisteredUAFElement(Element element) {
+        if (element == null) return false;
+        try {
+            for (Stereotype s : StereotypesHelper.getStereotypes(element)) {
+                if (findRegisteredAncestor(s) != null) return true;
+            }
+        } catch (Exception ignored) {
+            // Defensive: some MSOSA elements throw when probed early in the lifecycle.
+        }
+        return false;
     }
 
     /**

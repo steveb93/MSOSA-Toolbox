@@ -275,6 +275,35 @@ class UAFModelTraverserTest {
     }
 
     @Test
+    void referenceTargetResolver_method_exists() {
+        // emitReferenceEdge previously handed the raw NamedElement straight to the
+        // Cypher writer. The writer uses MATCH (not MERGE) on both endpoints, so
+        // raw UML Property memberEnds — which are never themselves MERGE'd as UAF
+        // nodes — caused the edge to be silently dropped. The resolver walks up
+        // (Property.getType() → owner chain) to find a UAF-stereotyped element
+        // before the edge is emitted.
+        boolean found = Arrays.stream(UAFModelTraverser.class.getDeclaredMethods())
+            .anyMatch(m -> m.getName().equals("resolveReferenceTarget")
+                        && m.getParameterCount() == 1);
+        assertTrue(found, "resolveReferenceTarget(NamedElement) must exist — "
+                        + "ASSOCIATED_WITH edges silently drop without it");
+    }
+
+    @Test
+    void registeredUafElementProbe_isStaticAndNonMutating() {
+        // The probe used by resolveReferenceTarget must NOT go through
+        // selectStereotype — that method mutates unmatchedStereos as a side effect
+        // and would double-count every reference-edge probe as an unmatched
+        // stereotype miss. Static-method contract pins the non-mutating helper.
+        boolean found = Arrays.stream(UAFModelTraverser.class.getDeclaredMethods())
+            .anyMatch(m -> m.getName().equals("isRegisteredUAFElement")
+                        && m.getParameterCount() == 1
+                        && Modifier.isStatic(m.getModifiers()));
+        assertTrue(found, "isRegisteredUAFElement(Element) must exist as a static probe — "
+                        + "selectStereotype mutates unmatchedStereos and cannot be used for probing");
+    }
+
+    @Test
     void internalWiringExtractors_useExpectedRelConstants() {
         // Pin the chosen rel types so an accidental change to one of these
         // breaks here, not silently in production.
