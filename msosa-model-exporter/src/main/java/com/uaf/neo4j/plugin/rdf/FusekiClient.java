@@ -67,6 +67,34 @@ public final class FusekiClient {
     }
 
     /**
+     * Run a SPARQL CONSTRUCT pulling every triple from the dataset and return the
+     * response body as Turtle. Used by the Validate rail to snapshot the
+     * live Fuseki dataset (asserted + reasoner-inferred under the dataset's
+     * assembler config) for in-process SHACL validation.
+     *
+     * @return Turtle bytes as a UTF-8 string.
+     * @throws java.io.IOException if the request fails or the server returns ≥400.
+     */
+    public String constructAll() throws java.io.IOException, InterruptedException {
+        String query = "CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o }";
+        HttpRequest.Builder rb = HttpRequest.newBuilder(sparqlUrl)
+            .timeout(Duration.ofSeconds(120))
+            .header("Accept", "text/turtle")
+            .header("Content-Type", "application/sparql-query; charset=utf-8")
+            .POST(BodyPublishers.ofString(query, StandardCharsets.UTF_8));
+        if (authHeader != null) {
+            rb.header("Authorization", authHeader);
+        }
+        HttpResponse<String> resp = client.send(rb.build(), BodyHandlers.ofString(StandardCharsets.UTF_8));
+        int code = resp.statusCode();
+        if (code >= 400) {
+            throw new java.io.IOException(
+                "Fuseki CONSTRUCT " + sparqlUrl + " failed with HTTP " + code + ": " + resp.body());
+        }
+        return resp.body();
+    }
+
+    /**
      * PUT the Turtle body to the default graph. Replaces (does not merge) the previous contents.
      *
      * @return HTTP status code (200/201/204 indicate success).
