@@ -39,9 +39,10 @@ import java.util.Properties;
  *   <li>Issue a SPARQL CONSTRUCT against Fuseki to snapshot the current dataset
  *       (asserted + reasoner-inferred under the dataset's assembler config).</li>
  *   <li>Parse the Turtle response into a Jena {@link Model}.</li>
- *   <li>Pass the model to {@link ShaclValidationService#validateAndAttach(Model, ExportResult)},
- *       which loads the bundled MVO + axioms + shapes, wraps with OWL FB, and runs
- *       {@code ShaclValidator}.</li>
+ *   <li>Pass the model to {@link ShaclValidationService#validate(Model)},
+ *       which loads the bundled MVO + axioms + shapes and runs {@code ShaclValidator}
+ *       directly against the graph (no in-JVM reasoner — Fuseki has already
+ *       RDFS-Exp inferred the snapshot).</li>
  *   <li>Render the verdict + violation lines in the report area.</li>
  * </ol>
  */
@@ -51,7 +52,7 @@ final class ValidateModePanel extends JPanel implements WorkbenchPanel {
           "No validation run yet.\n\n"
         + "Click Run SHACL Validation to:\n"
         + "  1. Snapshot the live Fuseki dataset via SPARQL CONSTRUCT,\n"
-        + "  2. Validate it against ontology/shapes/uaf-shapes.ttl under OWL FB reasoning,\n"
+        + "  2. Validate it against ontology/shapes/uaf-shapes.ttl (no in-JVM reasoner — Fuseki already inferred),\n"
         + "  3. Render the conformance verdict and any violation lines here.\n\n"
         + "Connection settings live under the Settings rail.";
 
@@ -106,14 +107,13 @@ final class ValidateModePanel extends JPanel implements WorkbenchPanel {
 
     /**
      * Launch the validation pipeline on a SwingWorker so the EDT stays responsive
-     * during the CONSTRUCT round-trip and the OWL FB closure. Probes Fuseki first
+     * during the CONSTRUCT round-trip and the SHACL evaluation. Probes Fuseki first
      * to surface the common first-run failures (unreachable, empty dataset) with
      * actionable hints rather than a stuck "Running…" message.
      *
      * <p>Each stage publishes a progress line through {@link SwingWorker#publish}
-     * so the user sees forward motion (probe → snapshot triple count → reasoner →
-     * SHACL) instead of a single frozen "Probing Fuseki…" string while the OWL FB
-     * closure churns for minutes.
+     * so the user sees forward motion (probe → snapshot triple count → SHACL)
+     * instead of a single frozen "Probing Fuseki…" string.
      */
     private void runValidation() {
         toggleRunning(true);
@@ -167,8 +167,8 @@ final class ValidateModePanel extends JPanel implements WorkbenchPanel {
                     }
                     if (isCancelled()) return cancelledMessage();
 
-                    publish("  → Running OWL FB reasoner + SHACL validator …");
-                    publish("    (this is the slow step — Jena may not honour cancel mid-reasoning)");
+                    publish("  → Running SHACL validator against snapshot …");
+                    publish("    (Fuseki has already RDFS-Exp inferred the data; no extra reasoner is run here)");
                     long t3 = System.currentTimeMillis();
                     ShaclReport result = ShaclValidationService.validate(data);
                     publish("  ✓ Validation finished in "

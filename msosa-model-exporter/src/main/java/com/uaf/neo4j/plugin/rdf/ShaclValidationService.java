@@ -1,13 +1,10 @@
 package com.uaf.neo4j.plugin.rdf;
 
 import org.apache.jena.graph.Node;
-import org.apache.jena.rdf.model.InfModel;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
-import org.apache.jena.reasoner.Reasoner;
-import org.apache.jena.reasoner.rulesys.OWLFBRuleReasonerFactory;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.shacl.ShaclValidator;
@@ -23,18 +20,25 @@ import java.nio.file.Paths;
 import java.util.logging.Logger;
 
 /**
- * In-process SHACL validation against {@code ontology/shapes/uaf-shapes.ttl}, running
- * with an OWL FB reasoner so results match Fuseki's Stage 3 reasoner profile (the
- * same conformance the standalone {@code ontology/codegen/validate_shacl.py} reports).
+ * In-process SHACL validation against {@code ontology/shapes/uaf-shapes.ttl}.
+ *
+ * <p>Runs <b>without</b> an in-JVM reasoner. The snapshot supplied by the Validate
+ * rail comes straight out of Fuseki's CONSTRUCT, which is already RDFS-Exp inferred
+ * by the dataset's assembler — the same triples your SPARQL queries see. SHACL is
+ * evaluated directly against that graph (plus the bundled MVO + axioms so
+ * {@code sh:class} checks resolve against the UAF type hierarchy).
+ *
+ * <p>The previous implementation wrapped the dataset with Jena's OWL FB rule reasoner.
+ * On real UAF A-Boxes the rule LP interpreter materialised ~170 M intermediate
+ * triples and millions of choice-point frames, blowing past 15 GB heap inside
+ * MSOSA's JVM and making the Validate rail unusable. OWL FB closure is intentionally
+ * out of scope for the in-process validator; if you need full OWL inference run
+ * {@code ontology/codegen/validate_shacl.py} (pyshacl + owlrl) outside MSOSA.
  *
  * <p>The shapes file, MVO T-Box, and axioms are bundled into the plugin jar at build
  * time via {@code maven-antrun-plugin} (see {@code pom.xml}) and loaded from the
  * classpath at validation time. Source of truth remains {@code ../ontology/} — the
  * plugin ships a snapshot.
- *
- * <p>Used by the Validate workbench rail (post-hoc, against a Fuseki snapshot). SHACL
- * is intentionally <b>not</b> run inside the export pipeline — OWL FB closure over a
- * real UAF model takes many minutes, which made exports appear hung.
  */
 public final class ShaclValidationService {
 
@@ -56,19 +60,20 @@ public final class ShaclValidationService {
     public static ShaclReport validate(Model aboxModel) {
         ShaclReport report = new ShaclReport();
         try {
+            // Merge MVO + axioms onto the data graph so sh:class and sh:targetClass
+            // checks resolve against the UAF type hierarchy. No reasoner — Fuseki
+            // has already RDFS-Exp inferred the snapshot, and OWL FB closure here
+            // was what blew MSOSA's heap (see class Javadoc).
             Model dataset = ModelFactory.createDefaultModel().add(aboxModel);
             loadResourceInto(dataset, RES_MVO);
             loadResourceInto(dataset, RES_AXIOMS);
-
-            Reasoner reasoner = OWLFBRuleReasonerFactory.theInstance().create(null);
-            InfModel inferred = ModelFactory.createInfModel(reasoner, dataset);
 
             Model shapesModel = ModelFactory.createDefaultModel();
             loadResourceInto(shapesModel, RES_SHAPES);
             Shapes shapes = Shapes.parse(shapesModel.getGraph());
 
             ValidationReport jenaReport =
-                ShaclValidator.get().validate(shapes, inferred.getGraph());
+                ShaclValidator.get().validate(shapes, dataset.getGraph());
 
             int violations = 0;
             int warnings   = 0;
