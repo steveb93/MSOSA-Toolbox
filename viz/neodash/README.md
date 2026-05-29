@@ -29,22 +29,6 @@ docker compose -f docker-compose/docker-compose.yml `
 
 Open <http://localhost:5005/>, connect with `neo4j://localhost:7687`, the `neo4j` user, your `.env` password, and the `neo4j` database.
 
-## Kiosk mode
-
-Once `uaf-starter.json` is loaded and saved into Neo4j, switch to the kiosk overlay to skip the editor chrome and auto-load the dashboard on connect:
-
-```powershell
-# tear down editor mode
-docker compose -f docker-compose/docker-compose.yml `
-               -f docker-compose/docker-compose.neodash.yml down
-
-# bring up kiosk mode (Neo4j stays up)
-docker compose -f docker-compose/docker-compose.yml `
-               -f docker-compose/docker-compose.neodash-kiosk.yml up -d
-```
-
-The kiosk overlay pre-fills the connection form with everything except the password. To eliminate the login step entirely, see the header comment in `docker-compose/docker-compose.neodash-kiosk.yml` — only do that on a trusted, isolated host.
-
 ## Loading `uaf-starter.json`
 
 NeoDash dashboard JSON formats shift across versions. Two paths — the second is the reliable one if your NeoDash build rejects the file.
@@ -102,5 +86,4 @@ The decommissioning-impact filter is therefore `REALISES|EXHIBITS|IMPLEMENTS|PER
 
 - `viz/neodash/uaf-starter.json` — the working NeoDash dashboard (this directory).
 - `docker-compose/docker-compose.neodash.yml` — editor-mode overlay.
-- `docker-compose/docker-compose.neodash-kiosk.yml` — kiosk-mode overlay, auto-loads the saved dashboard.
 - `ontology/NEXT-STEPS.md` A-Box-visualisation entry — decision history for visualisation tooling.
