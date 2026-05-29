@@ -290,6 +290,20 @@ class UAFModelTraverserTest {
     }
 
     @Test
+    void informationFlowEndsExtractor_method_exists() {
+        // ResourceExchange / OperationalExchange / ServiceInterchange wiring lives on
+        // the underlying UML InformationFlow.informationSource / informationTarget /
+        // conveyed — NOT as UAF stereotype tagged values. StereotypesHelper does not
+        // surface them, so the reference-edge path via emitReferenceEdge cannot reach
+        // them. The dedicated extractor walks the metamodel directly.
+        boolean found = Arrays.stream(UAFModelTraverser.class.getDeclaredMethods())
+            .anyMatch(m -> m.getName().equals("extractInformationFlowEnds")
+                        && m.getParameterCount() == 3);
+        assertTrue(found, "extractInformationFlowEnds(Element, String, StereotypeInfo) must exist — "
+                        + "ResourceExchange.Source/.Target/.conveyed wiring depends on it");
+    }
+
+    @Test
     void registeredUafElementProbe_isStaticAndNonMutating() {
         // The probe used by resolveReferenceTarget must NOT go through
         // selectStereotype — that method mutates unmatchedStereos as a side effect
