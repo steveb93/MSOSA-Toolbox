@@ -82,6 +82,22 @@ public class UAFWorkbench extends JFrame {
         return project;
     }
 
+    /**
+     * Notify the workbench that the plugin's connection config has changed
+     * (typically because the user just clicked Save in the Settings rail).
+     * Re-probes the status strip and ticks the Inspect rail's loader so it
+     * picks up the new Bolt URI / credentials without waiting for the user
+     * to switch to the rail manually.
+     */
+    public void notifyConnectionConfigChanged() {
+        Properties cfg = UAFNeo4jPlugin.getInstance().getConfig();
+        statusStrip.setConfig(cfg);
+        WorkbenchPanel inspect = panels.get(WorkbenchMode.INSPECT);
+        if (inspect instanceof InspectModePanel) {
+            ((InspectModePanel) inspect).getInspector().refresh();
+        }
+    }
+
     // ── Factory hooks (overridable) ─────────────────────────────────────────
     // Mode panels go through these instead of constructing the dialogs directly,
     // so tests and the preview harness can swap in sample-data subclasses.

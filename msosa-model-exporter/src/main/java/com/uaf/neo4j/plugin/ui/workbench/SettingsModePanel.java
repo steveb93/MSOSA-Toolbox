@@ -151,7 +151,12 @@ final class SettingsModePanel extends JPanel implements WorkbenchPanel {
     private void save() {
         Properties next = currentProps();
         UAFNeo4jPlugin.getInstance().saveConfig(next);
-        workbench.getStatusStrip().setConfig(next);
+        // Single notification fans out to the StatusStrip + the Inspect rail so
+        // every consumer of the plugin config sees the new Bolt URI / credentials
+        // without waiting for the user to switch rails. Closes the bug where the
+        // inspector kept reading the original Properties object captured at
+        // workbench startup (UAFNeo4jPlugin.saveConfig replaces the reference).
+        workbench.notifyConnectionConfigChanged();
         setStatus("Settings saved.", false);
     }
 

@@ -22,7 +22,6 @@ import java.awt.Color;
  */
 final class InspectModePanel extends JPanel implements WorkbenchPanel {
 
-    @SuppressWarnings("unused") // held to keep the dialog instance alive for action listeners
     private final GraphInspectorDialog controllerDialog;
 
     InspectModePanel(UAFWorkbench workbench) {
@@ -33,6 +32,21 @@ final class InspectModePanel extends JPanel implements WorkbenchPanel {
             UAFNeo4jPlugin.getInstance().getConfig(),
             workbench.getProject());
         add(controllerDialog.getEmbeddedBody(), BorderLayout.CENTER);
+    }
+
+    /** Exposed so {@code UAFWorkbench} can ping the inspector after a Settings save. */
+    GraphInspectorDialog getInspector() {
+        return controllerDialog;
+    }
+
+    /**
+     * Refresh against the current plugin config whenever the rail is activated.
+     * Costs a Neo4j round-trip but keeps stale results from lingering after the
+     * user has fixed credentials in the Settings tab.
+     */
+    @Override
+    public void onActivated() {
+        controllerDialog.refresh();
     }
 
     @Override public JComponent getComponent() { return this; }
