@@ -152,6 +152,12 @@ public class UAFModelTraverser {
     private final List<UAFRelationshipDTO> relationships     = new ArrayList<>();
     private final Set<String>              visitedIds        = new HashSet<>();
     private final Map<String, Integer>     unmatchedStereos  = new LinkedHashMap<>();
+    // Mis-domain telemetry per #125 Part 1 (observability). Key encodes the
+    // stereotype + assigned domain + hinted domain as
+    // "<stereotype>|<assigned>|<hinted>" so the summary dialog can split it
+    // into separate columns. Value is the count of elements affected. The
+    // export itself is unchanged — this is pure surfacing of probable misfits.
+    private final Map<String, Integer>     misDomainCounts   = new LinkedHashMap<>();
     private boolean traversed = false;
 
     /**
@@ -201,6 +207,21 @@ public class UAFModelTraverser {
         return Collections.unmodifiableMap(unmatchedStereos);
     }
 
+    /**
+     * Counts of elements whose assigned UAF domain disagrees with a
+     * {@link UAFStereotypeRegistry#qualifiedNameDomainHint hint} derived from
+     * their {@code qualifiedName} path. Surfaces probable mis-classifications
+     * (e.g. an element resolving to {@code Resource} that sits under
+     * {@code …::Operational Taxonomy::…}) without changing what gets exported.
+     *
+     * <p>Key format: {@code "<stereotype>|<assignedDomain>|<hintedDomain>"}.
+     * Value: number of elements with that combination. Per #125 Part 1.
+     */
+    public Map<String, Integer> getMisDomainCounts() {
+        ensureTraversed();
+        return Collections.unmodifiableMap(misDomainCounts);
+    }
+
     // -------------------------------------------------------------------------
 
     private void ensureTraversed() {
@@ -225,8 +246,8 @@ public class UAFModelTraverser {
                 traverseAttachedProjects();
             }
             traversed = true;
-            LOG.info(String.format("UAFModelTraverser: %d elements, %d relationships, %d unmatched stereotypes",
-                elements.size(), relationships.size(), unmatchedStereos.size()));
+            LOG.info(String.format("UAFModelTraverser: %d elements, %d relationships, %d unmatched stereotypes, %d mis-domain hints",
+                elements.size(), relationships.size(), unmatchedStereos.size(), misDomainCounts.size()));
         }
     }
 
@@ -307,6 +328,8 @@ public class UAFModelTraverser {
             }
 
             String docs = ModelHelper.getComment(element);
+
+            recordMisDomainHint(matched, qname);
 
             UAFElementDTO.Builder eb = UAFElementDTO.builder(id, name, matched.stereotype.getName())
                 .qualifiedName(qname)
@@ -418,6 +441,25 @@ public class UAFModelTraverser {
         }
         // Cycle in the stereotype hierarchy or pure tie — fall back to the first
         return sameLang.get(0);
+    }
+
+    /**
+     * Record one mis-domain observation if the matched element's domain
+     * disagrees with the {@link UAFStereotypeRegistry#qualifiedNameDomainHint
+     * qualifiedName hint}. Skips when no UAF domain applies (SysML/BPMN
+     * elements), when the qname yields no hint, and when the hint agrees with
+     * the assigned domain. Per #125 Part 1: observability only — does not
+     * change the export.
+     */
+    private void recordMisDomainHint(StereotypeMatch matched, String qname) {
+        if (matched == null || matched.info == null || matched.info.domain == null) return;
+        Optional<UAFStereotypeRegistry.Domain> hint =
+            UAFStereotypeRegistry.qualifiedNameDomainHint(qname);
+        if (!hint.isPresent() || hint.get() == matched.info.domain) return;
+        String key = matched.stereotype.getName()
+            + "|" + matched.info.domain.name()
+            + "|" + hint.get().name();
+        misDomainCounts.merge(key, 1, Integer::sum);
     }
 
     /**

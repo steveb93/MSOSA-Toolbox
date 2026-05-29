@@ -321,4 +321,64 @@ public class UAFStereotypeRegistry {
     public static Map<String, StereotypeInfo> getAll() {
         return Collections.unmodifiableMap(REGISTRY);
     }
+
+    /**
+     * Heuristic: if the element's qualifiedName path passes through a UAF
+     * taxonomy folder (e.g. {@code …::Operational Taxonomy::Internal Performer::…}),
+     * return the domain that folder belongs to. Used as a tie-breaker / drift
+     * indicator when an element resolves to a bare-noun fallback stereotype
+     * whose assigned domain disagrees with its path context.
+     *
+     * <p>Matching rules:
+     * <ul>
+     *   <li>Split {@code qname} on {@code ::} (UAF qualifiedName separator).</li>
+     *   <li>For each segment, look for a leading UAF-domain token followed by a
+     *       space and further content — bare {@code "Operational"} on its own
+     *       is rejected because it overlaps with legitimate element names.</li>
+     *   <li>If two segments hint different domains the result is empty
+     *       (ambiguous). If no segment hints anything the result is empty.</li>
+     * </ul>
+     *
+     * <p>The matcher is intentionally segment-prefix, not raw substring — a
+     * package literally called {@code "Operational Layout Templates"} would
+     * still match OPERATIONAL, but the alternative of substring matching would
+     * fire on element names like {@code "PreOperational Phase"} that genuinely
+     * belong elsewhere. Phase 1 of #125 uses this only for observability — the
+     * caller is the modeller, who can spot-check false positives.
+     */
+    public static Optional<Domain> qualifiedNameDomainHint(String qname) {
+        if (qname == null || qname.isEmpty()) return Optional.empty();
+        Domain found = null;
+        for (String segment : qname.split("::")) {
+            Domain d = leadingDomainToken(segment.trim());
+            if (d == null) continue;
+            if (found != null && found != d) return Optional.empty();
+            found = d;
+        }
+        return Optional.ofNullable(found);
+    }
+
+    private static Domain leadingDomainToken(String segment) {
+        if (segment.isEmpty()) return null;
+        if (startsWithToken(segment, "Strategic"))   return Domain.STRATEGIC;
+        if (startsWithToken(segment, "Operational")) return Domain.OPERATIONAL;
+        if (startsWithToken(segment, "Resource")
+         || startsWithToken(segment, "Resources"))   return Domain.RESOURCE;
+        if (startsWithToken(segment, "Service")
+         || startsWithToken(segment, "Services"))    return Domain.SERVICE;
+        if (startsWithToken(segment, "Personnel"))   return Domain.PERSONNEL;
+        if (startsWithToken(segment, "Security"))    return Domain.SECURITY;
+        if (startsWithToken(segment, "Acquisition")
+         || startsWithToken(segment, "Project")
+         || startsWithToken(segment, "Projects"))    return Domain.ACQUISITION;
+        return null;
+    }
+
+    /** True iff {@code segment} is {@code token} followed by a space and more characters. */
+    private static boolean startsWithToken(String segment, String token) {
+        int n = token.length();
+        return segment.length() > n + 1
+            && segment.startsWith(token)
+            && segment.charAt(n) == ' ';
+    }
 }
