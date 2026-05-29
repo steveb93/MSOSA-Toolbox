@@ -11,7 +11,7 @@ import java.util.Properties;
 import java.util.logging.Logger;
 
 /**
- * Tools → UAF Knowledge Graph → Open SPARQL Endpoint
+ * Tools → MSOSA Knowledge Graph → Open SPARQL Endpoint
  *
  * Opens the Fuseki <b>UI</b> dataset query page in the system default browser.
  *
@@ -41,7 +41,7 @@ public class OpenSparqlEndpointAction extends MDAction {
             JOptionPane.showMessageDialog(null,
                 "Desktop browsing is not supported on this JVM.\n" +
                 "Open the SPARQL endpoint manually at:\n" + browseUrl,
-                "UAF Knowledge Graph — SPARQL",
+                "MSOSA Knowledge Graph — SPARQL",
                 JOptionPane.INFORMATION_MESSAGE);
             return;
         }
@@ -50,7 +50,7 @@ public class OpenSparqlEndpointAction extends MDAction {
         } catch (Exception ex) {
             LOG.warning("Could not open SPARQL endpoint: " + ex.getMessage());
             Application.getInstance().getGUILog()
-                .showError("UAF Knowledge Graph: could not open " + browseUrl + " — " + ex.getMessage());
+                .showError("MSOSA Knowledge Graph: could not open " + browseUrl + " — " + ex.getMessage());
         }
     }
 }

@@ -82,7 +82,7 @@ public class ExportConfigDialog extends JDialog {
      * Export rail.
      */
     public ExportConfigDialog(Project project) {
-        super((Frame) null, "UAF Knowledge Graph — Export", false);
+        super((Frame) null, "MSOSA Knowledge Graph — Export", false);
         this.project = project;
 
         Properties cfg = UAFNeo4jPlugin.getInstance().getConfig();
