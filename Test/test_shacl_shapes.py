@@ -109,7 +109,7 @@ def test_capability_configuration_warns_without_realiser():
     ttl = """
     uafinst:cfg1 a uaf:CapabilityConfiguration ;
         rdfs:label "Cfg1" ;
-        uaf:domain "STRATEGIC" .
+        uaf:domain "RESOURCE" .
     """
     _, rows = _validate(ttl)
     matches = [r for r in rows

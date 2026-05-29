@@ -45,7 +45,6 @@ public class UAFStereotypeRegistry {
     static {
         // --- Strategic View (StV) ---
         reg("Capability",               "Capability",              Domain.STRATEGIC);
-        reg("CapabilityConfiguration",  "CapabilityConfiguration", Domain.STRATEGIC);
         reg("CapabilityComposition",    "CapabilityComposition",   Domain.STRATEGIC);
         reg("CapabilityDependency",     "CapabilityDependency",    Domain.STRATEGIC);
         reg("CapabilitySpecialization", "CapabilitySpecialization",Domain.STRATEGIC);
@@ -111,6 +110,15 @@ public class UAFStereotypeRegistry {
 
         // --- Resource View (RsV) ---
         reg("ResourcePerformer",        "ResourcePerformer",       Domain.RESOURCE);
+        // CapabilityConfiguration is the architectural realisation of a Capability
+        // through resources. UAF 1.2 DMM defines it as extending ResourceArchitecture,
+        // so its natural home is the Resource domain even though its name carries
+        // "Capability". Pre-2026-05-29 it was registered as STRATEGIC; the mis-domain
+        // validation on a real profile (PR #132) showed 17 elements consistently
+        // sitting under Resource folders. Modeller confirmed the registry was wrong.
+        // Migration consequence: existing exported `:CapabilityConfiguration` nodes
+        // still carry `domain: 'STRATEGIC'` until re-exported or patched in Cypher.
+        reg("CapabilityConfiguration",  "CapabilityConfiguration", Domain.RESOURCE);
         reg("ResourceFunction",         "ResourceFunction",        Domain.RESOURCE);
         reg("ResourceInteraction",      "ResourceInteraction",     Domain.RESOURCE);
         reg("ResourceArtifact",         "ResourceArtifact",        Domain.RESOURCE);

@@ -71,7 +71,7 @@ def test_inverseOf_materialises_reverse_direction():
     uafinst:cap a uaf:Capability ;
         uaf:domain "STRATEGIC" .
     uafinst:cfg a uaf:CapabilityConfiguration ;
-        uaf:domain "STRATEGIC" ;
+        uaf:domain "RESOURCE" ;
         uaf:realises uafinst:cap .
     """
     g = _close(ttl)
@@ -85,7 +85,7 @@ def test_inverseOf_materialises_forward_direction():
     uafinst:cap a uaf:Capability ;
         uaf:domain "STRATEGIC" .
     uafinst:cfg a uaf:CapabilityConfiguration ;
-        uaf:domain "STRATEGIC" .
+        uaf:domain "RESOURCE" .
     uafinst:cap uaf:realisedBy uafinst:cfg .
     """
     g = _close(ttl)
