@@ -96,7 +96,7 @@ This document describes what comes next, in the order the staging in `Ontology-A
 
 **Concrete tasks.**
 
-- [ ] Stand up Neo4j Graph Data Science (GDS) on the LPG side. The Docker image already includes it (`NEO4J_PLUGINS=graph-data-science`). GDS gives PageRank, community detection, betweenness — useful for identifying critical Operational Activities and capability-coverage gaps.
+- [x] Stand up Neo4j Graph Data Science (GDS) on the LPG side. The Docker image already includes it (`NEO4J_PLUGINS=graph-data-science`). GDS gives PageRank, community detection, betweenness — useful for identifying critical Operational Activities and capability-coverage gaps. Shipped: `cypher/gds-cookbook.cypher` (projections for Capability / Operational / Resource / Strategic-to-Resource trace subgraphs; PageRank, betweenness, WCC, Louvain; write-back patterns) and `Test/test_gds_available.py` (smoke test — version, procedure catalogue, end-to-end native projection + PageRank stream).
 - [ ] Author GDS-driven recommendation algorithms (per Jaffri §3.3): content-based recommendation of ResourceArtifacts that could fill detected capability gaps, using graph-position features.
 - [ ] Wire GDS outputs back into the RDF view (write algorithm results as `uafprop:pagerank` annotations on node URIs) so SPARQL queries can sort by relevance.
 - [ ] Build a decision-intelligence dashboard (Streamlit/Dash/Grafana) consuming both the SPARQL endpoint and GDS outputs. Targets the "Decision makers" persona in `Ontology-Approach-to-Knowledge.md` §8.
