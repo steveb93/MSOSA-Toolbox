@@ -1,0 +1,188 @@
+# AS-IS vs TO-BE phase-delta queries — UAF KG as long-term semantic memory.
+# Companion to docs/personas/enterprise-architects.md (primary landing).
+#
+# Phase recognition follows the Dassault Systèmes UAF Way of Working
+# convention: transitional state is encoded by sub-package partitioning, e.g.
+# `Operational > AS-IS Capability` and `Operational > TO-BE Capability`. The
+# MSOSA exporter writes the full `::`-delimited package path onto every node
+# as `uaf:qualifiedName`, so the agent recognises phase with a substring
+# filter — no UAFStereotypeRegistry or UAFRelationshipDTO extension required.
+#
+# Correspondence between AS-IS and TO-BE counterparts uses
+# `rdfs:label + rdf:type` within the same UAF domain as the default rule.
+# When name-matching is ambiguous, modellers add an explicit `<<TRACES_TO>>`
+# UML Dependency between the AS-IS and TO-BE elements; the dependency lands
+# as `uaf:tracesTo` in the RDF view and the override path is given in
+# query 2b below.
+#
+# Each query declares its own PREFIX lines because Fuseki does not inject
+# prefixes server-side. The namespaces in use:
+#   uaf:      http://msosa-toolbox.local/uaf#
+#   uafprop:  http://msosa-toolbox.local/uaf/prop#
+#   rdfs:     http://www.w3.org/2000/01/rdf-schema#
+#
+# Replace the "Operational" domain literal where queries 4 and "by-domain"
+# variants take a parameter — every query is otherwise independent and
+# copy-pasteable into run_sparql via the MCP tool.
+#
+# -----------------------------------------------------------------------------
+# 1. Phase membership — elements whose qualifiedName contains the phase token
+# AC3 query 1. Run twice (AS-IS, TO-BE) to materialise each phase set.
+# Substitute "AS-IS" with "TO-BE" for the TO-BE side.
+# -----------------------------------------------------------------------------
+PREFIX uaf: <http://msosa-toolbox.local/uaf#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?elem ?type ?name ?qname WHERE {
+  ?elem a ?type ;
+        rdfs:label ?name ;
+        uaf:qualifiedName ?qname .
+  FILTER(CONTAINS(?qname, "AS-IS"))
+}
+ORDER BY ?type ?name
+
+# -----------------------------------------------------------------------------
+# 2. Set difference — retired elements (in AS-IS, absent from TO-BE)
+# AC3 query 2. Correspondence rule: same rdfs:label AND same rdf:type
+# (stereotype). Domain filtering is implicit because the stereotype is
+# domain-scoped — a Capability in AS-IS cannot correspond to a
+# ResourcePerformer in TO-BE even if names match.
+# -----------------------------------------------------------------------------
+PREFIX uaf: <http://msosa-toolbox.local/uaf#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?type ?name WHERE {
+  ?asis a ?type ;
+        rdfs:label ?name ;
+        uaf:qualifiedName ?asisQ .
+  FILTER(CONTAINS(?asisQ, "AS-IS"))
+  FILTER NOT EXISTS {
+    ?tobe a ?type ;
+          rdfs:label ?name ;
+          uaf:qualifiedName ?tobeQ .
+    FILTER(CONTAINS(?tobeQ, "TO-BE"))
+  }
+}
+ORDER BY ?type ?name
+
+# -----------------------------------------------------------------------------
+# 2a. Set difference — introduced elements (in TO-BE, absent from AS-IS)
+# Reverse of query 2.
+# -----------------------------------------------------------------------------
+PREFIX uaf: <http://msosa-toolbox.local/uaf#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?type ?name WHERE {
+  ?tobe a ?type ;
+        rdfs:label ?name ;
+        uaf:qualifiedName ?tobeQ .
+  FILTER(CONTAINS(?tobeQ, "TO-BE"))
+  FILTER NOT EXISTS {
+    ?asis a ?type ;
+          rdfs:label ?name ;
+          uaf:qualifiedName ?asisQ .
+    FILTER(CONTAINS(?asisQ, "AS-IS"))
+  }
+}
+ORDER BY ?type ?name
+
+# -----------------------------------------------------------------------------
+# 2b. TRACES_TO override — explicit AS-IS <-> TO-BE correspondence pairs
+# Use this when name-matching is ambiguous (renames, splits, merges). The
+# modeller adds a <<TRACES_TO>> UML Dependency from the TO-BE element to its
+# AS-IS counterpart; the dependency materialises as uaf:tracesTo in the RDF
+# view. Subtract these pairs from queries 2 and 2a before reporting deltas
+# so renamed elements are not double-counted as both retired and introduced.
+# -----------------------------------------------------------------------------
+PREFIX uaf: <http://msosa-toolbox.local/uaf#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?asisName ?tobeName ?type WHERE {
+  ?tobe a ?type ;
+        rdfs:label ?tobeName ;
+        uaf:qualifiedName ?tobeQ ;
+        uaf:tracesTo ?asis .
+  FILTER(CONTAINS(?tobeQ, "TO-BE"))
+  ?asis a ?type ;
+        rdfs:label ?asisName ;
+        uaf:qualifiedName ?asisQ .
+  FILTER(CONTAINS(?asisQ, "AS-IS"))
+}
+ORDER BY ?type ?asisName
+
+# -----------------------------------------------------------------------------
+# 3. Forward impact closure — dependents of each retired element
+# AC3 query 3. From every retired element, walk uaf:realisedBy* and
+# uaf:tracedBy* outwards to enumerate everything whose architectural
+# justification disappears with the retirement.
+#
+# Semantics: `?retired uaf:realisedBy ?dep` means ?dep realises ?retired —
+# removing ?retired strands ?dep. `?retired uaf:tracedBy ?dep` (the inverse
+# of uaf:tracesTo, materialised by the OWL FB reasoner) means ?dep traces
+# to ?retired — removing ?retired breaks ?dep's trace target.
+# -----------------------------------------------------------------------------
+PREFIX uaf: <http://msosa-toolbox.local/uaf#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?retiredType ?retiredName ?dependentType ?dependentName WHERE {
+  ?retired a ?retiredType ;
+           rdfs:label ?retiredName ;
+           uaf:qualifiedName ?asisQ .
+  FILTER(CONTAINS(?asisQ, "AS-IS"))
+  FILTER NOT EXISTS {
+    ?tobe a ?retiredType ;
+          rdfs:label ?retiredName ;
+          uaf:qualifiedName ?tobeQ .
+    FILTER(CONTAINS(?tobeQ, "TO-BE"))
+  }
+  ?retired (uaf:realisedBy|uaf:tracedBy)+ ?dependent .
+  ?dependent a ?dependentType ;
+             rdfs:label ?dependentName .
+}
+ORDER BY ?retiredName ?dependentType ?dependentName
+
+# -----------------------------------------------------------------------------
+# 4. Phase-aware capability gap — TO-BE Capabilities without TO-BE realiser
+# AC3 query 4. A TO-BE Capability with no TO-BE ResourcePerformer realising
+# it is a TO-BE design hole — the future state has a goal with no resource
+# allocation. Distinct from the orphan check in semantic-search-examples
+# query 4, which ignores phase.
+#
+# Note: this query uses uaf:Capability and uaf:ResourcePerformer directly,
+# so it is unaffected by the CapabilityConfiguration domain mis-assignment
+# tracked in ontology/NEXT-STEPS.md cross-cutting backlog.
+# -----------------------------------------------------------------------------
+PREFIX uaf: <http://msosa-toolbox.local/uaf#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?cap ?capName WHERE {
+  ?cap a uaf:Capability ;
+       rdfs:label ?capName ;
+       uaf:qualifiedName ?capQ .
+  FILTER(CONTAINS(?capQ, "TO-BE"))
+  FILTER NOT EXISTS {
+    ?cap uaf:realisedBy ?perf .
+    ?perf a uaf:ResourcePerformer ;
+          uaf:qualifiedName ?perfQ .
+    FILTER(CONTAINS(?perfQ, "TO-BE"))
+  }
+}
+ORDER BY ?capName
+
+# -----------------------------------------------------------------------------
+# 5. (Optional) Acquisition trace — Projects/Milestones touching delta elements
+# AC3 query 5. Surfaces the Project or ProjectMilestone whose scope includes
+# each delta element via any acquisition-side relationship (composedOf,
+# realises, tracesTo). Useful for "which programme owns this introduction or
+# retirement?" reporting.
+# -----------------------------------------------------------------------------
+PREFIX uaf: <http://msosa-toolbox.local/uaf#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?projType ?projName ?deltaType ?deltaName ?phase WHERE {
+  { ?proj a uaf:Project . BIND(uaf:Project AS ?projType) }
+  UNION
+  { ?proj a uaf:ProjectMilestone . BIND(uaf:ProjectMilestone AS ?projType) }
+  ?proj rdfs:label ?projName ;
+        (uaf:composedOf|uaf:realises|uaf:tracesTo)+ ?delta .
+  ?delta a ?deltaType ;
+         rdfs:label ?deltaName ;
+         uaf:qualifiedName ?deltaQ .
+  BIND(IF(CONTAINS(?deltaQ, "AS-IS"), "AS-IS",
+         IF(CONTAINS(?deltaQ, "TO-BE"), "TO-BE", "OTHER")) AS ?phase)
+  FILTER(?phase != "OTHER")
+}
+ORDER BY ?projName ?phase ?deltaName
