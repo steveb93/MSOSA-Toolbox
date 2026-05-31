@@ -14,7 +14,7 @@ import java.util.Properties;
 import java.util.logging.Logger;
 
 /**
- * Entry point for the UAF Knowledge Graph plugin.
+ * Entry point for the MSOSA Knowledge Graph plugin.
  * Registered in plugin.xml; loaded by MSOSA at startup.
  */
 public class UAFNeo4jPlugin extends Plugin {
@@ -35,7 +35,7 @@ public class UAFNeo4jPlugin extends Plugin {
         loadConfig();
         ActionsConfiguratorsManager.getInstance()
             .addMainMenuConfigurator(new UAFExporterActionsConfigurator());
-        LOG.info("UAF Knowledge Graph plugin initialised.");
+        LOG.info("MSOSA Knowledge Graph plugin initialised.");
     }
 
     @Override
@@ -82,7 +82,7 @@ public class UAFNeo4jPlugin extends Plugin {
                 config.load(fis);
             } catch (Exception e) {
                 Application.getInstance().getGUILog()
-                    .showError("UAF Knowledge Graph: Failed to load config — " + e.getMessage());
+                    .showError("MSOSA Knowledge Graph: Failed to load config — " + e.getMessage());
             }
         }
     }
@@ -93,7 +93,7 @@ public class UAFNeo4jPlugin extends Plugin {
             updated.store(fos, "UAF Neo4j Plugin Configuration");
         } catch (Exception e) {
             Application.getInstance().getGUILog()
-                .showError("UAF Knowledge Graph: Failed to save config — " + e.getMessage());
+                .showError("MSOSA Knowledge Graph: Failed to save config — " + e.getMessage());
         }
     }
 

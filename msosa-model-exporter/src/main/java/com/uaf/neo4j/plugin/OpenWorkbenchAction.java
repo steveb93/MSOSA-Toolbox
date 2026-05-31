@@ -5,7 +5,7 @@ import com.nomagic.magicdraw.actions.MDAction;
 import java.awt.event.ActionEvent;
 
 /**
- * Tools → UAF Knowledge Graph → Open Workbench…
+ * Tools → MSOSA Knowledge Graph → Open Workbench…
  *
  * <p>Single-window entry point. The per-feature dialogs (Export wizard,
  * Configure Connection, Graph Inspector) are embedded directly as workbench

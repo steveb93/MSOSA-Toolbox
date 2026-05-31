@@ -27,25 +27,19 @@ import java.util.stream.Collectors;
 public class ExportConfigDialog extends JDialog {
 
     // ── Palette ───────────────────────────────────────────────────────────────
-    private static final Color HDR_BG       = new Color( 43,  43,  43);
-    private static final Color HDR_TITLE    = Color.WHITE;
-    private static final Color HDR_SUBTITLE = new Color(160, 160, 160);
-    private static final Color STATUS_IDLE  = new Color(140, 140, 140);
-    private static final Color STATUS_OK    = new Color( 72, 199, 116);
-    private static final Color STATUS_FAIL  = new Color(230,  80,  80);
+    // White-on-white header aligns with the workbench's other tabs (Validate /
+    // Settings). The previous dark banner clashed with the workbench's own dark
+    // header above and produced a double-banded look when embedded.
+    private static final Color HDR_BG       = Color.WHITE;
+    private static final Color HDR_TITLE    = new Color( 40,  40,  40);
+    private static final Color HDR_SUBTITLE = new Color( 80,  80,  80);
     private static final Color LEFT_BG      = new Color(248, 249, 251);
     private static final Color BORDER_SUBTLE= new Color(218, 219, 224);
 
-    // ── Header ────────────────────────────────────────────────────────────────
-    private final JLabel globalStatusLabel = new JLabel("● Not connected");
-
-    // ── Connection ────────────────────────────────────────────────────────────
-    private final JTextField     uriField;
-    private final JTextField     userField;
-    private final JPasswordField passwordField;
-    private final JTextField     databaseField;
-    private final JTextField     batchSizeField;
-    private final JLabel         connTabStatusLabel;
+    // Connection fields used to live here but the Settings rail is now the single
+    // source of truth for Bolt URI + credentials. The dialog reads
+    // UAFNeo4jPlugin.getInstance().getConfig() at export time, so changes saved
+    // in Settings flow through to the next export without a refresh.
 
     // ── Options ───────────────────────────────────────────────────────────────
     private final JCheckBox exportTaggedValuesBox;
@@ -73,9 +67,13 @@ public class ExportConfigDialog extends JDialog {
     // ── Buttons ───────────────────────────────────────────────────────────────
     private final JButton saveConfigBtn  = new JButton("Save Config");
     private final JButton exportBtn      = new JButton("Export");
+    private final JButton cancelBtn      = new JButton("Cancel");
 
     private final Project project;
     private final JPanel body = new JPanel(new BorderLayout());
+
+    /** The running export, if any. Null when no export is in flight. */
+    private SwingWorker<Map<String, ExportResult>, String> currentWorker;
 
     /**
      * Build the embedded export form. The dialog object exists only as a
@@ -84,17 +82,10 @@ public class ExportConfigDialog extends JDialog {
      * Export rail.
      */
     public ExportConfigDialog(Project project) {
-        super((Frame) null, "UAF Knowledge Graph — Export", false);
+        super((Frame) null, "MSOSA Knowledge Graph — Export", false);
         this.project = project;
 
         Properties cfg = UAFNeo4jPlugin.getInstance().getConfig();
-
-        uriField           = new JTextField(cfg.getProperty("neo4j.uri",      "bolt://localhost:7687"), 36);
-        userField          = new JTextField(cfg.getProperty("neo4j.user",     "neo4j"), 24);
-        passwordField      = new JPasswordField(cfg.getProperty("neo4j.password", ""), 24);
-        databaseField      = new JTextField(cfg.getProperty("neo4j.database", "neo4j"), 18);
-        batchSizeField     = new JTextField(cfg.getProperty("neo4j.batch.size", "500"), 8);
-        connTabStatusLabel = new JLabel(" ");
 
         exportTaggedValuesBox = new JCheckBox("Export tagged values",
             Boolean.parseBoolean(cfg.getProperty("export.tagged.values", "true")));
@@ -129,7 +120,7 @@ public class ExportConfigDialog extends JDialog {
             Boolean.parseBoolean(cfg.getProperty("export.target.lpg", "true")));
         targetLpgBox.setToolTipText(
             "<html>Write the traversed model to Neo4j over Bolt as Cypher MERGE statements.<br>" +
-            "This is the system of record. Connection settings live under the <i>Connection</i> tab.</html>");
+            "This is the system of record. Connection settings live under the <i>Settings</i> rail.</html>");
 
         targetRdfBox = new JCheckBox("RDF Turtle file (and optionally PUT to Fuseki)",
             Boolean.parseBoolean(cfg.getProperty("export.target.rdf", "false")));
@@ -142,7 +133,7 @@ public class ExportConfigDialog extends JDialog {
             Boolean.parseBoolean(cfg.getProperty("fuseki.push.enabled", "false")));
         fusekiPushBox.setToolTipText(
             "<html>Push the generated Turtle to the configured Fuseki dataset.<br>" +
-            "Fuseki URL and credentials live under the <i>Connection</i> tab.<br>" +
+            "Fuseki URL and credentials live under the <i>Settings</i> rail.<br>" +
             "Removes the need for the manual <code>dump_to_rdf.py</code> + restart step.</html>");
 
         rdfOutputPathField = new JTextField(cfg.getProperty("rdf.output.path",
@@ -160,10 +151,6 @@ public class ExportConfigDialog extends JDialog {
         targetRdfBox.addItemListener(rdfToggle);
         rdfToggle.itemStateChanged(null); // sync initial state
 
-        globalStatusLabel.setForeground(STATUS_IDLE);
-        globalStatusLabel.setFont(globalStatusLabel.getFont().deriveFont(Font.PLAIN, 11f));
-        globalStatusLabel.setOpaque(false);
-
         for (String pkg : topLevelPackageNames()) {
             JCheckBox cb = new JCheckBox(pkg, true);
             cb.setOpaque(false);
@@ -177,6 +164,12 @@ public class ExportConfigDialog extends JDialog {
 
         saveConfigBtn.addActionListener(e -> saveConfig());
         exportBtn.addActionListener(e -> runExport());
+
+        cancelBtn.setEnabled(false);
+        cancelBtn.setToolTipText(
+            "Cancel the running export. Neo4j writes already committed are not rolled back; "
+          + "the in-memory RDF buffer is discarded. The UI is freed immediately.");
+        cancelBtn.addActionListener(e -> cancelExport());
 
         body.add(buildHeader(),     BorderLayout.NORTH);
         body.add(buildMain(),       BorderLayout.CENTER);
@@ -250,7 +243,7 @@ public class ExportConfigDialog extends JDialog {
         header.setBackground(HDR_BG);
         header.setOpaque(true);
         header.setBorder(BorderFactory.createCompoundBorder(
-            new MatteBorder(0, 0, 1, 0, new Color(65, 65, 65)),
+            new MatteBorder(0, 0, 1, 0, BORDER_SUBTLE),
             new EmptyBorder(16, 20, 15, 20)));
 
         JLabel title = new JLabel("Export");
@@ -259,7 +252,8 @@ public class ExportConfigDialog extends JDialog {
         title.setOpaque(false);
 
         JLabel subtitle = new JLabel(
-            "Select model packages, configure the connection, and choose export options.");
+            "Select model packages and choose export options. "
+            + "Connection settings live under the Settings rail; live status is in the strip below.");
         subtitle.setForeground(HDR_SUBTITLE);
         subtitle.setFont(subtitle.getFont().deriveFont(Font.PLAIN, 11f));
         subtitle.setOpaque(false);
@@ -269,8 +263,7 @@ public class ExportConfigDialog extends JDialog {
         textBlock.add(title);
         textBlock.add(subtitle);
 
-        header.add(textBlock,         BorderLayout.CENTER);
-        header.add(globalStatusLabel, BorderLayout.EAST);
+        header.add(textBlock, BorderLayout.CENTER);
         return header;
     }
 
@@ -346,43 +339,9 @@ public class ExportConfigDialog extends JDialog {
     private JTabbedPane buildRightPanel() {
         JTabbedPane tabs = new JTabbedPane();
         tabs.setBorder(null);
-        tabs.addTab("Connection", buildConnectionTab());
-        tabs.addTab("Options",    buildOptionsTab());
-        tabs.addTab("Preview",    buildPreviewTab());
+        tabs.addTab("Options", buildOptionsTab());
+        tabs.addTab("Preview", buildPreviewTab());
         return tabs;
-    }
-
-    private JPanel buildConnectionTab() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBorder(new EmptyBorder(18, 18, 8, 18));
-        GridBagConstraints lc = labelGbc();
-        GridBagConstraints fc = fieldGbc();
-
-        int row = 0;
-        addFormRow(panel, "Bolt URI:",   uriField,      lc, fc, row++);
-        addFormRow(panel, "Username:",   userField,      lc, fc, row++);
-        addFormRow(panel, "Password:",   passwordField,  lc, fc, row++);
-        addFormRow(panel, "Database:",   databaseField,  lc, fc, row++);
-        addFormRow(panel, "Batch size:", batchSizeField, lc, fc, row++);
-
-        JButton testBtn = new JButton("Test Connection");
-        testBtn.addActionListener(e -> testConnection());
-
-        GridBagConstraints bc = new GridBagConstraints();
-        bc.gridx = 0; bc.gridy = row++; bc.gridwidth = 2;
-        bc.anchor = GridBagConstraints.WEST;
-        bc.insets = new Insets(14, 0, 2, 0);
-        panel.add(testBtn, bc);
-
-        bc = (GridBagConstraints) bc.clone();
-        bc.gridy = row++;
-        bc.insets = new Insets(0, 0, 0, 0);
-        panel.add(connTabStatusLabel, bc);
-
-        GridBagConstraints filler = new GridBagConstraints();
-        filler.gridx = 0; filler.gridy = row; filler.weighty = 1.0;
-        panel.add(new JPanel(), filler);
-        return panel;
     }
 
     private JPanel buildOptionsTab() {
@@ -533,6 +492,7 @@ public class ExportConfigDialog extends JDialog {
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 2));
         right.add(saveConfigBtn);
         right.add(exportBtn);
+        right.add(cancelBtn);
 
         bar.add(right, BorderLayout.EAST);
         return bar;
@@ -566,72 +526,22 @@ public class ExportConfigDialog extends JDialog {
         return b;
     }
 
-    // ── Connection test ───────────────────────────────────────────────────────
-
-    private void testConnection() {
-        connTabStatusLabel.setForeground(Color.DARK_GRAY);
-        connTabStatusLabel.setText("Testing…");
-        globalStatusLabel.setForeground(STATUS_IDLE);
-        globalStatusLabel.setText("● Connecting…");
-
-        final Properties connProps = connectionProps();
-        final String uriText = uriField.getText().trim();
-
-        new SwingWorker<Boolean, Void>() {
-            @Override protected Boolean doInBackground() {
-                try (ExportService svc = new Neo4jExportService(connProps)) {
-                    svc.init();
-                    return svc.testConnection();
-                } catch (Exception ex) { return false; }
-            }
-            @Override protected void done() {
-                try {
-                    boolean ok = get();
-                    if (ok) {
-                        connTabStatusLabel.setForeground(new Color(0, 120, 0));
-                        connTabStatusLabel.setText("Connection successful.");
-                        globalStatusLabel.setForeground(STATUS_OK);
-                        globalStatusLabel.setText("● Connected  ·  Neo4j  ·  " + uriText);
-                    } else {
-                        connTabStatusLabel.setForeground(STATUS_FAIL);
-                        connTabStatusLabel.setText("Connection failed — check URI and credentials.");
-                        globalStatusLabel.setForeground(STATUS_FAIL);
-                        globalStatusLabel.setText("● Not connected");
-                    }
-                } catch (Exception ex) {
-                    connTabStatusLabel.setForeground(STATUS_FAIL);
-                    connTabStatusLabel.setText("Error: " + ex.getMessage());
-                    globalStatusLabel.setForeground(STATUS_FAIL);
-                    globalStatusLabel.setText("● Not connected");
-                }
-            }
-        }.execute();
-    }
-
     // ── Config ────────────────────────────────────────────────────────────────
 
     private void saveConfig() {
         UAFNeo4jPlugin.getInstance().saveConfig(allProps());
     }
 
-    private Properties connectionProps() {
-        Properties p = new Properties();
-        p.setProperty("neo4j.uri",        uriField.getText().trim());
-        p.setProperty("neo4j.user",       userField.getText().trim());
-        p.setProperty("neo4j.password",   new String(passwordField.getPassword()));
-        p.setProperty("neo4j.database",   databaseField.getText().trim());
-        p.setProperty("neo4j.batch.size", batchSizeField.getText().trim());
-        return p;
-    }
-
+    /**
+     * Snapshot the saved plugin config with this dialog's option toggles applied
+     * on top. Connection settings (Bolt URI, credentials, Fuseki URL/auth) come
+     * from {@code UAFNeo4jPlugin.getInstance().getConfig()} — the Settings rail
+     * is the single source of truth. Read fresh each call so a Settings save
+     * between dialog construction and Export click is honoured.
+     */
     private Properties allProps() {
-        // Start from the plugin's saved config so fuseki.* and other ConnectionDialog-managed
-        // keys flow through to RDFExportService. The Save Config button persists the
-        // overrides; runExport() also uses this result directly so the live UI state always
-        // wins over stale on-disk values for the duration of the export.
         Properties p = new Properties();
         p.putAll(UAFNeo4jPlugin.getInstance().getConfig());
-        p.putAll(connectionProps());
         p.setProperty("export.tagged.values",  String.valueOf(exportTaggedValuesBox.isSelected()));
         p.setProperty("export.relationships",  String.valueOf(exportRelationshipsBox.isSelected()));
         p.setProperty("export.instance.links", String.valueOf(exportInstanceLinksBox.isSelected()));
@@ -691,12 +601,12 @@ public class ExportConfigDialog extends JDialog {
         final ExportLog  log            = new ExportLog(project.getName());
         final Set<String> langFilter    = Collections.unmodifiableSet(selectedLanguages);
 
-        setButtonsEnabled(false);
+        toggleRunning(true);
         logArea.setText("");
         progressBar.setIndeterminate(true);
         progressBar.setVisible(true);
 
-        new SwingWorker<Map<String, ExportResult>, String>() {
+        currentWorker = new SwingWorker<Map<String, ExportResult>, String>() {
             @Override
             protected Map<String, ExportResult> doInBackground() throws Exception {
                 publish("Traversing model (languages: " + String.join(", ", langFilter) + ")…");
@@ -778,7 +688,13 @@ public class ExportConfigDialog extends JDialog {
             protected void done() {
                 progressBar.setIndeterminate(false);
                 progressBar.setVisible(false);
-                setButtonsEnabled(true);
+                toggleRunning(false);
+                currentWorker = null;
+                if (isCancelled()) {
+                    log.add("Export cancelled by user.");
+                    appendLog("Export cancelled.");
+                    return;
+                }
                 try {
                     Map<String, ExportResult> results = get();
                     ExportResult combined = mergeResults(results);
@@ -790,13 +706,28 @@ public class ExportConfigDialog extends JDialog {
                     }
                     new ExportSummaryDialog(null, combined, log).setVisible(true);
                     dispose();
+                } catch (java.util.concurrent.CancellationException ce) {
+                    appendLog("Export cancelled.");
                 } catch (Exception ex) {
                     Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
                     log.finishWithException(cause.getMessage());
                     appendLog("ERROR: " + cause.getMessage());
                 }
             }
-        }.execute();
+        };
+        currentWorker.execute();
+    }
+
+    private void cancelExport() {
+        if (currentWorker != null && !currentWorker.isDone()) {
+            currentWorker.cancel(true);
+        }
+    }
+
+    private void toggleRunning(boolean running) {
+        saveConfigBtn.setEnabled(!running);
+        exportBtn.setEnabled(!running);
+        cancelBtn.setEnabled(running);
     }
 
     /**
@@ -825,38 +756,5 @@ public class ExportConfigDialog extends JDialog {
     private void appendLog(String msg) {
         logArea.append(msg + "\n");
         logArea.setCaretPosition(logArea.getDocument().getLength());
-    }
-
-    private void setButtonsEnabled(boolean enabled) {
-        saveConfigBtn.setEnabled(enabled);
-        exportBtn.setEnabled(enabled);
-    }
-
-    // ── Form helpers ──────────────────────────────────────────────────────────
-
-    private static void addFormRow(JPanel panel, String label, JComponent field,
-                                   GridBagConstraints lc, GridBagConstraints fc, int row) {
-        lc.gridy = row;
-        fc.gridy = row;
-        panel.add(new JLabel(label), lc);
-        panel.add(field, fc);
-    }
-
-    private static GridBagConstraints labelGbc() {
-        GridBagConstraints c = new GridBagConstraints();
-        c.gridx = 0;
-        c.anchor = GridBagConstraints.EAST;
-        c.insets = new Insets(5, 0, 5, 10);
-        return c;
-    }
-
-    private static GridBagConstraints fieldGbc() {
-        GridBagConstraints c = new GridBagConstraints();
-        c.gridx = 1;
-        c.anchor = GridBagConstraints.WEST;
-        c.fill = GridBagConstraints.HORIZONTAL;
-        c.weightx = 1.0;
-        c.insets = new Insets(5, 0, 5, 0);
-        return c;
     }
 }

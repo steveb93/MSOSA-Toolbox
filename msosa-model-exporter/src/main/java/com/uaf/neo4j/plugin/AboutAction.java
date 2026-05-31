@@ -6,7 +6,7 @@ import javax.swing.*;
 import java.awt.event.ActionEvent;
 
 /**
- * Tools → UAF Knowledge Graph → About
+ * Tools → MSOSA Knowledge Graph → About
  */
 public class AboutAction extends MDAction {
 
@@ -18,7 +18,7 @@ public class AboutAction extends MDAction {
     public void actionPerformed(ActionEvent e) {
         JOptionPane.showMessageDialog(
             null,
-            "<html><b>UAF Knowledge Graph</b><br><br>" +
+            "<html><b>MSOSA Knowledge Graph</b><br><br>" +
             "Exports UAF 1.2, SysML 1.6 and BPMN 2.0 elements and relationships<br>" +
             "from MSOSA 2022x into a Neo4j knowledge graph (LPG via Bolt) and an<br>" +
             "Apache Jena Fuseki SPARQL endpoint.<br><br>" +
@@ -30,7 +30,7 @@ public class AboutAction extends MDAction {
             "<br>" +
             "See <code>Ontology-Approach-to-Knowledge.md</code> for the strategy<br>" +
             "and <code>ontology/NEXT-STEPS.md</code> for the migration roadmap.</html>",
-            "About — UAF Knowledge Graph",
+            "About — MSOSA Knowledge Graph",
             JOptionPane.INFORMATION_MESSAGE);
     }
 }

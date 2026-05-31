@@ -11,7 +11,8 @@ import java.util.Map;
  * fails. The {@link ExportSummaryDialog} renders the result after the pipeline finishes.
  *
  * Promoted out of {@code Neo4jExportService} so both LPG and RDF emitters share a single
- * counter shape — {@code ExportSummaryDialog} reads one result regardless of backend.
+ * counter shape — {@link com.uaf.neo4j.plugin.ui.ExportSummaryDialog} reads one result
+ * regardless of backend.
  */
 public final class ExportResult {
 

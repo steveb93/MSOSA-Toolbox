@@ -150,6 +150,10 @@ public class RDFExportService implements ExportService {
             LOG.warning("Failed to write " + outputPath + ": " + e.getMessage());
             result.errors.add("Turtle write: " + e.getMessage());
         }
+        // SHACL is intentionally not run here — OWL FB closure over a real UAF model
+        // can take many minutes and made exports appear hung. The Validate workbench
+        // rail is the post-hoc SHACL entry point and runs against Fuseki, so the
+        // export path stays fast and predictable.
         if (pushToFuseki) {
             try {
                 pushToFuseki();

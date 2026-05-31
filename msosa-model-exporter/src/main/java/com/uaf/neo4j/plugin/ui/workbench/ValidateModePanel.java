@@ -1,38 +1,75 @@
 package com.uaf.neo4j.plugin.ui.workbench;
 
+import com.uaf.neo4j.plugin.UAFNeo4jPlugin;
+import com.uaf.neo4j.plugin.rdf.FusekiClient;
+import com.uaf.neo4j.plugin.rdf.ShaclReport;
+import com.uaf.neo4j.plugin.rdf.ShaclValidationService;
+
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.riot.Lang;
+import org.apache.jena.riot.RDFParser;
+
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComponent;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Properties;
 
 /**
- * Validate mode — skeleton. SHACL validation will run <b>directly from the
- * plugin</b> using the shaded {@code org.apache.jena.shacl} engine, so the
- * MCP server / Python toolchain is not in the critical path. The button and
- * report area are wired but the engine call is stubbed pending the Jena SHACL
- * dependency being added to the shade.
+ * Validate mode — runs SHACL shapes from {@code ontology/shapes/uaf-shapes.ttl}
+ * against the live Fuseki dataset, in-process via the shaded {@code org.apache.jena.shacl}
+ * engine. No MCP / Python toolchain in the critical path.
+ *
+ * <p>Flow on button click:
+ * <ol>
+ *   <li>Issue a SPARQL CONSTRUCT against Fuseki to snapshot the current dataset
+ *       (asserted + reasoner-inferred under the dataset's assembler config).</li>
+ *   <li>Parse the Turtle response into a Jena {@link Model}.</li>
+ *   <li>Pass the model to {@link ShaclValidationService#validate(Model)},
+ *       which loads the bundled MVO + axioms + shapes and runs {@code ShaclValidator}
+ *       directly against the graph (no in-JVM reasoner — Fuseki has already
+ *       RDFS-Exp inferred the snapshot).</li>
+ *   <li>Render the verdict + violation lines in the report area.</li>
+ * </ol>
  */
 final class ValidateModePanel extends JPanel implements WorkbenchPanel {
 
+    private static final String IDLE_TEXT =
+          "No validation run yet.\n\n"
+        + "Click Run SHACL Validation to:\n"
+        + "  1. Snapshot the live Fuseki dataset via SPARQL CONSTRUCT,\n"
+        + "  2. Validate it against ontology/shapes/uaf-shapes.ttl (no in-JVM reasoner — Fuseki already inferred),\n"
+        + "  3. Render the conformance verdict and any violation lines here.\n\n"
+        + "Connection settings live under the Settings rail.";
+
+    @SuppressWarnings("unused") // held for future "validate the current model only" actions
     private final UAFWorkbench workbench;
-    private final JTextArea report = new JTextArea(
-        "No validation run yet.\n\n"
-      + "When wired, this panel will:\n"
-      + "  1. Pull the live Fuseki dataset (asserted + inferred) via SPARQL CONSTRUCT,\n"
-      + "  2. Load ontology/shapes/uaf-shapes.ttl from the plugin's classpath,\n"
-      + "  3. Run org.apache.jena.shacl.ShaclValidator and render the violation report here.\n\n"
-      + "No MCP / Python dependency — Jena SHACL is shaded into the fat jar alongside the\n"
-      + "RDF writer used by the export pipeline.");
+    private final JTextArea report  = new JTextArea(IDLE_TEXT);
+    private final JButton runBtn    = new JButton("Run SHACL Validation");
+    private final JButton cancelBtn = new JButton("Cancel");
+    private final JButton exportBtn = new JButton("Export Log…");
+    private SwingWorker<String, String> currentWorker;
 
     ValidateModePanel(UAFWorkbench workbench) {
         this.workbench = workbench;
@@ -40,14 +77,27 @@ final class ValidateModePanel extends JPanel implements WorkbenchPanel {
         setBackground(Color.WHITE);
         setBorder(new EmptyBorder(24, 28, 24, 28));
 
-        JButton runBtn = new JButton("Run SHACL Validation");
-        runBtn.setEnabled(false);   // wired in follow-up
-        runBtn.setToolTipText("Pending: pyshacl-free Jena SHACL integration in the fat jar.");
+        runBtn.setToolTipText(
+            "Snapshot Fuseki via SPARQL CONSTRUCT and validate against the bundled UAF SHACL shapes.");
+        runBtn.addActionListener(e -> runValidation());
 
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        cancelBtn.setEnabled(false);
+        cancelBtn.setToolTipText(
+            "Cancel the running validation. Jena may not honour the interrupt mid-reasoning, "
+          + "so background work can continue until it finishes — but the UI is freed immediately.");
+        cancelBtn.addActionListener(e -> cancelValidation());
+
+        exportBtn.setToolTipText(
+            "Save the current report area to a .txt file. Captures whatever is shown — "
+          + "progress trace, conformance verdict, or error message.");
+        exportBtn.addActionListener(e -> exportLog());
+
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         buttons.setOpaque(false);
         buttons.setAlignmentX(Component.LEFT_ALIGNMENT);
         buttons.add(runBtn);
+        buttons.add(cancelBtn);
+        buttons.add(exportBtn);
 
         report.setEditable(false);
         report.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
@@ -67,6 +117,196 @@ final class ValidateModePanel extends JPanel implements WorkbenchPanel {
         add(buttons);
         add(Box.createVerticalStrut(14));
         add(scroll);
+    }
+
+    /**
+     * Launch the validation pipeline on a SwingWorker so the EDT stays responsive
+     * during the CONSTRUCT round-trip and the SHACL evaluation. Probes Fuseki first
+     * to surface the common first-run failures (unreachable, empty dataset) with
+     * actionable hints rather than a stuck "Running…" message.
+     *
+     * <p>Each stage publishes a progress line through {@link SwingWorker#publish}
+     * so the user sees forward motion (probe → snapshot triple count → SHACL)
+     * instead of a single frozen "Probing Fuseki…" string.
+     */
+    private void runValidation() {
+        toggleRunning(true);
+        report.setText("Running…\n");
+
+        currentWorker = new SwingWorker<String, String>() {
+            @Override
+            protected String doInBackground() {
+                Properties cfg = UAFNeo4jPlugin.getInstance().getConfig();
+                String fusekiUrl = cfg.getProperty("fuseki.url",      "http://localhost:3030/uaf");
+                String fusekiUsr = cfg.getProperty("fuseki.user",     "");
+                String fusekiPwd = cfg.getProperty("fuseki.password", "");
+                FusekiClient client = new FusekiClient(fusekiUrl, fusekiUsr, fusekiPwd);
+
+                long t0 = System.currentTimeMillis();
+                publish("  → Probing Fuseki at " + fusekiUrl + " …");
+                if (!client.testConnection()) {
+                    return "Fuseki unreachable at " + fusekiUrl + ".\n\n"
+                         + "Check the Settings rail (Fuseki URL + credentials) and the "
+                         + "status strip at the bottom of the workbench. If Fuseki is "
+                         + "not running, start it via the docker-compose overlay.\n";
+                }
+                publish("  ✓ Fuseki reachable (" + (System.currentTimeMillis() - t0) + " ms).");
+                if (isCancelled()) return cancelledMessage();
+
+                try {
+                    publish("  → Snapshotting dataset via SPARQL CONSTRUCT …");
+                    long t1 = System.currentTimeMillis();
+                    String turtle = client.constructAll();
+                    publish("  ✓ Snapshot received: "
+                          + (turtle.length() / 1024) + " KB Turtle in "
+                          + (System.currentTimeMillis() - t1) + " ms.");
+                    if (isCancelled()) return cancelledMessage();
+
+                    publish("  → Parsing Turtle into Jena model …");
+                    long t2 = System.currentTimeMillis();
+                    Model data = ModelFactory.createDefaultModel();
+                    RDFParser.create()
+                        .source(new ByteArrayInputStream(turtle.getBytes(StandardCharsets.UTF_8)))
+                        .lang(Lang.TURTLE)
+                        .parse(data);
+                    long tripleCount = data.size();
+                    publish("  ✓ Parsed " + tripleCount + " triples in "
+                          + (System.currentTimeMillis() - t2) + " ms.");
+
+                    if (data.isEmpty()) {
+                        return "Fuseki dataset is empty.\n\n"
+                             + "Source: " + fusekiUrl + "/sparql\n\n"
+                             + "Run an export with the Export rail and tick \"Also PUT to Fuseki\" "
+                             + "so the dataset has something to validate against.\n";
+                    }
+                    if (isCancelled()) return cancelledMessage();
+
+                    publish("  → Running SHACL validator against snapshot …");
+                    publish("    (Fuseki has already RDFS-Exp inferred the data; no extra reasoner is run here)");
+                    long t3 = System.currentTimeMillis();
+                    ShaclReport result = ShaclValidationService.validate(data);
+                    publish("  ✓ Validation finished in "
+                          + (System.currentTimeMillis() - t3) + " ms.");
+                    return formatReport(fusekiUrl, tripleCount, result);
+                } catch (Exception ex) {
+                    return formatError(ex);
+                }
+            }
+
+            @Override
+            protected void process(java.util.List<String> chunks) {
+                for (String line : chunks) {
+                    report.append(line + "\n");
+                }
+                report.setCaretPosition(report.getDocument().getLength());
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    if (isCancelled()) {
+                        report.setText(cancelledMessage());
+                    } else {
+                        report.setText(get());
+                    }
+                    report.setCaretPosition(0);
+                } catch (java.util.concurrent.CancellationException ce) {
+                    report.setText(cancelledMessage());
+                } catch (Exception ex) {
+                    report.setText(formatError(ex));
+                } finally {
+                    toggleRunning(false);
+                    currentWorker = null;
+                }
+            }
+        };
+        currentWorker.execute();
+    }
+
+    private void cancelValidation() {
+        if (currentWorker != null && !currentWorker.isDone()) {
+            currentWorker.cancel(true);
+        }
+    }
+
+    /**
+     * Write whatever is in the report area to a user-chosen .txt file. Captures
+     * progress traces, conformance verdicts, and error messages identically —
+     * the file mirrors the textual UI state at the moment of click.
+     */
+    private void exportLog() {
+        String content = report.getText();
+        if (content == null || content.isBlank() || IDLE_TEXT.equals(content)) {
+            JOptionPane.showMessageDialog(this,
+                "Nothing to export yet. Run a validation first.",
+                "Export Log", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        String stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Save SHACL validation log");
+        chooser.setSelectedFile(new File("shacl-validation-" + stamp + ".txt"));
+        chooser.setFileFilter(new FileNameExtensionFilter("Text files (*.txt)", "txt"));
+
+        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) return;
+
+        File target = chooser.getSelectedFile();
+        if (!target.getName().toLowerCase().endsWith(".txt")) {
+            target = new File(target.getParentFile(), target.getName() + ".txt");
+        }
+        try {
+            Files.writeString(target.toPath(), content, StandardCharsets.UTF_8);
+            JOptionPane.showMessageDialog(this,
+                "Saved to:\n" + target.getAbsolutePath(),
+                "Export Log", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                "Could not write log:\n" + ex.getMessage(),
+                "Export Log", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void toggleRunning(boolean running) {
+        runBtn.setEnabled(!running);
+        cancelBtn.setEnabled(running);
+    }
+
+    private static String cancelledMessage() {
+        return "Validation cancelled.\n\n"
+             + "Jena does not always honour mid-reasoning interruption, so background work may "
+             + "continue until it finishes naturally — but the UI is free to use.\n";
+    }
+
+    private static String formatReport(String fusekiUrl, long tripleCount, ShaclReport r) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Source: ").append(fusekiUrl).append("/sparql\n");
+        sb.append("Snapshot: ").append(tripleCount).append(" triples\n");
+        if (r.conforms == null) {
+            sb.append("Result: SHACL validator did not run.\n");
+            if (!r.errors.isEmpty()) {
+                sb.append("\nErrors:\n");
+                for (String e : r.errors) sb.append("  ").append(e).append('\n');
+            }
+            return sb.toString();
+        }
+        sb.append("Result: ").append(r.conforms ? "CONFORMS" : "DOES NOT CONFORM").append('\n');
+        sb.append("Violations: ").append(r.violations).append('\n');
+        sb.append("Warnings:   ").append(r.warnings).append('\n');
+        if (r.lines.isEmpty()) {
+            sb.append("\n(no actionable findings against URI-named uafinst: instances)\n");
+        } else {
+            sb.append("\nFindings:\n");
+            for (String line : r.lines) sb.append("  ").append(line).append('\n');
+        }
+        return sb.toString();
+    }
+
+    private static String formatError(Throwable ex) {
+        Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+        return "Validation failed.\n\n"
+             + cause.getClass().getSimpleName() + ": " + cause.getMessage() + "\n\n"
+             + "Check that Fuseki is reachable (see the Settings rail and the status strip).";
     }
 
     @Override public JComponent getComponent() { return this; }

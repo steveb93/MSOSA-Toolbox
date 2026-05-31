@@ -51,7 +51,7 @@ public class UAFWorkbench extends JFrame {
     private final StatusStrip statusStrip;
 
     public UAFWorkbench(Project project) {
-        super("UAF Knowledge Graph");
+        super("MSOSA Knowledge Graph");
         this.project = project;
 
         Properties cfg = UAFNeo4jPlugin.getInstance().getConfig();
@@ -80,6 +80,22 @@ public class UAFWorkbench extends JFrame {
 
     Project getProject() {
         return project;
+    }
+
+    /**
+     * Notify the workbench that the plugin's connection config has changed
+     * (typically because the user just clicked Save in the Settings rail).
+     * Re-probes the status strip and ticks the Inspect rail's loader so it
+     * picks up the new Bolt URI / credentials without waiting for the user
+     * to switch to the rail manually.
+     */
+    public void notifyConnectionConfigChanged() {
+        Properties cfg = UAFNeo4jPlugin.getInstance().getConfig();
+        statusStrip.setConfig(cfg);
+        WorkbenchPanel inspect = panels.get(WorkbenchMode.INSPECT);
+        if (inspect instanceof InspectModePanel) {
+            ((InspectModePanel) inspect).getInspector().refresh();
+        }
     }
 
     // ── Factory hooks (overridable) ─────────────────────────────────────────
@@ -123,7 +139,7 @@ public class UAFWorkbench extends JFrame {
         header.setBackground(HEADER_BG);
         header.setBorder(new EmptyBorder(10, 16, 10, 16));
 
-        JLabel title = new JLabel("UAF Knowledge Graph");
+        JLabel title = new JLabel("MSOSA Knowledge Graph");
         title.setForeground(HEADER_TITLE);
         title.setFont(title.getFont().deriveFont(Font.BOLD, 16f));
 

@@ -5,7 +5,7 @@ import com.nomagic.actions.ActionsManager;
 import com.nomagic.magicdraw.actions.MDActionsCategory;
 
 /**
- * Injects the "UAF Knowledge Graph" sub-menu into the MSOSA Tools menu.
+ * Injects the "MSOSA Knowledge Graph" sub-menu into the MSOSA Tools menu.
  *
  * <p>Post-refresh menu shape: a single Workbench entry that opens the unified
  * window, plus the external SPARQL launcher and About. The legacy per-feature
@@ -24,7 +24,7 @@ public class UAFExporterActionsConfigurator implements AMConfigurator {
         }
 
         MDActionsCategory uafMenu = new MDActionsCategory(
-            "UAF_KG_MENU", "UAF Knowledge Graph");
+            "UAF_KG_MENU", "MSOSA Knowledge Graph");
         uafMenu.setNested(true);
 
         uafMenu.addAction(new OpenWorkbenchAction());
