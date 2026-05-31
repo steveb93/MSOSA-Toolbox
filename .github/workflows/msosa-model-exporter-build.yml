@@ -220,6 +220,22 @@ jobs:
             echo "::error::Tag ${GITHUB_REF_NAME} must originate from ${EXPECTED}. Preview tags from 'preview', release tags from 'main'."
             exit 1
           fi
+      - name: Check pom.xml revision matches tag stability
+        shell: bash
+        run: |
+          POM=$(grep -oP '(?<=<revision>)[^<]+' msosa-model-exporter/pom.xml)
+          if [[ "${GITHUB_REF_NAME}" == *-Preview ]]; then
+            if [[ "$POM" != *-Preview ]]; then
+              echo "::error::Tag ${GITHUB_REF_NAME} is a Preview but pom.xml <revision> is '${POM}' (no -Preview suffix). Bump revision to '${POM}-Preview' before tagging."
+              exit 1
+            fi
+          else
+            if [[ "$POM" == *-Preview ]]; then
+              echo "::error::Tag ${GITHUB_REF_NAME} is a stable release but pom.xml <revision> is '${POM}'. Bump revision to '${POM%-Preview}' (drop -Preview) before tagging, otherwise the built zip will be named *-Preview-plugin.zip."
+              exit 1
+            fi
+          fi
+          echo "pom.xml <revision>=${POM} matches tag ${GITHUB_REF_NAME}"
 
   # ── Release ───────────────────────────────────────────────────────────────
   # Runs on: pushed tag (always draft) or workflow_dispatch (draft = input).
