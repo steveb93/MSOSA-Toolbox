@@ -27,7 +27,15 @@ services:
       - "3030:3030"
     environment:
       - ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:?FUSEKI_ADMIN_PASSWORD must be set in .env}
-      - JVM_ARGS=-Xmx1g
+      # OWL FB reasoner + inverseOf/someValuesFrom axioms materialise a graph
+      # much larger than the on-disk TTL. 4g GC-thrashes when a query enumerates
+      # reasoner-derived inverse-relation families across an ~800-node dataset
+      # under sustained CPU; 8g gives the reasoning endpoint comfortable
+      # headroom. The non-reasoning /uaf-raw/sparql endpoint added in
+      # ontology/fuseki/configuration/uaf.ttl bypasses this cost for analytical
+      # queries that consume directly-emitted triples. Override via FUSEKI_HEAP
+      # in .env (raise for larger models, drop to 4g on constrained dev boxes).
+      - JVM_ARGS=-Xmx${FUSEKI_HEAP:-8g}
     volumes:
       # Relative paths resolve against the compose project directory (docker-compose/).
       # Invoke from docker-compose/ or pass --project-directory docker-compose.
