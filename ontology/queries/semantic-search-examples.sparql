@@ -201,3 +201,28 @@ SELECT ?capability ?name ?pagerank WHERE {
 }
 ORDER BY DESC(?pagerank)
 LIMIT 25
+
+# -----------------------------------------------------------------------------
+# 11. ResourceArtifact recommendations for a Capability gap (content-based)
+# Given a Capability identified by query 10, this query ranks RESOURCE-domain
+# elements by how many *other* Capabilities they already realise (peer-realiser
+# frequency), with PageRank as the tie-break. Universal players surface first.
+# Substitute the gap IRI into the FILTER. Used by the
+# `recommend_resources_for_gap` MCP tool — see graph_mcp_driver/server.py.
+# -----------------------------------------------------------------------------
+PREFIX uaf: <http://msosa-toolbox.local/uaf#>
+PREFIX uafgds: <http://msosa-toolbox.local/uaf/gds#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?resource ?name ?stereotype ?pagerank (COUNT(DISTINCT ?peer) AS ?peersRealised) WHERE {
+  ?peer a uaf:Capability ;
+        (uaf:realisedBy|uaf:exhibitedBy|uaf:tracedBy|uaf:implementedBy)+ ?resource .
+  ?resource uaf:domain "RESOURCE" ;
+            rdfs:label ?name ;
+            a ?stereotype ;
+            uafgds:pagerank ?pagerank .
+  FILTER(?peer != <http://msosa-toolbox.local/uaf/instance#REPLACE_WITH_GAP_IRI>)
+  FILTER(STRSTARTS(STR(?stereotype), STR(uaf:)))
+}
+GROUP BY ?resource ?name ?stereotype ?pagerank
+ORDER BY DESC(?peersRealised) DESC(?pagerank)
+LIMIT 10

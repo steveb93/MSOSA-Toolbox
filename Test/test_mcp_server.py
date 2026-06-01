@@ -147,3 +147,86 @@ def test_run_sparql_posts_query_with_auth_and_accept_header():
     assert call.kwargs["data"] == {"query": "ASK { ?s ?p ?o }"}
     assert call.kwargs["headers"]["Accept"] == "application/sparql-results+json"
     assert call.kwargs["auth"] is not None
+
+
+# ---------------------------------------------------------------------------
+# Recommender tools (Stage 5)
+
+def _mock_sparql_response(bindings):
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"results": {"bindings": bindings}}
+    mock_response.raise_for_status = MagicMock()
+    return mock_response
+
+
+def test_find_capability_gaps_returns_rows_ordered_by_pagerank():
+    bindings = [
+        {
+            "capability": {"type": "uri", "value": "http://example/Cap1"},
+            "name": {"type": "literal", "value": "Air Superiority"},
+            "pagerank": {"type": "literal", "value": "0.85"},
+        },
+        {
+            "capability": {"type": "uri", "value": "http://example/Cap2"},
+            "name": {"type": "literal", "value": "Logistics"},
+            "pagerank": {"type": "literal", "value": "0.42"},
+        },
+    ]
+    with patch("graph_mcp_driver.server.httpx.post",
+               return_value=_mock_sparql_response(bindings)):
+        from graph_mcp_driver.server import find_capability_gaps
+        result = find_capability_gaps()
+
+    assert len(result) == 2
+    assert result[0]["name"] == "Air Superiority"
+    assert result[0]["pagerank"] == "0.85"
+
+
+def test_find_capability_gaps_passes_limit_to_query():
+    with patch("graph_mcp_driver.server.httpx.post",
+               return_value=_mock_sparql_response([])) as mock_post:
+        from graph_mcp_driver.server import find_capability_gaps
+        find_capability_gaps(limit=7)
+
+    sent = mock_post.call_args.kwargs["data"]["query"]
+    assert "LIMIT 7" in sent
+    assert "uafgds:pagerank" in sent
+    assert "FILTER NOT EXISTS" in sent
+
+
+def test_recommend_resources_for_gap_returns_rows():
+    bindings = [
+        {
+            "resource": {"type": "uri", "value": "http://example/Res1"},
+            "name": {"type": "literal", "value": "Radar System"},
+            "stereotype": {"type": "uri",
+                           "value": "http://msosa-toolbox.local/uaf#ResourceArtifact"},
+            "pagerank": {"type": "literal", "value": "0.71"},
+            "peersRealised": {"type": "literal", "value": "5"},
+        },
+    ]
+    with patch("graph_mcp_driver.server.httpx.post",
+               return_value=_mock_sparql_response(bindings)):
+        from graph_mcp_driver.server import recommend_resources_for_gap
+        result = recommend_resources_for_gap("http://example/Cap1")
+
+    assert result == [{
+        "resource": "http://example/Res1",
+        "name": "Radar System",
+        "stereotype": "http://msosa-toolbox.local/uaf#ResourceArtifact",
+        "pagerank": "0.71",
+        "peersRealised": "5",
+    }]
+
+
+def test_recommend_resources_for_gap_interpolates_iri_and_k():
+    with patch("graph_mcp_driver.server.httpx.post",
+               return_value=_mock_sparql_response([])) as mock_post:
+        from graph_mcp_driver.server import recommend_resources_for_gap
+        recommend_resources_for_gap("http://example/Cap42", k=3)
+
+    sent = mock_post.call_args.kwargs["data"]["query"]
+    assert "<http://example/Cap42>" in sent
+    assert "LIMIT 3" in sent
+    assert "COUNT(DISTINCT ?peer)" in sent
+    assert "ORDER BY DESC(?peersRealised) DESC(?pagerank)" in sent

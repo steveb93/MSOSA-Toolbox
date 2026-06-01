@@ -55,6 +55,86 @@ def run_sparql(query: str) -> list[dict]:
     return [{k: v["value"] for k, v in row.items()} for row in bindings]
 
 
+_CAPABILITY_GAPS_QUERY = """\
+PREFIX uaf: <http://msosa-toolbox.local/uaf#>
+PREFIX uafgds: <http://msosa-toolbox.local/uaf/gds#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?capability ?name ?pagerank WHERE {
+  ?capability a uaf:Capability ;
+              rdfs:label ?name ;
+              uafgds:pagerank ?pagerank .
+  FILTER NOT EXISTS {
+    ?capability (uaf:realisedBy|uaf:exhibitedBy|uaf:tracedBy|uaf:implementedBy)+ ?resource .
+    ?resource uaf:domain "RESOURCE" .
+  }
+}
+ORDER BY DESC(?pagerank)
+LIMIT %d
+"""
+
+_RECOMMEND_RESOURCES_QUERY = """\
+PREFIX uaf: <http://msosa-toolbox.local/uaf#>
+PREFIX uafgds: <http://msosa-toolbox.local/uaf/gds#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?resource ?name ?stereotype ?pagerank (COUNT(DISTINCT ?peer) AS ?peersRealised) WHERE {
+  ?peer a uaf:Capability ;
+        (uaf:realisedBy|uaf:exhibitedBy|uaf:tracedBy|uaf:implementedBy)+ ?resource .
+  ?resource uaf:domain "RESOURCE" ;
+            rdfs:label ?name ;
+            a ?stereotype ;
+            uafgds:pagerank ?pagerank .
+  FILTER(?peer != <%s>)
+  FILTER(STRSTARTS(STR(?stereotype), STR(uaf:)))
+}
+GROUP BY ?resource ?name ?stereotype ?pagerank
+ORDER BY DESC(?peersRealised) DESC(?pagerank)
+LIMIT %d
+"""
+
+
+def _sparql_select(query: str) -> list[dict]:
+    response = httpx.post(
+        sparql_url,
+        auth=sparql_auth,
+        data={"query": query},
+        headers={"Accept": "application/sparql-results+json"},
+        timeout=30.0,
+    )
+    response.raise_for_status()
+    bindings = response.json().get("results", {}).get("bindings", [])
+    return [{k: v["value"] for k, v in row.items()} for row in bindings]
+
+
+@mcp.tool()
+def find_capability_gaps(limit: int = 25) -> list[dict]:
+    """List Capabilities with no realisation chain to a RESOURCE-domain element,
+    ranked by PageRank.
+
+    Surfaces the most consequential coverage gaps in the model: strategic intent
+    that nothing yet delivers, ordered by how central the Capability is in the
+    full UAF trace graph. Reads `uafgds:pagerank` triples — requires the GDS
+    write-back + dump_to_rdf.py refresh path (cookbook §6a, NEXT-STEPS Stage 5).
+
+    Returns: list of {capability, name, pagerank}. Empty if no PageRank has been
+    materialised yet, or if the model has no realisation gaps.
+    """
+    return _sparql_select(_CAPABILITY_GAPS_QUERY % int(limit))
+
+
+@mcp.tool()
+def recommend_resources_for_gap(capability_iri: str, k: int = 10) -> list[dict]:
+    """Recommend RESOURCE-domain candidates that could realise a Capability gap.
+
+    Content-based: each candidate is scored by how many *other* Capabilities it
+    already realises (peer-realiser frequency), broken by `uafgds:pagerank` as
+    importance. Universal players surface first.
+
+    Pass the Capability IRI from find_capability_gaps()[i]["capability"]. Returns
+    list of {resource, name, stereotype, pagerank, peersRealised}.
+    """
+    return _sparql_select(_RECOMMEND_RESOURCES_QUERY % (capability_iri, int(k)))
+
+
 @mcp.tool()
 def validate_shacl(shapes_file: str | None = None) -> dict:
     """Validate the live Fuseki dataset against UAF SHACL shapes (Stage 3 scaffolding).
