@@ -99,6 +99,7 @@ class RDFTripleBuilderParityTest {
         assertEquals(namespaces.get("bpmn"),    RDFTripleBuilder.NS_BPMN);
         assertEquals(namespaces.get("uafinst"), RDFTripleBuilder.NS_INST);
         assertEquals(namespaces.get("uaftv"),   RDFTripleBuilder.NS_TAG);
+        assertEquals(namespaces.get("uafgds"),  RDFTripleBuilder.NS_GDS);
     }
 
     // ── instance IRI parity ───────────────────────────────────────────────────
@@ -159,6 +160,29 @@ class RDFTripleBuilderParityTest {
             String actual   = RDFTripleBuilder.tagPropertyIri(model, key).getURI();
             assertEquals(expected, actual,
                 "tagPropertyIri(" + key + ") parity drift");
+        }
+    }
+
+    // ── GDS write-back property IRI parity ────────────────────────────────────
+
+    @Test
+    void gdsPropertyIriCases() {
+        JsonArray cases = fixture.get("gds_property_iri").getAsArray();
+        for (JsonValue v : cases) {
+            JsonObject c = v.getAsObject();
+            String key      = c.get("key").getAsString().value();
+            JsonValue ec    = c.get("expected_curie");
+            org.apache.jena.rdf.model.Property actual = RDFTripleBuilder.gdsPropertyIri(model, key);
+            if (ec == null || ec.isNull()) {
+                org.junit.jupiter.api.Assertions.assertNull(actual,
+                    "gdsPropertyIri(" + key + "): expected null, got " + actual);
+                continue;
+            }
+            String expected = expand(ec.getAsString().value());
+            org.junit.jupiter.api.Assertions.assertNotNull(actual,
+                "gdsPropertyIri(" + key + "): expected " + expected + ", got null");
+            assertEquals(expected, actual.getURI(),
+                "gdsPropertyIri(" + key + ") parity drift");
         }
     }
 }

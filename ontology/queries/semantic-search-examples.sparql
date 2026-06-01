@@ -5,6 +5,7 @@
 # prefixes server-side. The namespaces in use:
 #   uaf:      http://msosa-toolbox.local/uaf#
 #   uafprop:  http://msosa-toolbox.local/uaf/prop#
+#   uafgds:   http://msosa-toolbox.local/uaf/gds#
 #   sysml:    http://msosa-toolbox.local/sysml#
 #   bpmn:     http://msosa-toolbox.local/bpmn#
 #
@@ -157,3 +158,46 @@ SELECT ?affected ?affectedType ?affectedName WHERE {
     BIND(?resFunc AS ?affected)
   }
 }
+
+
+# -----------------------------------------------------------------------------
+# 9. Most-influential elements by GDS PageRank
+# Surfaces the elements that the most trace/realisation/exhibits paths
+# converge on. Requires a prior `gds.pageRank.write('uaf-full', {writeProperty:
+# 'gdsPagerank'})` run in Neo4j (see cypher/gds-cookbook.cypher §6a) and a
+# subsequent `dump_to_rdf.py` refresh of Fuseki — GDS scores are written on
+# the LPG side; the dump script materialises them as uafgds:pagerank triples.
+# -----------------------------------------------------------------------------
+PREFIX uaf: <http://msosa-toolbox.local/uaf#>
+PREFIX uafgds: <http://msosa-toolbox.local/uaf/gds#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?node ?name ?type ?pagerank WHERE {
+  ?node uafgds:pagerank ?pagerank ;
+        rdfs:label ?name ;
+        a ?type .
+  FILTER(STRSTARTS(STR(?type), STR(uaf:)))
+}
+ORDER BY DESC(?pagerank)
+LIMIT 25
+
+# -----------------------------------------------------------------------------
+# 10. Capability-coverage gap (PageRank-weighted)
+# Capabilities whose PageRank is high but which have no realisation trace to a
+# RESOURCE-domain element are the most consequential coverage gaps in the
+# current model — a strategic intent that nothing yet delivers. Requires the
+# same GDS write-back as query 9.
+# -----------------------------------------------------------------------------
+PREFIX uaf: <http://msosa-toolbox.local/uaf#>
+PREFIX uafgds: <http://msosa-toolbox.local/uaf/gds#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?capability ?name ?pagerank WHERE {
+  ?capability a uaf:Capability ;
+              rdfs:label ?name ;
+              uafgds:pagerank ?pagerank .
+  FILTER NOT EXISTS {
+    ?capability (uaf:realisedBy|uaf:exhibitedBy|uaf:tracedBy|uaf:implementedBy)+ ?resource .
+    ?resource uaf:domain "RESOURCE" .
+  }
+}
+ORDER BY DESC(?pagerank)
+LIMIT 25

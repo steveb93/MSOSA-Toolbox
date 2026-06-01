@@ -6,7 +6,8 @@
     "sysml":   "http://msosa-toolbox.local/sysml#",
     "bpmn":    "http://msosa-toolbox.local/bpmn#",
     "uafinst": "http://msosa-toolbox.local/uaf/instance#",
-    "uaftv":   "http://msosa-toolbox.local/uaf/tag#"
+    "uaftv":   "http://msosa-toolbox.local/uaf/tag#",
+    "uafgds":  "http://msosa-toolbox.local/uaf/gds#"
   },
   "instance_iri": [
     {"id": "abc-123",       "expected_curie": "uafinst:abc-123",     "note": "alphanumerics + hyphen preserved"},
@@ -41,5 +42,15 @@
     {"key": "rawKey",             "expected_curie": "uaftv:rawKey",          "note": "no tv_ prefix means key passes through"},
     {"key": "tv_x.y",             "expected_curie": "uaftv:x_y",             "note": "dot sanitised after stripping prefix"},
     {"key": "tv_a b",             "expected_curie": "uaftv:a_b",             "note": "space sanitised after stripping prefix"}
+  ],
+  "gds_property_iri": [
+    {"key": "gdsPagerank",        "expected_curie": "uafgds:pagerank",       "note": "GDS write-back -> uafgds: local-lowercased"},
+    {"key": "gdsBetweenness",     "expected_curie": "uafgds:betweenness"},
+    {"key": "gdsLouvain",         "expected_curie": "uafgds:louvain"},
+    {"key": "gdsWccComponent",    "expected_curie": "uafgds:wccComponent",   "note": "multi-segment suffix preserves inner camelCase"},
+    {"key": "gds",                "expected_curie": null,                    "note": "bare prefix is not a GDS property"},
+    {"key": "gdsx",               "expected_curie": null,                    "note": "must be followed by an uppercase letter"},
+    {"key": "tv_gdsPagerank",     "expected_curie": null,                    "note": "tagged values take the tv_ path, not the gds path"},
+    {"key": "GDSpagerank",        "expected_curie": null,                    "note": "prefix is lowercase 'gds' only"}
   ]
 }

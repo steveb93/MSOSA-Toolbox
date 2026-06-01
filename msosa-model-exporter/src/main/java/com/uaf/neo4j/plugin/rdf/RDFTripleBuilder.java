@@ -36,9 +36,23 @@ public final class RDFTripleBuilder {
     public static final String NS_INST    = "http://msosa-toolbox.local/uaf/instance#";
     /** Tagged-value property namespace. */
     public static final String NS_TAG     = "http://msosa-toolbox.local/uaf/tag#";
+    /**
+     * Analytics outputs written back to LPG nodes by Neo4j GDS algorithms
+     * (see {@code cypher/gds-cookbook.cypher} §6). Kept distinct from
+     * {@link #NS_TAG} (modeller tagged values) and {@code uafprop:} (T-Box
+     * annotation properties) so SPARQL consumers can tell algorithm-derived
+     * data from authored data. The plugin's MSOSA-side path will normally
+     * have nothing to emit here — GDS results only exist after a Neo4j
+     * write-back, so the Python {@code dump_to_rdf.py} script is the
+     * canonical path. The helper is mirrored on both emitters so a future
+     * post-export Bolt enrichment can use it without divergence.
+     */
+    public static final String NS_GDS     = "http://msosa-toolbox.local/uaf/gds#";
 
     /** Element / instance core properties already covered by typed RDF triples — skip when flattening tagged values. */
     private static final Pattern UNSAFE_ID_CHAR = Pattern.compile("[^A-Za-z0-9_\\-]");
+    /** Mirrors {@code GDS_PROP} in {@code dump_to_rdf.py}. {@code gdsPagerank} → {@code uafgds:pagerank}. */
+    private static final Pattern GDS_PROP_KEY = Pattern.compile("^gds([A-Z][A-Za-z0-9]*)$");
 
     private RDFTripleBuilder() {}
 
@@ -63,6 +77,40 @@ public final class RDFTripleBuilder {
     public static Property tagPropertyIri(Model model, String tagKey) {
         String key = tagKey.startsWith("tv_") ? tagKey.substring(3) : tagKey;
         return model.createProperty(NS_TAG + sanitiseId(key));
+    }
+
+    /**
+     * {@code "gdsPagerank"} → {@code uafgds:pagerank}; returns {@code null} if
+     * the key is not a GDS write-back property (must be lowercase {@code gds}
+     * prefix followed by an uppercase letter). Mirrors {@code gds_property_uri}
+     * in {@code dump_to_rdf.py}.
+     */
+    public static Property gdsPropertyIri(Model model, String key) {
+        if (key == null) return null;
+        java.util.regex.Matcher m = GDS_PROP_KEY.matcher(key);
+        if (!m.matches()) return null;
+        String suffix = m.group(1);
+        String local  = Character.toLowerCase(suffix.charAt(0))
+                      + (suffix.length() > 1 ? suffix.substring(1) : "");
+        return model.createProperty(NS_GDS + local);
+    }
+
+    /**
+     * Typed literal for a GDS-derived value. Doubles for PageRank/betweenness,
+     * longs for WCC/Louvain components, booleans pass through, anything else
+     * stringifies. Mirrors {@code gds_literal} in {@code dump_to_rdf.py}.
+     */
+    public static org.apache.jena.rdf.model.Literal gdsLiteral(Model model, Object value) {
+        if (value instanceof Boolean) {
+            return model.createTypedLiteral(((Boolean) value).booleanValue());
+        }
+        if (value instanceof Long || value instanceof Integer || value instanceof Short || value instanceof Byte) {
+            return model.createTypedLiteral(((Number) value).longValue(), XSD.xlong.getURI());
+        }
+        if (value instanceof Float || value instanceof Double) {
+            return model.createTypedLiteral(((Number) value).doubleValue(), XSD.xdouble.getURI());
+        }
+        return model.createTypedLiteral(String.valueOf(value), XSD.xstring.getURI());
     }
 
     // ── High-level emitters ───────────────────────────────────────────────────
@@ -92,10 +140,16 @@ public final class RDFTripleBuilder {
                 String key = e.getKey();
                 Object value = e.getValue();
                 if (value == null) continue;
-                // Mirror Python: only flatten properties that have the tv_ prefix
-                if (!key.startsWith("tv_")) continue;
-                model.add(iri, tagPropertyIri(model, key),
-                          model.createTypedLiteral(String.valueOf(value), XSD.xstring.getURI()));
+                // Mirror Python: tv_* -> uaftv: (string), gds* -> uafgds: (typed).
+                if (key.startsWith("tv_")) {
+                    model.add(iri, tagPropertyIri(model, key),
+                              model.createTypedLiteral(String.valueOf(value), XSD.xstring.getURI()));
+                    continue;
+                }
+                Property gdsProp = gdsPropertyIri(model, key);
+                if (gdsProp != null) {
+                    model.add(iri, gdsProp, gdsLiteral(model, value));
+                }
             }
         }
     }
@@ -116,6 +170,7 @@ public final class RDFTripleBuilder {
         model.setNsPrefix("bpmn",    NS_BPMN);
         model.setNsPrefix("uafinst", NS_INST);
         model.setNsPrefix("uaftv",   NS_TAG);
+        model.setNsPrefix("uafgds",  NS_GDS);
         model.setNsPrefix("rdfs",    RDFS.getURI());
         model.setNsPrefix("xsd",     XSD.getURI());
     }

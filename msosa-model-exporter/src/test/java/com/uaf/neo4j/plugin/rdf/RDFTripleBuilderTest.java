@@ -175,6 +175,52 @@ class RDFTripleBuilderTest {
                     "Tagged values must be suppressed when includeTaggedValues=false");
     }
 
+    @Test
+    void addElement_emitsGdsWriteBackAsTypedTriples() {
+        UAFElementDTO dto = UAFElementDTO.builder("g-1", "Hub", "OperationalPerformer")
+            .neo4jLabel("OperationalPerformer")
+            .language("UAF")
+            .taggedValue("gdsPagerank",  0.42d)   // double -> xsd:double
+            .taggedValue("gdsLouvain",   7L)      // long   -> xsd:long
+            .taggedValue("notGds",       "ignored")
+            .build();
+        RDFTripleBuilder.addElement(model, dto, true);
+
+        var iri = RDFTripleBuilder.instanceIri(model, "g-1");
+        var pagerank   = RDFTripleBuilder.gdsPropertyIri(model, "gdsPagerank");
+        var louvain    = RDFTripleBuilder.gdsPropertyIri(model, "gdsLouvain");
+        assertNotNull(pagerank);
+        assertNotNull(louvain);
+        assertEquals(RDFTripleBuilder.NS_GDS + "pagerank", pagerank.getURI());
+        assertEquals(RDFTripleBuilder.NS_GDS + "louvain",  louvain.getURI());
+
+        var pagerankStmts = model.listObjectsOfProperty(iri, pagerank).toList();
+        assertEquals(1, pagerankStmts.size());
+        assertEquals(0.42d, pagerankStmts.get(0).asLiteral().getDouble());
+
+        var louvainStmts = model.listObjectsOfProperty(iri, louvain).toList();
+        assertEquals(1, louvainStmts.size());
+        assertEquals(7L, louvainStmts.get(0).asLiteral().getLong());
+
+        // Non-gds, non-tv keys remain unemitted.
+        assertNull(RDFTripleBuilder.gdsPropertyIri(model, "notGds"));
+    }
+
+    @Test
+    void addElement_skipsGdsPropertiesWhenTaggedValuesDisabled() {
+        UAFElementDTO dto = UAFElementDTO.builder("g-2", "Hub", "OperationalPerformer")
+            .neo4jLabel("OperationalPerformer")
+            .taggedValue("gdsPagerank", 0.42d)
+            .build();
+        RDFTripleBuilder.addElement(model, dto, /*includeTaggedValues=*/ false);
+
+        var iri  = RDFTripleBuilder.instanceIri(model, "g-2");
+        var prop = RDFTripleBuilder.gdsPropertyIri(model, "gdsPagerank");
+        assertNotNull(prop);
+        assertFalse(model.contains(iri, prop),
+                    "GDS write-back triples follow the includeTaggedValues switch");
+    }
+
     // ── addRelationship ───────────────────────────────────────────────────────
 
     @Test
