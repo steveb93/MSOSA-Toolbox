@@ -156,6 +156,60 @@ def recommend_resources_for_gap(capability_iri: str, k: int = 10) -> list[dict]:
                           endpoint=sparql_raw_url)
 
 
+_TOP_PAGERANK_QUERY = """\
+PREFIX uaf: <http://msosa-toolbox.local/uaf#>
+PREFIX uafgds: <http://msosa-toolbox.local/uaf/gds#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?node ?name ?type ?pagerank WHERE {
+  ?node uafgds:pagerank ?pagerank ;
+        rdfs:label ?name ;
+        a ?type .
+  FILTER(STRSTARTS(STR(?type), STR(uaf:)))
+}
+ORDER BY DESC(?pagerank)
+LIMIT %d
+"""
+
+_DOMAIN_COUNTS_QUERY = """\
+PREFIX uaf: <http://msosa-toolbox.local/uaf#>
+SELECT ?domain (COUNT(DISTINCT ?node) AS ?count) WHERE {
+  ?node uaf:domain ?domain .
+}
+GROUP BY ?domain
+ORDER BY DESC(?count)
+"""
+
+
+@mcp.tool()
+def find_top_n_by_pagerank(limit: int = 25) -> list[dict]:
+    """Top-N most-influential UAF elements by GDS PageRank.
+
+    Surfaces the elements that the most trace/realisation/exhibits paths
+    converge on — usually load-bearing Capabilities, Activities, or System
+    blocks. Same data source and refresh path as find_capability_gaps; routes
+    to the non-reasoning /uaf-raw/sparql endpoint.
+
+    Returns: list of {node, name, type, pagerank}.
+    """
+    return _sparql_select(_TOP_PAGERANK_QUERY % int(limit),
+                          endpoint=sparql_raw_url)
+
+
+@mcp.tool()
+def count_nodes_by_domain() -> list[dict]:
+    """Node count per UAF domain — model coverage breakdown.
+
+    Counts distinct nodes carrying a uaf:domain literal, grouped and ordered
+    descending. Cheap; consumed by the decision dashboard's composition panel
+    and useful for spotting under-modelled domains (a tiny SECURITY count when
+    the programme has accreditation pressure, for example). Routes to the
+    non-reasoning /uaf-raw/sparql endpoint.
+
+    Returns: list of {domain, count} ordered by descending count.
+    """
+    return _sparql_select(_DOMAIN_COUNTS_QUERY, endpoint=sparql_raw_url)
+
+
 @mcp.tool()
 def validate_shacl(shapes_file: str | None = None) -> dict:
     """Validate the live Fuseki dataset against UAF SHACL shapes (Stage 3 scaffolding).

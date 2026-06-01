@@ -1,0 +1,5 @@
+# Install in the same venv as graph_mcp_driver:
+#   pip install -e .                              # MCP server + SPARQL helpers
+#   pip install -r dashboard/requirements.txt     # Streamlit + dataframe deps
+streamlit>=1.30
+pandas>=2.0
