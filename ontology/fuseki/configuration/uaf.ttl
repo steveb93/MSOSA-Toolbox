@@ -26,6 +26,18 @@
 @prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix ja:     <http://jena.hpl.hp.com/2005/11/Assembler#> .
 
+## Two services share one base model:
+##   /uaf/sparql      — OWL FB reasoning (semantic queries: subsumption, SHACL,
+##                      inverseOf-derived edges, disjointness checks)
+##   /uaf-raw/sparql  — base model only, no inference (analytical queries that
+##                      consume directly-emitted triples: GDS recommender,
+##                      ranking, raw counts). Much faster; no reasoner overhead.
+##
+## Both expose the same underlying triples — the raw service is the unreasoned
+## view of what the reasoning service infers over. Choose per query: if it
+## needs uaf:realisedBy (inverse-of-derived), point at /uaf/sparql; if it
+## needs uaf:realises (directly emitted), /uaf-raw/sparql is the cheap path.
+
 :service a fuseki:Service ;
     fuseki:name     "uaf" ;
     fuseki:endpoint [ fuseki:operation fuseki:query  ; fuseki:name "sparql" ] ;
@@ -34,8 +46,17 @@
     fuseki:endpoint [ fuseki:operation fuseki:gsp-rw ; fuseki:name "data"   ] ;
     fuseki:dataset  :dataset .
 
+:raw_service a fuseki:Service ;
+    fuseki:name     "uaf-raw" ;
+    fuseki:endpoint [ fuseki:operation fuseki:query ; fuseki:name "sparql" ] ;
+    fuseki:endpoint [ fuseki:operation fuseki:query ; fuseki:name "query"  ] ;
+    fuseki:dataset  :raw_dataset .
+
 :dataset a ja:RDFDataset ;
     ja:defaultGraph :inf_model .
+
+:raw_dataset a ja:RDFDataset ;
+    ja:defaultGraph :base_model .
 
 :inf_model a ja:InfModel ;
     ja:baseModel :base_model ;

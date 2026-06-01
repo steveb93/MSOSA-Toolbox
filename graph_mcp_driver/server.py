@@ -16,6 +16,14 @@ sparql_url = os.getenv(
     "NEO4J_SPARQL_URL",
     "http://localhost:3030/uaf/sparql",
 )
+# Non-reasoning SPARQL endpoint — same base model, no OWL FB closure. Used by
+# analytical tools whose queries consume only directly-emitted triples (no
+# inverseOf inferences, no subsumption). Bypasses the reasoner overhead that
+# can take OWL-side queries minutes to evaluate on modest datasets.
+sparql_raw_url = os.getenv(
+    "NEO4J_SPARQL_RAW_URL",
+    "http://localhost:3030/uaf-raw/sparql",
+)
 sparql_auth = (
     os.getenv("FUSEKI_USER", "admin"),
     os.getenv("FUSEKI_PASSWORD", "Password123"),
@@ -55,6 +63,11 @@ def run_sparql(query: str) -> list[dict]:
     return [{k: v["value"] for k, v in row.items()} for row in bindings]
 
 
+# Forward-direction realisation predicates (the ones the dump emits directly).
+# Using a single-hop alternation in path position lets the engine decompose
+# into indexed lookups; transitive variants `(...)+` against the reasoning
+# endpoint OOM the reasoner on this dataset and are not needed when we already
+# have the explicit edges.
 _CAPABILITY_GAPS_QUERY = """\
 PREFIX uaf: <http://msosa-toolbox.local/uaf#>
 PREFIX uafgds: <http://msosa-toolbox.local/uaf/gds#>
@@ -64,7 +77,7 @@ SELECT ?capability ?name ?pagerank WHERE {
               rdfs:label ?name ;
               uafgds:pagerank ?pagerank .
   FILTER NOT EXISTS {
-    ?capability (uaf:realisedBy|uaf:exhibitedBy|uaf:tracedBy|uaf:implementedBy)+ ?resource .
+    ?resource (uaf:realises|uaf:exhibits|uaf:tracesTo|uaf:implements) ?capability .
     ?resource uaf:domain "RESOURCE" .
   }
 }
@@ -77,8 +90,8 @@ PREFIX uaf: <http://msosa-toolbox.local/uaf#>
 PREFIX uafgds: <http://msosa-toolbox.local/uaf/gds#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 SELECT ?resource ?name ?stereotype ?pagerank (COUNT(DISTINCT ?peer) AS ?peersRealised) WHERE {
-  ?peer a uaf:Capability ;
-        (uaf:realisedBy|uaf:exhibitedBy|uaf:tracedBy|uaf:implementedBy)+ ?resource .
+  ?resource (uaf:realises|uaf:exhibits|uaf:tracesTo|uaf:implements) ?peer .
+  ?peer a uaf:Capability .
   ?resource uaf:domain "RESOURCE" ;
             rdfs:label ?name ;
             a ?stereotype ;
@@ -92,9 +105,9 @@ LIMIT %d
 """
 
 
-def _sparql_select(query: str) -> list[dict]:
+def _sparql_select(query: str, endpoint: str | None = None) -> list[dict]:
     response = httpx.post(
-        sparql_url,
+        endpoint or sparql_url,
         auth=sparql_auth,
         data={"query": query},
         headers={"Accept": "application/sparql-results+json"},
@@ -115,10 +128,15 @@ def find_capability_gaps(limit: int = 25) -> list[dict]:
     full UAF trace graph. Reads `uafgds:pagerank` triples — requires the GDS
     write-back + dump_to_rdf.py refresh path (cookbook §6a, NEXT-STEPS Stage 5).
 
+    Routes to the non-reasoning /uaf-raw/sparql endpoint (NEO4J_SPARQL_RAW_URL
+    env var) — every triple consumed is directly emitted by the dump, so OWL
+    inference would add cost without changing results.
+
     Returns: list of {capability, name, pagerank}. Empty if no PageRank has been
     materialised yet, or if the model has no realisation gaps.
     """
-    return _sparql_select(_CAPABILITY_GAPS_QUERY % int(limit))
+    return _sparql_select(_CAPABILITY_GAPS_QUERY % int(limit),
+                          endpoint=sparql_raw_url)
 
 
 @mcp.tool()
@@ -129,10 +147,13 @@ def recommend_resources_for_gap(capability_iri: str, k: int = 10) -> list[dict]:
     already realises (peer-realiser frequency), broken by `uafgds:pagerank` as
     importance. Universal players surface first.
 
-    Pass the Capability IRI from find_capability_gaps()[i]["capability"]. Returns
-    list of {resource, name, stereotype, pagerank, peersRealised}.
+    Pass the Capability IRI from find_capability_gaps()[i]["capability"]. Routes
+    to the non-reasoning /uaf-raw/sparql endpoint for the same reason as
+    find_capability_gaps. Returns list of
+    {resource, name, stereotype, pagerank, peersRealised}.
     """
-    return _sparql_select(_RECOMMEND_RESOURCES_QUERY % (capability_iri, int(k)))
+    return _sparql_select(_RECOMMEND_RESOURCES_QUERY % (capability_iri, int(k)),
+                          endpoint=sparql_raw_url)
 
 
 @mcp.tool()

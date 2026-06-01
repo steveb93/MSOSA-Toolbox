@@ -186,6 +186,12 @@ LIMIT 25
 # RESOURCE-domain element are the most consequential coverage gaps in the
 # current model — a strategic intent that nothing yet delivers. Requires the
 # same GDS write-back as query 9.
+#
+# Run against /uaf-raw/sparql (non-reasoning endpoint). Uses the forward
+# realisation predicates the dump emits directly — no OWL inverseOf inference
+# needed. The /uaf/sparql reasoning endpoint also accepts this query but the
+# reasoner-derived inverse-relation family expansion makes it dramatically
+# slower; switch endpoints only if you need transitive closure (`+` paths).
 # -----------------------------------------------------------------------------
 PREFIX uaf: <http://msosa-toolbox.local/uaf#>
 PREFIX uafgds: <http://msosa-toolbox.local/uaf/gds#>
@@ -195,7 +201,7 @@ SELECT ?capability ?name ?pagerank WHERE {
               rdfs:label ?name ;
               uafgds:pagerank ?pagerank .
   FILTER NOT EXISTS {
-    ?capability (uaf:realisedBy|uaf:exhibitedBy|uaf:tracedBy|uaf:implementedBy)+ ?resource .
+    ?resource (uaf:realises|uaf:exhibits|uaf:tracesTo|uaf:implements) ?capability .
     ?resource uaf:domain "RESOURCE" .
   }
 }
@@ -209,13 +215,15 @@ LIMIT 25
 # frequency), with PageRank as the tie-break. Universal players surface first.
 # Substitute the gap IRI into the FILTER. Used by the
 # `recommend_resources_for_gap` MCP tool — see graph_mcp_driver/server.py.
+#
+# Run against /uaf-raw/sparql — same rationale as query 10.
 # -----------------------------------------------------------------------------
 PREFIX uaf: <http://msosa-toolbox.local/uaf#>
 PREFIX uafgds: <http://msosa-toolbox.local/uaf/gds#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 SELECT ?resource ?name ?stereotype ?pagerank (COUNT(DISTINCT ?peer) AS ?peersRealised) WHERE {
-  ?peer a uaf:Capability ;
-        (uaf:realisedBy|uaf:exhibitedBy|uaf:tracedBy|uaf:implementedBy)+ ?resource .
+  ?resource (uaf:realises|uaf:exhibits|uaf:tracesTo|uaf:implements) ?peer .
+  ?peer a uaf:Capability .
   ?resource uaf:domain "RESOURCE" ;
             rdfs:label ?name ;
             a ?stereotype ;

@@ -188,10 +188,23 @@ def test_find_capability_gaps_passes_limit_to_query():
         from graph_mcp_driver.server import find_capability_gaps
         find_capability_gaps(limit=7)
 
-    sent = mock_post.call_args.kwargs["data"]["query"]
+    call = mock_post.call_args
+    sent = call.kwargs["data"]["query"]
     assert "LIMIT 7" in sent
     assert "uafgds:pagerank" in sent
     assert "FILTER NOT EXISTS" in sent
+    # Forward direction — the dump emits these directly so the query runs on
+    # the non-reasoning endpoint without any OWL inverseOf inference.
+    assert "uaf:realises|uaf:exhibits|uaf:tracesTo|uaf:implements" in sent
+    assert "uaf:realisedBy" not in sent  # reasoner-derived; should not appear
+
+
+def test_find_capability_gaps_routes_to_raw_endpoint():
+    import graph_mcp_driver.server as srv
+    with patch("graph_mcp_driver.server.httpx.post",
+               return_value=_mock_sparql_response([])) as mock_post:
+        srv.find_capability_gaps()
+    assert mock_post.call_args.args[0] == srv.sparql_raw_url
 
 
 def test_recommend_resources_for_gap_returns_rows():
@@ -230,3 +243,26 @@ def test_recommend_resources_for_gap_interpolates_iri_and_k():
     assert "LIMIT 3" in sent
     assert "COUNT(DISTINCT ?peer)" in sent
     assert "ORDER BY DESC(?peersRealised) DESC(?pagerank)" in sent
+    # Forward-direction subject binding so the engine uses indexed predicate
+    # lookups on directly-emitted triples (no reasoner needed).
+    assert "?resource (uaf:realises|uaf:exhibits|uaf:tracesTo|uaf:implements) ?peer" in sent
+
+
+def test_recommend_resources_for_gap_routes_to_raw_endpoint():
+    import graph_mcp_driver.server as srv
+    with patch("graph_mcp_driver.server.httpx.post",
+               return_value=_mock_sparql_response([])) as mock_post:
+        srv.recommend_resources_for_gap("http://example/Cap1")
+    assert mock_post.call_args.args[0] == srv.sparql_raw_url
+
+
+def test_run_sparql_still_routes_to_reasoning_endpoint():
+    """run_sparql is the public tool for arbitrary SPARQL; it must keep using
+    the reasoning endpoint so semantic queries (subsumption, inverseOf-derived
+    edges) still work. Only the recommender tools opted into the raw view."""
+    import graph_mcp_driver.server as srv
+    with patch("graph_mcp_driver.server.httpx.post",
+               return_value=_mock_sparql_response([])) as mock_post:
+        srv.run_sparql("SELECT * WHERE { ?s ?p ?o } LIMIT 1")
+    assert mock_post.call_args.args[0] == srv.sparql_url
+    assert mock_post.call_args.args[0] != srv.sparql_raw_url
