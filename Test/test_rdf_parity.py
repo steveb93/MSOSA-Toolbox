@@ -50,6 +50,7 @@ def test_namespaces_match_module_constants(fixture: dict) -> None:
     assert str(dump_to_rdf.BPMN)    == ns["bpmn"]
     assert str(dump_to_rdf.UAFINST) == ns["uafinst"]
     assert str(dump_to_rdf.UAFTV)   == ns["uaftv"]
+    assert str(dump_to_rdf.UAFGDS)  == ns["uafgds"]
 
 
 def test_instance_iri_cases(fixture: dict) -> None:
@@ -92,5 +93,22 @@ def test_tag_property_iri_cases(fixture: dict) -> None:
         actual = str(dump_to_rdf.tag_property_uri(case["key"]))
         assert actual == expected, (
             f"tag_property_uri({case['key']!r}): expected {expected!r}, got {actual!r} "
+            f"({case.get('note', '')})"
+        )
+
+
+def test_gds_property_iri_cases(fixture: dict) -> None:
+    namespaces = fixture["namespaces"]
+    for case in fixture["gds_property_iri"]:
+        actual = dump_to_rdf.gds_property_uri(case["key"])
+        if case["expected_curie"] is None:
+            assert actual is None, (
+                f"gds_property_uri({case['key']!r}): expected None, got {actual!r} "
+                f"({case.get('note', '')})"
+            )
+            continue
+        expected = _expand(case["expected_curie"], namespaces)
+        assert actual is not None and str(actual) == expected, (
+            f"gds_property_uri({case['key']!r}): expected {expected!r}, got {actual!r} "
             f"({case.get('note', '')})"
         )

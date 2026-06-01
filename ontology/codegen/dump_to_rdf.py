@@ -56,6 +56,11 @@ SYSML = Namespace("http://msosa-toolbox.local/sysml#")
 BPMN = Namespace("http://msosa-toolbox.local/bpmn#")
 UAFINST = Namespace("http://msosa-toolbox.local/uaf/instance#")
 UAFTV = Namespace("http://msosa-toolbox.local/uaf/tag#")
+# Analytics outputs written back to LPG nodes by Neo4j GDS algorithms
+# (see cypher/gds-cookbook.cypher §6). Kept distinct from uaftv: (modeller
+# tagged values) and uafprop: (T-Box annotation properties) so SPARQL
+# consumers can tell algorithm-derived data from authored data.
+UAFGDS = Namespace("http://msosa-toolbox.local/uaf/gds#")
 
 NS_FOR_LANG = {"UAF": UAF, "SysML": SYSML, "BPMN": BPMN}
 
@@ -86,6 +91,38 @@ def tag_property_uri(tag_key: str) -> URIRef:
     # tag keys may contain anything; strip tv_ prefix and sanitise
     key = tag_key[3:] if tag_key.startswith("tv_") else tag_key
     return UAFTV[SAFE_ID.sub("_", key)]
+
+
+# GDS write-back property naming. Algorithms in Neo4j write camelCase keys
+# such as `gdsPagerank`, `gdsBetweenness`, `gdsLouvain`. The regex requires
+# the literal `gds` prefix followed by an uppercase letter so that
+# unrelated property names (`gds`, `gdsx`, `GDSpagerank`) don't accidentally
+# get mapped into the uafgds: namespace. Local name is the suffix with its
+# first letter lower-cased (`gdsWccComponent` -> `wccComponent`).
+GDS_PROP = re.compile(r"^gds([A-Z][A-Za-z0-9]*)$")
+
+
+def gds_property_uri(key: str) -> URIRef | None:
+    match = GDS_PROP.match(key)
+    if not match:
+        return None
+    suffix = match.group(1)
+    local = suffix[0].lower() + suffix[1:]
+    return UAFGDS[local]
+
+
+def gds_literal(value: object) -> Literal:
+    """Type-preserving literal for GDS-derived values. PageRank/betweenness
+    are doubles; WCC/Louvain are longs; rare boolean flags pass through.
+    Anything else is stringified — defensive, should not happen with the
+    standard GDS algorithm set."""
+    if isinstance(value, bool):
+        return Literal(value, datatype=XSD.boolean)
+    if isinstance(value, int):
+        return Literal(value, datatype=XSD.long)
+    if isinstance(value, float):
+        return Literal(value, datatype=XSD.double)
+    return Literal(str(value), datatype=XSD.string)
 
 
 CORE_PROPS = {"id", "name", "qualifiedName", "documentation", "domain",
@@ -126,13 +163,17 @@ def add_node(g: Graph, record: dict) -> None:
         v = record.get(k)
         if v:
             g.add((iri, UAF[k], Literal(v, datatype=XSD.string)))
-    # tagged values flattened on the node as tv_* properties
+    # tagged values flattened on the node as tv_* properties; analytics
+    # outputs written by Neo4j GDS flattened as gds* properties.
     for k, v in (record.get("props") or {}).items():
         if k in CORE_PROPS or v is None:
             continue
-        if not k.startswith("tv_"):
+        if k.startswith("tv_"):
+            g.add((iri, tag_property_uri(k), Literal(v, datatype=XSD.string)))
             continue
-        g.add((iri, tag_property_uri(k), Literal(v, datatype=XSD.string)))
+        gds_iri = gds_property_uri(k)
+        if gds_iri is not None:
+            g.add((iri, gds_iri, gds_literal(v)))
 
 
 def add_relationship(g: Graph, record: dict) -> None:
@@ -153,6 +194,7 @@ def dump(uri: str, user: str, password: str, database: str) -> tuple[int, int]:
     g.bind("bpmn", BPMN)
     g.bind("uafinst", UAFINST)
     g.bind("uaftv", UAFTV)
+    g.bind("uafgds", UAFGDS)
     g.bind("rdfs", RDFS)
     g.bind("xsd", XSD)
 

@@ -164,8 +164,18 @@ LIMIT 25;
 //
 // Useful when downstream consumers (the SPARQL view, decision dashboards,
 // the LLM via the MCP server) need to filter or sort by GDS-derived scores.
-// Properties land on the source LPG nodes; the next ontology dump (or the
-// plugin's RDF emitter) will carry them across to Fuseki as data properties.
+// Properties land on the source LPG nodes.
+//
+// Naming convention: write properties under the `gds*` prefix
+// (`gdsPagerank`, `gdsBetweenness`, `gdsLouvain`, ...). The Python
+// `dump_to_rdf.py` recognises that prefix and emits each as a typed
+// `uafgds:<lowerCamel>` triple on the instance IRI in Fuseki — see
+// ontology/queries/semantic-search-examples.sparql §§9–10 for consumers.
+// Anything else is dropped on the floor by the dump, so the prefix matters.
+//
+// After running these write blocks, refresh the SPARQL view with:
+//     python ontology/codegen/dump_to_rdf.py
+// and reload Fuseki (PUT to /uaf/data or restart the container).
 //
 // Re-run the corresponding write call after each UAF re-export.
 // ─────────────────────────────────────────────────────────────────────────────
