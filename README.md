@@ -24,26 +24,30 @@ References:
 | Component | Description | Status |
 |---|---|---|
 | [msosa-model-exporter](msosa-model-exporter/) | MSOSA plugin — exports UAF 1.2 / SysML 1.6 / BPMN 2.0 elements and relationships to a Neo4j knowledge graph over Bolt | [![Build](https://github.com/steveb93/UAF-Repo/actions/workflows/msosa-model-exporter-build.yml/badge.svg)](https://github.com/steveb93/UAF-Repo/actions/workflows/msosa-model-exporter-build.yml) |
-| [graph_mcp_driver](graph_mcp_driver/) | Python MCP server — exposes `run_cypher` (Neo4j) and `run_sparql` (Fuseki) tools to MCP-capable LLM hosts | — |
+| [graph_mcp_driver](graph_mcp_driver/) | Python MCP server — exposes `run_cypher` (Neo4j), `run_sparql` (Fuseki), SHACL validation, GDS-driven capability-gap recommender, and decision-analytics tools to MCP-capable LLM hosts | — |
+| [dashboard](dashboard/) | Streamlit decision-intelligence dashboard — four panels over the SPARQL view (coverage gaps, top-N influence, gap recommendations, domain composition) plus KPI metrics, row-selection drill-down, and CSV export. Standalone (`streamlit run`) or via `docker-compose.dashboard.yml` overlay. Stage 5. | — |
 | [ontology](ontology/) | Generated OWL T-Box, Fuseki configuration, dump script, anchor SPARQL queries | — |
-| [docker-compose](docker-compose/) | Neo4j stack + `docker-compose.fuseki.yml` SPARQL overlay. Copy `docker-compose/.env.example` to `docker-compose/.env` and set passwords + `NEO4J_DATA_DIR` before first run. | — |
+| [docker-compose](docker-compose/) | Neo4j stack + `docker-compose.fuseki.yml` SPARQL overlay. Copy `docker-compose/.env.example` to `docker-compose/.env` and set passwords + `NEO4J_DATA_DIR` + `FUSEKI_HEAP` before first run. | — |
 
 > New plugins can be added as subdirectories following the conventions in [Contributing](#contributing).
 
-## Ontology overlay — Stages 2, 3, 4 status
+## Ontology overlay — Stages 2, 3, 4, 5 status
 
 Per the staged migration in `Ontology-Approach-to-Knowledge.md`:
 
 - **Stage 2 (live)** — Apache Jena Fuseki provides a real SPARQL 1.1 endpoint with **OWL FB reasoning** over a UAF Minimum Viable Ontology covering the **7 UAF domains plus Shared + SysML 1.6 + BPMN 2.0** — **193 OWL classes, 35 ObjectProperties**, code-generated from the seeded `:Stereotype` metamodel in Neo4j.
 - **Stage 3 (whole-ontology complete)** — Stage-3 governance now spans all 7 UAF domains: **24 SHACL NodeShapes**, **12 `owl:someValuesFrom` restrictions**, **16 `owl:inverseOf` pairs**, pairwise domain disjointness, `uaf:dominates` transitivity wired to the `<<Dominates>>` UML Dependency stereotype for architectural Security domain reasoning, an ERD→Resource bridge (`uaf:Entity rdfs:subClassOf uaf:ResourceInformation`) so ERD content participates in resource-exchange traversals, and a separate UML data-marking slice (`ontology/uml-data-marking.ttl`) with `dm:dominates` over the DoD TS/S/C/U lattice — joins via `skos:notation` against `uaftv:securityClassification` literals on ERD Entities. Validator at `ontology/codegen/validate_shacl.py`; MCP server exposes the live conformance report.
 - **Stage 4 emitter-side (live)** — Java plugin emits RDF directly via `RDFExportService` alongside the Cypher path, and optionally PUTs to Fuseki's Graph Store Protocol. `dump_to_rdf.py` retained as recovery path.
+- **Stage 5 (in progress)** — **Composite AI** layer on top of the SPARQL view. Neo4j GDS bootstrapped (`cypher/gds-cookbook.cypher` + smoke test) with PageRank / betweenness / WCC / Louvain projections; GDS write-back materialised as `uafgds:*` triples (typed-literal parity locked across Python `dump_to_rdf.py` and Java `RDFTripleBuilder`); content-based capability-gap recommender exposed as MCP tools (`find_capability_gaps`, `recommend_resources_for_gap`, `find_top_n_by_pagerank`, `count_nodes_by_domain`); Streamlit decision-intelligence dashboard with four panels for the "Decision makers" persona. **Fuseki query-architecture split**: new `/uaf-raw/sparql` non-reasoning endpoint for analytical queries that consume directly-emitted triples — ~3 orders of magnitude faster than the OWL FB endpoint for predicate-alternation `FILTER NOT EXISTS` patterns. Remaining: agent-memory demo (`#119`).
 
-Remaining: outbound `SERVICE` federation templates and the ExportSummaryDialog SHACL row. See `ontology/NEXT-STEPS.md` for the open backlog and decision log.
+Remaining outside Stage 5: outbound `SERVICE` federation templates and the ExportSummaryDialog SHACL row. See `ontology/NEXT-STEPS.md` for the open backlog and decision log.
 
 **Endpoints**:
 - Bolt (system of record): `bolt://localhost:7687`
-- SPARQL (overlay): `http://localhost:3030/uaf/sparql`
+- SPARQL with OWL FB reasoning (semantic queries, SHACL, subsumption): `http://localhost:3030/uaf/sparql`
+- SPARQL non-reasoning (analytical queries, GDS recommender, dashboard): `http://localhost:3030/uaf-raw/sparql`
 - Fuseki web UI: `http://localhost:3030/`
+- Decision dashboard: `http://localhost:8501` (after `streamlit run dashboard/app.py`)
 
 **Refresh cadence after each MSOSA export**:
 
@@ -84,23 +88,29 @@ MSOSA-Toolbox/
 │   └── pom.xml
 ├── cypher/                          # Graph schema + metamodel seed (init_uaf_graph.cypher) + query cookbook
 ├── msosa-sdk/                       # MSOSA 2022x SDK jars (shared build classpath for any plugin)
-├── graph_mcp_driver/                # Python MCP server — run_cypher + run_sparql tools
+├── graph_mcp_driver/                # Python MCP server — run_cypher, run_sparql, validate_shacl, GDS recommender, decision-analytics tools
+├── dashboard/                       # Streamlit decision-intelligence dashboard (Stage 5)
 ├── docker-compose/
 │   ├── docker-compose.yml           # Neo4j 5.26 + n10s + APOC + GDS
-│   └── docker-compose.fuseki.yml    # Fuseki SPARQL overlay (Stage 2)
+│   ├── docker-compose.fuseki.yml    # Fuseki SPARQL overlay (Stage 2) — exposes /uaf/sparql (OWL FB) + /uaf-raw/sparql (non-reasoning, Stage 5)
+│   └── docker-compose.dashboard.yml # Streamlit dashboard overlay (Stage 5) — reaches Fuseki via the shared compose network
 ├── ontology/
 │   ├── uaf-mvo.ttl                  # AUTO-GENERATED T-Box (UAF + SysML + BPMN)
 │   ├── uaf-mvo-axioms.ttl           # Hand-authored OWL axioms (Stage 3: inverses, disjointness, restrictions)
 │   ├── shapes/uaf-shapes.ttl        # SHACL governance shapes (Stage 3, all 7 UAF domains)
 │   ├── codegen/
 │   │   ├── generate_mvo.py          # T-Box codegen from the seeded :Stereotype metamodel
-│   │   ├── dump_to_rdf.py           # Neo4j → Turtle A-Box dump (rdflib) — recovery path
+│   │   ├── dump_to_rdf.py           # Neo4j → Turtle A-Box dump (rdflib) — recovery path, emits uafgds:* triples for GDS write-back
 │   │   └── validate_shacl.py        # pyshacl validator against the live Fuseki dataset
-│   ├── fuseki/configuration/uaf.ttl # Fuseki assembler config (in-mem dataset + OWL FB reasoner)
+│   ├── fuseki/configuration/uaf.ttl # Fuseki assembler config (two services share one base model: reasoning + non-reasoning)
 │   ├── queries/                     # Anchor SPARQL queries grounding semantic-search use case
-│   ├── dump/                        # (gitignored) latest A-Box dump
+│   ├── dump/                        # Placeholder A-Box only; populated copy is local-only and must never be committed
 │   └── NEXT-STEPS.md                # Stage 3+ roadmap (decision log records n10s/Ontop/GraphDB rejection)
-├── Test/                            # Python tests (connection, MCP tools, SPARQL endpoint)
+├── cypher/
+│   ├── init_uaf_graph.cypher        # Seeds :Stereotype + :Domain metamodel
+│   ├── query-cookbook.cypher        # Read-only LPG patterns
+│   └── gds-cookbook.cypher          # GDS projections + PageRank / WCC / Louvain + write-back (Stage 5)
+├── Test/                            # Python tests (connection, MCP tools, SPARQL endpoint, recommender)
 ├── Ontology-Approach-to-Knowledge.md # Strategy doc — Gartner-anchored, ISO 15288 aligned
 └── CLAUDE.md                        # End-to-end stand-up + architectural decisions
 ```

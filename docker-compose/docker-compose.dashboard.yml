@@ -1,0 +1,47 @@
+# Overlay: adds the Streamlit decision-intelligence dashboard (Stage 5).
+#
+# Bring up the full stack (Neo4j + Fuseki + Dashboard) in one command:
+#
+#   docker compose -f docker-compose.yml \
+#                  -f docker-compose.fuseki.yml \
+#                  -f docker-compose.dashboard.yml up -d
+#
+# Browse to http://localhost:8501. The container reaches Fuseki via the
+# `fuseki` service name on the shared Compose project network — no host
+# port-forwarding required for the dashboard-to-Fuseki hop.
+#
+# Standalone alternative (no Docker for the dashboard):
+#
+#   pip install -r dashboard/requirements.txt
+#   streamlit run dashboard/app.py
+#
+# (The standalone path uses http://localhost:3030/uaf-raw/sparql; this overlay
+# uses http://fuseki:3030/uaf-raw/sparql to hit Fuseki on the internal network.)
+
+services:
+  dashboard:
+    build:
+      # Build context is the repo root because the image needs pyproject.toml
+      # and graph_mcp_driver/. Compose project dir is docker-compose/, so `..`
+      # resolves to the repo root.
+      context: ..
+      dockerfile: dashboard/Dockerfile
+    container_name: uaf-dashboard
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    environment:
+      # Point at Fuseki via the service name on the shared compose network.
+      - NEO4J_SPARQL_URL=http://fuseki:3030/uaf/sparql
+      - NEO4J_SPARQL_RAW_URL=http://fuseki:3030/uaf-raw/sparql
+      # Neo4j credentials are read at import time by graph_mcp_driver.server
+      # (lazy driver — no connection attempt unless run_cypher is called).
+      # Set them so the import doesn't fall back to bare defaults.
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD:?NEO4J_PASSWORD must be set in .env}
+      # Fuseki basic-auth — unused for read queries but kept consistent with
+      # the MCP server's expectations so future writes don't surprise.
+      - FUSEKI_USER=${FUSEKI_USER:-admin}
+      - FUSEKI_PASSWORD=${FUSEKI_ADMIN_PASSWORD:?FUSEKI_ADMIN_PASSWORD must be set in .env}
+    depends_on:
+      - fuseki

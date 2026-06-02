@@ -266,3 +266,89 @@ def test_run_sparql_still_routes_to_reasoning_endpoint():
         srv.run_sparql("SELECT * WHERE { ?s ?p ?o } LIMIT 1")
     assert mock_post.call_args.args[0] == srv.sparql_url
     assert mock_post.call_args.args[0] != srv.sparql_raw_url
+
+
+# ---------------------------------------------------------------------------
+# Dashboard-feeding tools (Stage 5 decision dashboard)
+
+def test_find_top_n_by_pagerank_returns_rows():
+    bindings = [
+        {
+            "node": {"type": "uri", "value": "http://example/Node1"},
+            "name": {"type": "literal", "value": "Alpha"},
+            "type": {"type": "uri",
+                     "value": "http://msosa-toolbox.local/uaf#Capability"},
+            "pagerank": {"type": "literal", "value": "0.91"},
+        },
+    ]
+    with patch("graph_mcp_driver.server.httpx.post",
+               return_value=_mock_sparql_response(bindings)):
+        from graph_mcp_driver.server import find_top_n_by_pagerank
+        result = find_top_n_by_pagerank(limit=1)
+
+    assert result == [{
+        "node": "http://example/Node1",
+        "name": "Alpha",
+        "type": "http://msosa-toolbox.local/uaf#Capability",
+        "pagerank": "0.91",
+    }]
+
+
+def test_find_top_n_by_pagerank_passes_limit_and_filters_uaf_types():
+    with patch("graph_mcp_driver.server.httpx.post",
+               return_value=_mock_sparql_response([])) as mock_post:
+        from graph_mcp_driver.server import find_top_n_by_pagerank
+        find_top_n_by_pagerank(limit=11)
+    sent = mock_post.call_args.kwargs["data"]["query"]
+    assert "LIMIT 11" in sent
+    assert "uafgds:pagerank" in sent
+    assert "FILTER(STRSTARTS(STR(?type), STR(uaf:)))" in sent
+
+
+def test_find_top_n_by_pagerank_routes_to_raw_endpoint():
+    import graph_mcp_driver.server as srv
+    with patch("graph_mcp_driver.server.httpx.post",
+               return_value=_mock_sparql_response([])) as mock_post:
+        srv.find_top_n_by_pagerank()
+    assert mock_post.call_args.args[0] == srv.sparql_raw_url
+
+
+def test_count_nodes_by_domain_returns_rows():
+    bindings = [
+        {
+            "domain": {"type": "literal", "value": "RESOURCE"},
+            "count": {"type": "literal", "value": "412"},
+        },
+        {
+            "domain": {"type": "literal", "value": "OPERATIONAL"},
+            "count": {"type": "literal", "value": "287"},
+        },
+    ]
+    with patch("graph_mcp_driver.server.httpx.post",
+               return_value=_mock_sparql_response(bindings)):
+        from graph_mcp_driver.server import count_nodes_by_domain
+        result = count_nodes_by_domain()
+
+    assert result == [
+        {"domain": "RESOURCE", "count": "412"},
+        {"domain": "OPERATIONAL", "count": "287"},
+    ]
+
+
+def test_count_nodes_by_domain_query_shape():
+    with patch("graph_mcp_driver.server.httpx.post",
+               return_value=_mock_sparql_response([])) as mock_post:
+        from graph_mcp_driver.server import count_nodes_by_domain
+        count_nodes_by_domain()
+    sent = mock_post.call_args.kwargs["data"]["query"]
+    assert "GROUP BY ?domain" in sent
+    assert "uaf:domain" in sent
+    assert "COUNT(DISTINCT ?node)" in sent
+
+
+def test_count_nodes_by_domain_routes_to_raw_endpoint():
+    import graph_mcp_driver.server as srv
+    with patch("graph_mcp_driver.server.httpx.post",
+               return_value=_mock_sparql_response([])) as mock_post:
+        srv.count_nodes_by_domain()
+    assert mock_post.call_args.args[0] == srv.sparql_raw_url
