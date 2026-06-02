@@ -4,10 +4,18 @@ Streamlit app consuming the Stage 5 GDS write-back via the non-reasoning
 `/uaf-raw/sparql` Fuseki endpoint. Targets the "Decision makers" persona
 from `Ontology-Approach-to-Knowledge.md` §8.
 
-Run (in the same venv as the MCP server / graph_mcp_driver):
+Two run modes:
+
+  Standalone (in the same venv as graph_mcp_driver):
 
     pip install -r dashboard/requirements.txt
     streamlit run dashboard/app.py
+
+  Docker (overlay alongside Neo4j + Fuseki):
+
+    docker compose -f docker-compose/docker-compose.yml \
+                   -f docker-compose/docker-compose.fuseki.yml \
+                   -f docker-compose/docker-compose.dashboard.yml up -d
 
 Prereqs in Neo4j + Fuseki:
 

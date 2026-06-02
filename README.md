@@ -25,7 +25,7 @@ References:
 |---|---|---|
 | [msosa-model-exporter](msosa-model-exporter/) | MSOSA plugin — exports UAF 1.2 / SysML 1.6 / BPMN 2.0 elements and relationships to a Neo4j knowledge graph over Bolt | [![Build](https://github.com/steveb93/UAF-Repo/actions/workflows/msosa-model-exporter-build.yml/badge.svg)](https://github.com/steveb93/UAF-Repo/actions/workflows/msosa-model-exporter-build.yml) |
 | [graph_mcp_driver](graph_mcp_driver/) | Python MCP server — exposes `run_cypher` (Neo4j), `run_sparql` (Fuseki), SHACL validation, GDS-driven capability-gap recommender, and decision-analytics tools to MCP-capable LLM hosts | — |
-| [dashboard](dashboard/) | Streamlit decision-intelligence dashboard — four panels over the SPARQL view (coverage gaps, top-N influence, gap recommendations, domain composition). Stage 5. | — |
+| [dashboard](dashboard/) | Streamlit decision-intelligence dashboard — four panels over the SPARQL view (coverage gaps, top-N influence, gap recommendations, domain composition) plus KPI metrics, row-selection drill-down, and CSV export. Standalone (`streamlit run`) or via `docker-compose.dashboard.yml` overlay. Stage 5. | — |
 | [ontology](ontology/) | Generated OWL T-Box, Fuseki configuration, dump script, anchor SPARQL queries | — |
 | [docker-compose](docker-compose/) | Neo4j stack + `docker-compose.fuseki.yml` SPARQL overlay. Copy `docker-compose/.env.example` to `docker-compose/.env` and set passwords + `NEO4J_DATA_DIR` + `FUSEKI_HEAP` before first run. | — |
 
@@ -92,7 +92,8 @@ MSOSA-Toolbox/
 ├── dashboard/                       # Streamlit decision-intelligence dashboard (Stage 5)
 ├── docker-compose/
 │   ├── docker-compose.yml           # Neo4j 5.26 + n10s + APOC + GDS
-│   └── docker-compose.fuseki.yml    # Fuseki SPARQL overlay (Stage 2) — exposes /uaf/sparql (OWL FB) + /uaf-raw/sparql (non-reasoning, Stage 5)
+│   ├── docker-compose.fuseki.yml    # Fuseki SPARQL overlay (Stage 2) — exposes /uaf/sparql (OWL FB) + /uaf-raw/sparql (non-reasoning, Stage 5)
+│   └── docker-compose.dashboard.yml # Streamlit dashboard overlay (Stage 5) — reaches Fuseki via the shared compose network
 ├── ontology/
 │   ├── uaf-mvo.ttl                  # AUTO-GENERATED T-Box (UAF + SysML + BPMN)
 │   ├── uaf-mvo-axioms.ttl           # Hand-authored OWL axioms (Stage 3: inverses, disjointness, restrictions)
